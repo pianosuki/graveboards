@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+
+{% block title %}Home - Test App{% endblock %}
+
+{% block header %}Welcome{% endblock %}
+
+{% block content %}
+    <section>
+        <h2>Homepage</h2>
+        <p>Content goes here.</p>
+    </section>
+    {% if 'oauth_token' not in session %}
+        <a href="{{ url_for('oauth.login') }}">Login with OAuth</a>
+    {% else %}
+        <a href="{{ url_for('oauth.logout') }}">Logout</a>
+    {% endif %}
+{% endblock %}

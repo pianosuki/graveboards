@@ -1,0 +1,11 @@
+# Database
+instance/
+
+# Dotenv
+.env
+
+# Python virtual environment
+venv/
+
+# Pycharm project files
+.idea/

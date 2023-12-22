@@ -1,0 +1,55 @@
+openapi: 3.0.0
+
+info:
+    title: Test App
+    description: Test API
+    version: 1.0.0
+
+servers:
+    - url: /api/v1
+
+components:
+    securitySchemes:
+        ApiKeyAuth:
+            type: apiKey
+            in: header
+            name: X-API-KEY
+            x-apikeyInfoFunc: app.auth.api_key_info
+
+    schemas:
+        User:
+            type: object
+            properties:
+                osu_id:
+                    type: integer
+
+    parameters:
+        osu_id:
+            name: osu_id
+            description: osu! user ID
+            in: path
+            required: True
+            schema:
+                type: integer
+
+    responses:
+        UnauthorizedError:
+            description: X-API-KEY is missing in the header or invalid
+            headers:
+                WWW-Authenticate:
+                    schema:
+                        type: string
+
+paths:
+    /users:
+        get:
+            summary: Returns a list of users
+            tags:
+                - Users
+            security:
+                - ApiKeyAuth: []
+            responses:
+                200:
+                    description: Successfully retrieved all users
+                401:
+                    $ref: "#/components/responses/UnauthorizedError"
