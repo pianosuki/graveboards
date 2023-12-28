@@ -53,3 +53,49 @@ paths:
                     description: Successfully retrieved all users
                 401:
                     $ref: "#/components/responses/UnauthorizedError"
+                default:
+                    description: Pass
+
+    /leaderboards:
+        get:
+            summary: Returns statistics of active leaderboards
+            tags:
+                - Leaderboards
+            responses:
+                200:
+                    description: Successfully retrieved statistics
+                default:
+                    description: Pass
+
+    /leaderboards/{beatmap-id}:
+        get:
+            summary: Returns the leaderboard of the beatmap's latest version
+            tags:
+                - Leaderboards
+            responses:
+                200:
+                    description: Successfully retrieved leaderboard
+                default:
+                    description: Pass
+
+    /leaderboards/{beatmap-id}/versions:
+        get:
+            summary: Returns a list of the beatmap's leaderboard versions
+            tags:
+                - Leaderboards
+            responses:
+                200:
+                    description: Successfully retrieved leaderboard versions
+                default:
+                    description: Pass
+
+    /leaderboards/{beatmap-id}/versions/{version}:
+        get:
+            summary: Returns the leaderboard of the beatmap's specified version
+            tags:
+                - Leaderboards
+            responses:
+                200:
+                    description: Successfully retrieved leaderboard
+                default:
+                    description: Pass
