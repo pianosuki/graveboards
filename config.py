@@ -9,8 +9,8 @@ FLASK_SERVER_ARGS = {
     "template_folder": os.path.abspath("app/templates")
 }
 
-OAUTH = {
-    "name": "osu",
+OAUTH_AUTHORIZATION_CODE = {
+    "name": "osu_auth",
     "client_id": os.getenv("CLIENT_ID"),
     "client_secret": os.getenv("CLIENT_SECRET"),
     "authorize_url": "https://osu.ppy.sh/oauth/authorize",
@@ -22,7 +22,17 @@ OAUTH = {
     "client_kwargs": {"scope": "public identify"}
 }
 
-SPEC_PATH = os.path.abspath("api/v1")
+OAUTH_CLIENT_CREDENTIALS = {
+    "name": "osu_client",
+    "client_id": os.getenv("CLIENT_ID"),
+    "client_secret": os.getenv("CLIENT_SECRET"),
+    "access_token_url": "https://osu.ppy.sh/oauth/token",
+    "access_token_params": None,
+    "refresh_token_url": None,
+    "client_kwargs": {"scope": "public", "grant_type": "client_credentials"}
+}
+
+SPEC_DIR = os.path.abspath("api/v1")
 
 OSU_USER_ID = os.getenv("OSU_USER_ID")
 

@@ -3,7 +3,15 @@ from typing import Any
 from marshmallow import fields, Schema
 from marshmallow.utils import EXCLUDE, RAISE
 from app import db, ma
-from .models import User, Score, Beatmap, Leaderboard, BeatmapVersion, BeatmapSet
+from .models import User, Score, Beatmap, Leaderboard, BeatmapVersion, Beatmapset
+
+__all__ = [
+    "user_schema",
+    "users_schema",
+    "beatmap_version_schema",
+    "beatmapset_schema",
+    "score_schema"
+]
 
 
 class UserSchema(ma.SQLAlchemyAutoSchema):
@@ -25,20 +33,24 @@ class BeatmapVersionSchema(ma.SQLAlchemyAutoSchema):
     beatmap_id = fields.Integer()
 
     def load(self, data, *args, many=None, partial=None, unknown=None):
-        beatmap = Beatmap.query.filter_by(beatmap_id=data["id"])
+        beatmap = Beatmap.query.filter_by(beatmap_id=data["id"]).one()
         data["beatmap_id"] = beatmap.id
         return super().load(data, *args, many=many, partial=partial, unknown=unknown)
 
 
 class BeatmapSetSchema(ma.SQLAlchemyAutoSchema):
     class Meta:
-        model = BeatmapSet
+        model = Beatmapset
         load_instance = True
         sqla_session = db.session
         unknown = EXCLUDE
 
     id = fields.Integer(dump_only=True)
     covers = fields.Nested("CoversSchema")
+
+    def load(self, data, *args, many=None, partial=None, unknown=None):
+        data["beatmapset_id"] = data["id"]
+        return super().load(data, *args, many=many, partial=partial, unknown=unknown)
 
 
 class ScoreSchema(ma.SQLAlchemyAutoSchema):

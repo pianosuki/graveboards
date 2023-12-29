@@ -18,9 +18,17 @@ components:
 
     schemas:
         User:
+            description: A JSON object containing an osu! user ID
             type: object
             properties:
                 osu_id:
+                    type: integer
+
+        Beatmap:
+            description: A JSON object containing a beatmap ID
+            type: object
+            properties:
+                beatmap_id:
                     type: integer
 
     parameters:
@@ -31,6 +39,31 @@ components:
             required: True
             schema:
                 type: integer
+
+        beatmap_id:
+            name: beatmap_id
+            description: osu! beatmap ID
+            in: path
+            required: True
+            schema:
+                type: integer
+
+        version:
+            name: version
+            description: osu! beatmap version checksum
+            in: path
+            required: True
+            schema:
+                type: string
+
+    requestBodies:
+        Beatmap:
+            description: Beatmap to download to the server
+            required: true
+            content:
+                application/json:
+                    schema:
+                        $ref: "#/components/schemas/Beatmap"
 
     responses:
         UnauthorizedError:
@@ -53,6 +86,63 @@ paths:
                     description: Successfully retrieved all users
                 401:
                     $ref: "#/components/responses/UnauthorizedError"
+                default:
+                    description: Pass
+
+    /beatmaps:
+        get:
+            summary: Returns a list of beatmaps stored on the server
+            tags:
+                - Beatmaps
+            responses:
+                200:
+                    description: Successfully retrieved beatmaps
+                default:
+                    description: Pass
+        post:
+            summary: Downloads a new beatmap to the server
+            tags:
+                - Beatmaps
+#            security:
+#                - ApiKeyAuth: []
+            requestBody:
+                $ref: "#/components/requestBodies/Beatmap"
+            responses:
+                201:
+                    description: Successfully downloaded beatmap to the server
+                default:
+                    description: Pass
+
+    /beatmaps/{beatmap-id}:
+        get:
+            summary: Returns the .osu of the beatmap's latest version
+            tags:
+                - Beatmaps
+            responses:
+                200:
+                    description: Successfully retrieved beatmap
+                default:
+                    description: Pass
+
+    /beatmaps/{beatmap-id}/versions:
+        get:
+            summary: Returns a list of the beatmap's versions
+            tags:
+                - Beatmaps
+            responses:
+                200:
+                    description: Successfully retrieved beatmap versions
+                default:
+                    description: Pass
+
+    /beatmaps/{beatmap-id}/versions/{version}:
+        get:
+            summary: Returns the .osu of the beatmap's specified version
+            tags:
+                - Beatmaps
+            responses:
+                200:
+                    description: Successfully retrieved beatmap
                 default:
                     description: Pass
 

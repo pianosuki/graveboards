@@ -2,6 +2,16 @@ from datetime import datetime
 from app import db
 from .utils import generate_token
 
+__all__ = [
+    "User",
+    "ApiKey",
+    "Beatmap",
+    "BeatmapVersion",
+    "Beatmapset",
+    "Leaderboard",
+    "Score"
+]
+
 
 class User(db.Model):
     __tablename__ = "users"
@@ -58,9 +68,10 @@ class BeatmapVersion(db.Model):
     checksum = db.Column(db.String(32), unique=True, nullable=False)
 
 
-class BeatmapSet(db.Model):
+class Beatmapset(db.Model):
     __tablename__ = "beatmapsets"
     id = db.Column(db.Integer, primary_key=True)
+    beatmapset_id = db.Column(db.Integer, nullable=False)
     artist = db.Column(db.String, nullable=False)
     artist_unicode = db.Column(db.String, nullable=False)
     covers = db.Column(db.Text, nullable=False)
