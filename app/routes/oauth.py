@@ -7,13 +7,13 @@ oauth_bp = Blueprint("oauth", __name__)
 
 @oauth_bp.route("/login")
 def login():
-    return oauth.osu.authorize_redirect(url_for("oauth.authorized", _external=True))
+    return oauth.osu_auth.authorize_redirect(url_for("oauth.authorized", _external=True))
 
 
 @oauth_bp.route("/callback")
 def authorized():
     try:
-        token = oauth.osu.authorize_access_token()
+        token = oauth.osu_auth.authorize_access_token()
         session["oauth_token"] = token
     except OAuthError as e:
         print(f"OAuthError: {e}")
