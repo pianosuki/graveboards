@@ -7,7 +7,7 @@ BEATMAPS_PATH = os.path.abspath("instance/beatmaps")
 BEATMAP_DOWNLOAD_BASEURL = "https://osu.ppy.sh/osu/"
 
 
-class BeatmapManager:
+class BeatmapManagerBase:
     def __init__(self, app: Flask | None = None):
         self.app = app
         os.makedirs(BEATMAPS_PATH, exist_ok=True)
@@ -19,6 +19,16 @@ class BeatmapManager:
         self.app = app
         app.extensions["beatmap_manager"] = self
 
+    @property
+    def api(self) -> OsuAPIClient | None:
+        return self.app.extensions.get("osu_api")
+
+    @property
+    def crud(self) -> Crud | None:
+        return self.app.extensions.get("crud")
+
+
+class BeatmapManager(BeatmapManagerBase):
     def download(self, beatmap_id: int):
         self.ensure_populated(beatmap_id)
         url = BEATMAP_DOWNLOAD_BASEURL + str(beatmap_id)
@@ -45,11 +55,3 @@ class BeatmapManager:
                 self.crud.add_beatmap(beatmap_id=beatmap_id, beatmapset_id=beatmapset.id)
             if not self.crud.beatmap_version_exists(beatmap_dict["checksum"]):
                 self.crud.add_beatmap_version(beatmap_dict)
-
-    @property
-    def api(self) -> OsuAPIClient | None:
-        return self.app.extensions.get("osu_api")
-
-    @property
-    def crud(self) -> Crud | None:
-        return self.app.extensions.get("crud")
