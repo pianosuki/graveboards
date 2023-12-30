@@ -4,10 +4,13 @@ from marshmallow import fields, Schema
 from marshmallow.utils import EXCLUDE, RAISE
 from app import db, ma
 from .models import User, Score, Beatmap, Leaderboard, BeatmapVersion, Beatmapset
+from .utils import convert_instrumentedlist_to_dict
 
 __all__ = [
     "user_schema",
     "users_schema",
+    "beatmap_schema",
+    "beatmaps_schema",
     "beatmap_version_schema",
     "beatmapset_schema",
     "score_schema"
@@ -20,6 +23,22 @@ class UserSchema(ma.SQLAlchemyAutoSchema):
         load_instance = True
         sqla_session = db.session
         include_relationships = True
+
+
+class BeatmapSchema(ma.SQLAlchemyAutoSchema):
+    class Meta:
+        model = Beatmap
+        load_instance = True
+        sqla_session = db.session
+        include_relationships = True
+
+    versions = fields.Method("dump_versions", "load_versions")
+
+    def dump_versions(self, obj) -> dict[str, str]:
+        return {key: value.checksum for key, value in convert_instrumentedlist_to_dict(obj.versions).items()}
+
+    def load_versions(self, value) -> list[BeatmapVersion]:
+        return [BeatmapVersion.query.get(item) for item in sorted(value.keys())]
 
 
 class BeatmapVersionSchema(ma.SQLAlchemyAutoSchema):
@@ -38,7 +57,7 @@ class BeatmapVersionSchema(ma.SQLAlchemyAutoSchema):
         return super().load(data, *args, many=many, partial=partial, unknown=unknown)
 
 
-class BeatmapSetSchema(ma.SQLAlchemyAutoSchema):
+class BeatmapsetSchema(ma.SQLAlchemyAutoSchema):
     class Meta:
         model = Beatmapset
         load_instance = True
@@ -115,6 +134,8 @@ class StatisticsSchema(JSONTextSchema):
 
 user_schema = UserSchema()
 users_schema = UserSchema(many=True)
+beatmap_schema = BeatmapSchema()
+beatmaps_schema = BeatmapSchema(many=True)
 beatmap_version_schema = BeatmapVersionSchema()
-beatmapset_schema = BeatmapSetSchema()
+beatmapset_schema = BeatmapsetSchema()
 score_schema = ScoreSchema()

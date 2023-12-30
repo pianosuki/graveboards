@@ -48,13 +48,13 @@ components:
             schema:
                 type: integer
 
-        version:
-            name: version
-            description: osu! beatmap version checksum
+        version_id:
+            name: version_id
+            description: osu! beatmap version ID
             in: path
             required: True
             schema:
-                type: string
+                type: integer
 
     requestBodies:
         Beatmap:
@@ -113,36 +113,43 @@ paths:
                 default:
                     description: Pass
 
-    /beatmaps/{beatmap-id}:
+    /beatmaps/{beatmap_id}:
         get:
-            summary: Returns the .osu of the beatmap's latest version
+            summary: Returns the metadata of the beatmap
             tags:
                 - Beatmaps
+            parameters:
+                - $ref: "#/components/parameters/beatmap_id"
             responses:
                 200:
-                    description: Successfully retrieved beatmap
+                    description: Successfully retrieved beatmap metadata
                 default:
                     description: Pass
 
-    /beatmaps/{beatmap-id}/versions:
+    /beatmaps/{beatmap_id}/versions:
         get:
-            summary: Returns a list of the beatmap's versions
+            summary: Returns a list of the beatmap's version IDs
             tags:
                 - Beatmaps
+            parameters:
+                - $ref: "#/components/parameters/beatmap_id"
             responses:
                 200:
                     description: Successfully retrieved beatmap versions
                 default:
                     description: Pass
 
-    /beatmaps/{beatmap-id}/versions/{version}:
+    /beatmaps/{beatmap_id}/versions/{version_id}:
         get:
-            summary: Returns the .osu of the beatmap's specified version
+            summary: Returns the .osu file of the beatmap's specified version
             tags:
                 - Beatmaps
+            parameters:
+                - $ref: "#/components/parameters/beatmap_id"
+                - $ref: "#/components/parameters/version_id"
             responses:
                 200:
-                    description: Successfully retrieved beatmap
+                    description: Successfully retrieved beatmap file
                 default:
                     description: Pass
 
@@ -157,33 +164,40 @@ paths:
                 default:
                     description: Pass
 
-    /leaderboards/{beatmap-id}:
+    /leaderboards/{beatmap_id}:
         get:
             summary: Returns the leaderboard of the beatmap's latest version
             tags:
                 - Leaderboards
+            parameters:
+                - $ref: "#/components/parameters/beatmap_id"
             responses:
                 200:
                     description: Successfully retrieved leaderboard
                 default:
                     description: Pass
 
-    /leaderboards/{beatmap-id}/versions:
+    /leaderboards/{beatmap_id}/versions:
         get:
             summary: Returns a list of the beatmap's leaderboard versions
             tags:
                 - Leaderboards
+            parameters:
+                - $ref: "#/components/parameters/beatmap_id"
             responses:
                 200:
                     description: Successfully retrieved leaderboard versions
                 default:
                     description: Pass
 
-    /leaderboards/{beatmap-id}/versions/{version}:
+    /leaderboards/{beatmap_id}/versions/{version_id}:
         get:
             summary: Returns the leaderboard of the beatmap's specified version
             tags:
                 - Leaderboards
+            parameters:
+                - $ref: "#/components/parameters/beatmap_id"
+                - $ref: "#/components/parameters/version_id"
             responses:
                 200:
                     description: Successfully retrieved leaderboard

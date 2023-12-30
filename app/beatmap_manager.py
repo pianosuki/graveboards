@@ -1,10 +1,12 @@
 import os, httpx
+from typing import BinaryIO
 from flask import Flask
 from .osu_api import OsuAPIClient
 from .crud import Crud
 
 BEATMAPS_PATH = os.path.abspath("instance/beatmaps")
 BEATMAP_DOWNLOAD_BASEURL = "https://osu.ppy.sh/osu/"
+BEATMAP_VERSION_FILE_PATH = os.path.join(BEATMAPS_PATH, "{beatmap_id}/{version_id}.osu")
 
 
 class BeatmapManagerBase:
@@ -55,3 +57,12 @@ class BeatmapManager(BeatmapManagerBase):
                 self.crud.add_beatmap(beatmap_id=beatmap_id, beatmapset_id=beatmapset.id)
             if not self.crud.beatmap_version_exists(beatmap_dict["checksum"]):
                 self.crud.add_beatmap_version(beatmap_dict)
+
+    def get(self, beatmap_id: int, version_id: int) -> bytes:
+        file_path = BEATMAP_VERSION_FILE_PATH.format(beatmap_id=beatmap_id, version_id=version_id)
+        with open(file_path, "rb") as file:
+            file_bytes = file.read()
+        return file_bytes
+
+    def get_path(self, beatmap_id: int, version_id: int) -> str:
+        return BEATMAP_VERSION_FILE_PATH.format(beatmap_id=beatmap_id, version_id=version_id)

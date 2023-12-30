@@ -43,6 +43,9 @@ class Crud(CrudBase):
         result = self.db.session.execute(text("SELECT last_insert_rowid()"))
         return result.scalar()
 
+    def get_beatmaps(self) -> list[Beatmap]:
+        return Beatmap.query.all()
+
     def get_beatmap(self, **kwargs) -> Beatmap | None:
         return Beatmap.query.filter_by(**kwargs).one_or_none()
 
@@ -53,7 +56,8 @@ class Crud(CrudBase):
         return Beatmapset.query.filter_by(**kwargs).one_or_none()
 
     def get_latest_beatmap_version(self, beatmap_id: int) -> BeatmapVersion | None:
-        return BeatmapVersion.query.order_by(BeatmapVersion.id.desc()).first()
+        beatmap = self.get_beatmap(beatmap_id=beatmap_id)
+        return BeatmapVersion.query.filter_by(beatmap_id=beatmap.id).order_by(BeatmapVersion.id.desc()).first()
 
     def beatmap_exists(self, beatmap_id: int) -> bool:
         beatmap = Beatmap.query.filter_by(beatmap_id=beatmap_id).first()

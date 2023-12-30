@@ -1,14 +1,17 @@
 import httpx
 from flask import request, abort
-from app import bm
+from app import bm, cr
+from app.schemas import beatmaps_schema, beatmap_schema
 
 
 def search():
-    pass
+    beatmaps = cr.get_beatmaps()
+    return beatmaps_schema.dump(beatmaps), 200
 
 
-def get():
-    pass
+def get(beatmap_id: int):
+    beatmap = cr.get_beatmap(beatmap_id=beatmap_id)
+    return beatmap_schema.dump(beatmap), 200
 
 
 def post():
