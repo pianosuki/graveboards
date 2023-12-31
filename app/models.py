@@ -71,7 +71,7 @@ class BeatmapVersion(db.Model):
 class Beatmapset(db.Model):
     __tablename__ = "beatmapsets"
     id = db.Column(db.Integer, primary_key=True)
-    beatmapset_id = db.Column(db.Integer, nullable=False)
+    beatmapset_id = db.Column(db.Integer, unique=True, nullable=False)
     artist = db.Column(db.String, nullable=False)
     artist_unicode = db.Column(db.String, nullable=False)
     covers = db.Column(db.Text, nullable=False)

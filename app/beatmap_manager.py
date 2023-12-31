@@ -32,31 +32,31 @@ class BeatmapManagerBase:
 
 class BeatmapManager(BeatmapManagerBase):
     def download(self, beatmap_id: int):
-        self.ensure_populated(beatmap_id)
-        url = BEATMAP_DOWNLOAD_BASEURL + str(beatmap_id)
-        output_directory = os.path.join(BEATMAPS_PATH, str(beatmap_id))
-        os.makedirs(output_directory, exist_ok=True)
-        version_id = self.crud.get_latest_beatmap_version(beatmap_id).id
-        output_path = os.path.join(output_directory, f"{version_id}.osu")
-        if not os.path.exists(output_path):
-            with httpx.stream("GET", url) as response:
-                with open(output_path, 'wb') as f:
-                    for chunk in response.iter_bytes():
-                        f.write(chunk)
-            print(f"Downloaded beatmap version: {beatmap_id}/{version_id}")
-
-    def ensure_populated(self, beatmap_id: int):
-        with self.api:
-            beatmap_dict = self.api.get_beatmap(beatmap_id)
-            if not self.crud.beatmap_exists(beatmap_id):
-                beatmapset_id = beatmap_dict["beatmapset_id"]
-                if not self.crud.beatmapset_exists(beatmapset_id):
-                    beatmapset_dict = self.api.get_beatmapset(beatmapset_id)
-                    self.crud.add_beatmapset(beatmapset_dict)
-                beatmapset = self.crud.get_beatmapset(beatmapset_id=beatmapset_id)
-                self.crud.add_beatmap(beatmap_id=beatmap_id, beatmapset_id=beatmapset.id)
-            if not self.crud.beatmap_version_exists(beatmap_dict["checksum"]):
+        beatmap_dict = self.api.get_beatmap(beatmap_id)
+        self.ensure_populated(beatmap_dict)
+        if not self.crud.beatmap_version_exists(beatmap_dict["checksum"]):
+            url = BEATMAP_DOWNLOAD_BASEURL + str(beatmap_id)
+            output_directory = os.path.join(BEATMAPS_PATH, str(beatmap_id))
+            os.makedirs(output_directory, exist_ok=True)
+            next_version_id = len(self.crud.get_beatmap(beatmap_id=beatmap_id).versions) + 1
+            output_path = os.path.join(output_directory, f"{next_version_id}.osu")
+            if not os.path.exists(output_path):
+                with httpx.stream("GET", url) as response:
+                    with open(output_path, 'wb') as f:
+                        for chunk in response.iter_bytes():
+                            f.write(chunk)
+                print(f"Downloaded beatmap version: {beatmap_id}/{next_version_id}")
                 self.crud.add_beatmap_version(beatmap_dict)
+
+    def ensure_populated(self, beatmap_dict: dict):
+        beatmap_id = beatmap_dict["id"]
+        if not self.crud.beatmap_exists(beatmap_id):
+            beatmapset_id = beatmap_dict["beatmapset_id"]
+            if not self.crud.beatmapset_exists(beatmapset_id):
+                beatmapset_dict = self.api.get_beatmapset(beatmapset_id)
+                self.crud.add_beatmapset(beatmapset_dict)
+            beatmapset = self.crud.get_beatmapset(beatmapset_id=beatmapset_id)
+            self.crud.add_beatmap(beatmap_id=beatmap_id, beatmapset_id=beatmapset.id)
 
     def get(self, beatmap_id: int, version_id: int) -> bytes:
         file_path = BEATMAP_VERSION_FILE_PATH.format(beatmap_id=beatmap_id, version_id=version_id)
