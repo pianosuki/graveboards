@@ -4,7 +4,6 @@ from marshmallow import fields, Schema
 from marshmallow.utils import EXCLUDE, RAISE
 from app import db, ma
 from .models import User, Score, Beatmap, Leaderboard, BeatmapVersion, Beatmapset
-from .utils import convert_instrumentedlist_to_dict
 
 __all__ = [
     "user_schema",
