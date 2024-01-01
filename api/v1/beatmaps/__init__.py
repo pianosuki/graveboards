@@ -10,7 +10,7 @@ def search():
 
 
 def get(beatmap_id: int):
-    beatmap = cr.get_beatmap(beatmap_id=beatmap_id)
+    beatmap = cr.get_beatmap(id=beatmap_id)
     return beatmap_schema.dump(beatmap), 200
 
 

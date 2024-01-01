@@ -16,7 +16,6 @@ __all__ = [
 class User(db.Model):
     __tablename__ = "users"
     id = db.Column(db.Integer, primary_key=True)
-    osu_id = db.Column(db.Integer, unique=True, nullable=False)
     scores = db.relationship("Score", backref="user", lazy=True)
 
 
@@ -31,7 +30,6 @@ class ApiKey(db.Model):
 class Beatmap(db.Model):
     __tablename__ = "beatmaps"
     id = db.Column(db.Integer, primary_key=True)
-    beatmap_id = db.Column(db.Integer, unique=True, nullable=False)
     beatmapset_id = db.Column(db.Integer, db.ForeignKey("beatmapsets.id"), nullable=False)
     leaderboards = db.relationship("Leaderboard", backref="beatmap", lazy=True)
     versions = db.relationship("BeatmapVersion", backref="beatmap", lazy=True)
@@ -41,6 +39,7 @@ class BeatmapVersion(db.Model):
     __tablename__ = "beatmap_versions"
     id = db.Column(db.Integer, primary_key=True)
     beatmap_id = db.Column(db.Integer, db.ForeignKey("beatmaps.id"), nullable=False)
+    number = db.Column(db.Integer, nullable=False)
     difficulty_rating = db.Column(db.Float, nullable=False)
     mode = db.Column(db.String, nullable=False)
     status = db.Column(db.String, nullable=False)
@@ -66,12 +65,12 @@ class BeatmapVersion(db.Model):
     ranked = db.Column(db.Integer, nullable=False)
     url = db.Column(db.String, nullable=False)
     checksum = db.Column(db.String(32), unique=True, nullable=False)
+    leaderboard = db.relationship("Leaderboard", uselist=False, lazy=True)
 
 
 class Beatmapset(db.Model):
     __tablename__ = "beatmapsets"
     id = db.Column(db.Integer, primary_key=True)
-    beatmapset_id = db.Column(db.Integer, unique=True, nullable=False)
     artist = db.Column(db.String, nullable=False)
     artist_unicode = db.Column(db.String, nullable=False)
     covers = db.Column(db.Text, nullable=False)
@@ -105,7 +104,6 @@ class Score(db.Model):
     __tablename__ = "scores"
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
-    beatmap_id = db.Column(db.Integer, db.ForeignKey("beatmaps.id"), nullable=False)
     leaderboard_id = db.Column(db.Integer, db.ForeignKey("leaderboards.id"), nullable=False)
     accuracy = db.Column(db.Float, nullable=False)
     created_at = db.Column(db.DateTime, nullable=False)

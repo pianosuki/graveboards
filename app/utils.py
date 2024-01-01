@@ -18,4 +18,4 @@ def generate_token(length: int) -> str:
 
 
 def convert_instrumentedlist_to_dict(input_list: InstrumentedList) -> dict:
-    return {item.id: item for item in input_list}
+    return {item.id: item for index, item in enumerate(input_list)}

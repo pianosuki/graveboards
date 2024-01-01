@@ -24,7 +24,7 @@ class CrudBase:
 class Crud(CrudBase):
     # Create #
     def add_beatmap(self, beatmap_id: int, beatmapset_id: int):
-        beatmap = Beatmap(beatmap_id=beatmap_id, beatmapset_id=beatmapset_id)
+        beatmap = Beatmap(id=beatmap_id, beatmapset_id=beatmapset_id)
         self.db.session.add(beatmap)
         self.db.session.commit()
 
@@ -56,11 +56,10 @@ class Crud(CrudBase):
         return Beatmapset.query.filter_by(**kwargs).one_or_none()
 
     def get_latest_beatmap_version(self, beatmap_id: int) -> BeatmapVersion | None:
-        beatmap = self.get_beatmap(beatmap_id=beatmap_id)
-        return BeatmapVersion.query.filter_by(beatmap_id=beatmap.id).order_by(BeatmapVersion.id.desc()).first()
+        return BeatmapVersion.query.filter_by(beatmap_id=beatmap_id).order_by(BeatmapVersion.id.desc()).first()
 
     def beatmap_exists(self, beatmap_id: int) -> bool:
-        beatmap = Beatmap.query.filter_by(beatmap_id=beatmap_id).first()
+        beatmap = Beatmap.query.get(beatmap_id)
         return beatmap is not None
 
     def beatmap_version_exists(self, checksum: str) -> bool:
@@ -68,7 +67,7 @@ class Crud(CrudBase):
         return beatmap_version is not None
 
     def beatmapset_exists(self, beatmapset_id: int) -> bool:
-        beatmapset = Beatmapset.query.filter_by(beatmapset_id=beatmapset_id).first()
+        beatmapset = Beatmapset.query.get(beatmapset_id)
         return beatmapset is not None
 
     # Update #

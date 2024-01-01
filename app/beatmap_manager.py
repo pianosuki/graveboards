@@ -6,7 +6,7 @@ from .crud import Crud
 
 BEATMAPS_PATH = os.path.abspath("instance/beatmaps")
 BEATMAP_DOWNLOAD_BASEURL = "https://osu.ppy.sh/osu/"
-BEATMAP_VERSION_FILE_PATH = os.path.join(BEATMAPS_PATH, "{beatmap_id}/{version_id}.osu")
+BEATMAP_VERSION_FILE_PATH = os.path.join(BEATMAPS_PATH, "{beatmap_id}/{version_number}.osu")
 
 
 class BeatmapManagerBase:
@@ -38,14 +38,14 @@ class BeatmapManager(BeatmapManagerBase):
             url = BEATMAP_DOWNLOAD_BASEURL + str(beatmap_id)
             output_directory = os.path.join(BEATMAPS_PATH, str(beatmap_id))
             os.makedirs(output_directory, exist_ok=True)
-            next_version_id = len(self.crud.get_beatmap(beatmap_id=beatmap_id).versions) + 1
-            output_path = os.path.join(output_directory, f"{next_version_id}.osu")
+            version_number = len(self.crud.get_beatmap(id=beatmap_id).versions) + 1
+            output_path = os.path.join(output_directory, f"{version_number}.osu")
             if not os.path.exists(output_path):
                 with httpx.stream("GET", url) as response:
                     with open(output_path, 'wb') as f:
                         for chunk in response.iter_bytes():
                             f.write(chunk)
-                print(f"Downloaded beatmap version: {beatmap_id}/{next_version_id}")
+                print(f"Downloaded beatmap version: {beatmap_id}/{version_number}")
                 self.crud.add_beatmap_version(beatmap_dict)
 
     def ensure_populated(self, beatmap_dict: dict):
@@ -55,14 +55,14 @@ class BeatmapManager(BeatmapManagerBase):
             if not self.crud.beatmapset_exists(beatmapset_id):
                 beatmapset_dict = self.api.get_beatmapset(beatmapset_id)
                 self.crud.add_beatmapset(beatmapset_dict)
-            beatmapset = self.crud.get_beatmapset(beatmapset_id=beatmapset_id)
+            beatmapset = self.crud.get_beatmapset(id=beatmapset_id)
             self.crud.add_beatmap(beatmap_id=beatmap_id, beatmapset_id=beatmapset.id)
 
-    def get(self, beatmap_id: int, version_id: int) -> bytes:
-        file_path = BEATMAP_VERSION_FILE_PATH.format(beatmap_id=beatmap_id, version_id=version_id)
+    def get(self, beatmap_id: int, version_number: int) -> bytes:
+        file_path = BEATMAP_VERSION_FILE_PATH.format(beatmap_id=beatmap_id, version_number=version_number)
         with open(file_path, "rb") as file:
             file_bytes = file.read()
         return file_bytes
 
-    def get_path(self, beatmap_id: int, version_id: int) -> str:
-        return BEATMAP_VERSION_FILE_PATH.format(beatmap_id=beatmap_id, version_id=version_id)
+    def get_path(self, beatmap_id: int, version_number: int) -> str:
+        return BEATMAP_VERSION_FILE_PATH.format(beatmap_id=beatmap_id, version_number=version_number)

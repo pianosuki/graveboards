@@ -4,11 +4,10 @@ from app.models import BeatmapVersion, Beatmap
 
 
 def search(beatmap_id: int):
-    beatmap = Beatmap.query.filter_by(beatmap_id=beatmap_id).one()
-    beatmap_versions = BeatmapVersion.query.filter_by(beatmap_id=beatmap.id).all()
-    return [item.id for item in beatmap_versions]
+    beatmap_versions = BeatmapVersion.query.filter_by(beatmap_id=beatmap_id).all()
+    return {beatmap_version.number: beatmap_version.checksum for beatmap_version in beatmap_versions}
 
 
-def get(beatmap_id: int, version_id: int):
-    beatmap_path = bm.get_path(beatmap_id, version_id)
+def get(beatmap_id: int, version_number: int):
+    beatmap_path = bm.get_path(beatmap_id, version_number)
     return send_file(beatmap_path), 200

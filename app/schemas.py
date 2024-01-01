@@ -35,10 +35,10 @@ class BeatmapSchema(ma.SQLAlchemyAutoSchema):
     versions = fields.Method("dump_versions", "load_versions")
 
     def dump_versions(self, obj) -> dict[str, str]:
-        return {key: value.checksum for key, value in convert_instrumentedlist_to_dict(obj.versions).items()}
+        return {value.number: value.checksum for value in obj.versions}
 
     def load_versions(self, value) -> list[BeatmapVersion]:
-        return [BeatmapVersion.query.get(item) for item in sorted(value.keys())]
+        return [BeatmapVersion.query.filter_by(number=key, checksum=value) for key, value in sorted(value.items())]
 
 
 class BeatmapVersionSchema(ma.SQLAlchemyAutoSchema):
@@ -52,8 +52,8 @@ class BeatmapVersionSchema(ma.SQLAlchemyAutoSchema):
     beatmap_id = fields.Integer()
 
     def load(self, data, *args, many=None, partial=None, unknown=None):
-        beatmap = Beatmap.query.filter_by(beatmap_id=data["id"]).one()
-        data["beatmap_id"] = beatmap.id
+        data["beatmap_id"] = data["id"]
+        data["number"] = len(Beatmap.query.get(data["beatmap_id"]).versions) + 1
         return super().load(data, *args, many=many, partial=partial, unknown=unknown)
 
 
@@ -64,12 +64,7 @@ class BeatmapsetSchema(ma.SQLAlchemyAutoSchema):
         sqla_session = db.session
         unknown = EXCLUDE
 
-    id = fields.Integer(dump_only=True)
     covers = fields.Nested("CoversSchema")
-
-    def load(self, data, *args, many=None, partial=None, unknown=None):
-        data["beatmapset_id"] = data["id"]
-        return super().load(data, *args, many=many, partial=partial, unknown=unknown)
 
 
 class ScoreSchema(ma.SQLAlchemyAutoSchema):
@@ -89,11 +84,9 @@ class ScoreSchema(ma.SQLAlchemyAutoSchema):
     def load(self, data, *args, many=None, partial=None, unknown=None):
         beatmap_data = data["beatmap"]
         user = User.query.filter_by(osu_id=data["user_id"])
-        beatmap = Beatmap.query.filter_by(beatmap_id=beatmap_data["id"])
         beatmap_version = BeatmapVersion.query.filter_by(checksum=beatmap_data["checksum"])
         leaderboard = Leaderboard.query.filter_by(beatmap_version_id=beatmap_version.id)
         data["user_id"] = user.id
-        data["beatmap_id"] = beatmap.id
         data["leaderboard_id"] = leaderboard.id
         return super().load(data, *args, many=many, partial=partial, unknown=unknown)
 

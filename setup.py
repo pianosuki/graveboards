@@ -7,12 +7,12 @@ def setup():
     with connexion_app.app.app_context():
         db.create_all()
 
-        admin = User.query.filter_by(osu_id=OSU_USER_ID).first()
+        admin = User.query.get(OSU_USER_ID)
         if admin is None:
-            user = User(osu_id=OSU_USER_ID)
+            user = User(id=OSU_USER_ID)
             db.session.add(user)
             db.session.commit()
-            print(f"Added user: (id={user.id}, osu_id={OSU_USER_ID})")
+            print(f"Added user: {user.id}")
 
             admin_key = ApiKey(key=API_KEY, user_id=user.id)
             db.session.add(admin_key)
