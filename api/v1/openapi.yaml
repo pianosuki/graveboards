@@ -17,19 +17,34 @@ components:
             x-apikeyInfoFunc: app.auth.api_key_info
 
     schemas:
-        User:
+        UserQuery:
             description: A JSON object containing an osu! user ID
             type: object
             properties:
                 osu_id:
                     type: integer
+            required:
+                - osu_id
 
-        Beatmap:
+        BeatmapQuery:
             description: A JSON object containing a beatmap ID
             type: object
             properties:
                 beatmap_id:
                     type: integer
+            required:
+                - beatmap_id
+
+        LeaderboardQuery:
+            description: A JSON object containing a beatmap ID and version number. Defaults to latest version if no version number specified
+            type: object
+            properties:
+                beatmap_id:
+                    type: integer
+                version_number:
+                    type: integer
+            required:
+                - beatmap_id
 
     parameters:
         osu_id:
@@ -57,13 +72,20 @@ components:
                 type: integer
 
     requestBodies:
-        Beatmap:
+        BeatmapQuery:
             description: Beatmap to download to the server
             required: true
             content:
                 application/json:
                     schema:
-                        $ref: "#/components/schemas/Beatmap"
+                        $ref: "#/components/schemas/BeatmapQuery"
+        LeaderboardQuery:
+            description: Leaderboard to add to a beatmap
+            required: true
+            content:
+                application/json:
+                    schema:
+                        $ref: "#/components/schemas/LeaderboardQuery"
 
     responses:
         UnauthorizedError:
@@ -106,7 +128,7 @@ paths:
 #            security:
 #                - ApiKeyAuth: []
             requestBody:
-                $ref: "#/components/requestBodies/Beatmap"
+                $ref: "#/components/requestBodies/BeatmapQuery"
             responses:
                 201:
                     description: Successfully downloaded beatmap to the server
@@ -155,12 +177,25 @@ paths:
 
     /leaderboards:
         get:
-            summary: Returns statistics of active leaderboards
+            summary: Returns a list of leaderboards
             tags:
                 - Leaderboards
             responses:
                 200:
-                    description: Successfully retrieved statistics
+                    description: Successfully retrieved leaderboards
+                default:
+                    description: Pass
+        post:
+            summary: Adds a leaderboard for a beatmap
+            tags:
+                - Leaderboards
+#            security:
+#                - ApiKeyAuth: []
+            requestBody:
+                $ref: "#/components/requestBodies/LeaderboardQuery"
+            responses:
+                201:
+                    description: Successfully added leaderboard
                 default:
                     description: Pass
 

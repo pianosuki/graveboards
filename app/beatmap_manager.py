@@ -1,5 +1,4 @@
 import os, httpx
-from typing import BinaryIO
 from flask import Flask
 from .osu_api import OsuAPIClient
 from .crud import Crud
@@ -38,7 +37,7 @@ class BeatmapManager(BeatmapManagerBase):
             url = BEATMAP_DOWNLOAD_BASEURL + str(beatmap_id)
             output_directory = os.path.join(BEATMAPS_PATH, str(beatmap_id))
             os.makedirs(output_directory, exist_ok=True)
-            version_number = len(self.crud.get_beatmap(id=beatmap_id).versions) + 1
+            version_number = len(self.crud.get_beatmap_versions(beatmap_id=beatmap_id)) + 1
             output_path = os.path.join(output_directory, f"{version_number}.osu")
             if not os.path.exists(output_path):
                 with httpx.stream("GET", url) as response:

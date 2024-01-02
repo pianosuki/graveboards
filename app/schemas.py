@@ -11,8 +11,13 @@ __all__ = [
     "beatmap_schema",
     "beatmaps_schema",
     "beatmap_version_schema",
+    "beatmap_versions_schema",
     "beatmapset_schema",
-    "score_schema"
+    "beatmapsets_schema",
+    "leaderboard_schema",
+    "leaderboards_schema",
+    "score_schema",
+    "scores_schema"
 ]
 
 
@@ -34,7 +39,7 @@ class BeatmapSchema(ma.SQLAlchemyAutoSchema):
     versions = fields.Method("dump_versions", "load_versions")
 
     def dump_versions(self, obj) -> dict[str, str]:
-        return {value.number: value.checksum for value in obj.versions}
+        return {value.version_number: value.checksum for value in obj.versions}
 
     def load_versions(self, value) -> list[BeatmapVersion]:
         return [BeatmapVersion.query.filter_by(number=key, checksum=value) for key, value in sorted(value.items())]
@@ -50,10 +55,11 @@ class BeatmapVersionSchema(ma.SQLAlchemyAutoSchema):
     id = fields.Integer(dump_only=True)
     beatmap_id = fields.Integer()
 
-    def load(self, data, *args, many=None, partial=None, unknown=None):
-        data["beatmap_id"] = data["id"]
-        data["number"] = len(Beatmap.query.get(data["beatmap_id"]).versions) + 1
-        return super().load(data, *args, many=many, partial=partial, unknown=unknown)
+    def load(self, data, *args):
+        if self.many is False:
+            data["beatmap_id"] = data["id"]
+            data["version_number"] = len(Beatmap.query.get(data["beatmap_id"]).versions) + 1
+        return super().load(data, *args)
 
 
 class BeatmapsetSchema(ma.SQLAlchemyAutoSchema):
@@ -64,6 +70,27 @@ class BeatmapsetSchema(ma.SQLAlchemyAutoSchema):
         unknown = EXCLUDE
 
     covers = fields.Nested("CoversSchema")
+
+
+class LeaderboardSchema(ma.SQLAlchemyAutoSchema):
+    class Meta:
+        model = Leaderboard
+        load_instance = True
+        sqla_session = db.session
+        include_relationships = True
+        exclude = ("beatmap",)
+
+    id = fields.Integer(load_only=True)
+    beatmap_id = fields.Integer()
+    version_number = fields.Integer(dump_only=True)
+
+    def dump(self, obj, *args):
+        if self.many is False:
+            obj.version_number = BeatmapVersion.query.get(obj.beatmap_version_id).version_number
+        elif self.many is True:
+            for leaderboard in obj:
+                leaderboard.version_number = BeatmapVersion.query.get(leaderboard.beatmap_version_id).version_number
+        return super().dump(obj, *args)
 
 
 class ScoreSchema(ma.SQLAlchemyAutoSchema):
@@ -80,14 +107,15 @@ class ScoreSchema(ma.SQLAlchemyAutoSchema):
     mods = fields.Method("dump_mods", "load_mods")
     statistics = fields.Nested("StatisticsSchema")
 
-    def load(self, data, *args, many=None, partial=None, unknown=None):
-        beatmap_data = data["beatmap"]
-        user = User.query.filter_by(osu_id=data["user_id"])
-        beatmap_version = BeatmapVersion.query.filter_by(checksum=beatmap_data["checksum"])
-        leaderboard = Leaderboard.query.filter_by(beatmap_version_id=beatmap_version.id)
-        data["user_id"] = user.id
-        data["leaderboard_id"] = leaderboard.id
-        return super().load(data, *args, many=many, partial=partial, unknown=unknown)
+    def load(self, data, *args):
+        if self.many is False:
+            beatmap_data = data["beatmap"]
+            user = User.query.filter_by(osu_id=data["user_id"])
+            beatmap_version = BeatmapVersion.query.filter_by(checksum=beatmap_data["checksum"])
+            leaderboard = Leaderboard.query.filter_by(beatmap_version_id=beatmap_version.id)
+            data["user_id"] = user.id
+            data["leaderboard_id"] = leaderboard.id
+        return super().load(data, *args)
 
     def dump_mods(self, obj) -> list:
         return json.loads(obj.mods) if obj.mods else []
@@ -129,5 +157,10 @@ users_schema = UserSchema(many=True)
 beatmap_schema = BeatmapSchema()
 beatmaps_schema = BeatmapSchema(many=True)
 beatmap_version_schema = BeatmapVersionSchema()
+beatmap_versions_schema = BeatmapVersionSchema(many=True)
 beatmapset_schema = BeatmapsetSchema()
+beatmapsets_schema = BeatmapsetSchema(many=True)
+leaderboard_schema = LeaderboardSchema()
+leaderboards_schema = LeaderboardSchema(many=True)
 score_schema = ScoreSchema()
+scores_schema = ScoreSchema(many=True)

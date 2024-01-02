@@ -38,22 +38,39 @@ class Crud(CrudBase):
         self.db.session.add(beatmapset)
         self.db.session.commit()
 
+    def add_leaderboard(self, beatmap_id: int, beatmap_version_id: int):
+        leaderboard = Leaderboard(beatmap_id=beatmap_id, beatmap_version_id=beatmap_version_id)
+        self.db.session.add(leaderboard)
+        self.db.session.commit()
+
     # Read #
     def get_latest_row_id(self) -> int:
         result = self.db.session.execute(text("SELECT last_insert_rowid()"))
         return result.scalar()
 
-    def get_beatmaps(self) -> list[Beatmap]:
-        return Beatmap.query.all()
-
     def get_beatmap(self, **kwargs) -> Beatmap | None:
         return Beatmap.query.filter_by(**kwargs).one_or_none()
+
+    def get_beatmaps(self, **kwargs) -> list[Beatmap]:
+        return Beatmap.query.filter_by(**kwargs).all()
 
     def get_beatmap_version(self, **kwargs) -> BeatmapVersion | None:
         return BeatmapVersion.query.filter_by(**kwargs).one_or_none()
 
+    def get_beatmap_versions(self, **kwargs) -> list[BeatmapVersion]:
+        return BeatmapVersion.query.filter_by(**kwargs).all()
+
     def get_beatmapset(self, **kwargs) -> Beatmapset | None:
         return Beatmapset.query.filter_by(**kwargs).one_or_none()
+
+    def get_beatmapsets(self, **kwargs) -> list[Beatmapset]:
+        return Beatmapset.query.filter_by(**kwargs).all()
+
+    def get_leaderboard(self, **kwargs) -> Leaderboard:
+        return Leaderboard.query.filter_by(**kwargs).one_or_none()
+
+    def get_leaderboards(self, **kwargs) -> list[Leaderboard]:
+        return Leaderboard.query.filter_by(**kwargs).all()
 
     def get_latest_beatmap_version(self, beatmap_id: int) -> BeatmapVersion | None:
         return BeatmapVersion.query.filter_by(beatmap_id=beatmap_id).order_by(BeatmapVersion.id.desc()).first()

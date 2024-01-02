@@ -39,7 +39,7 @@ class BeatmapVersion(db.Model):
     __tablename__ = "beatmap_versions"
     id = db.Column(db.Integer, primary_key=True)
     beatmap_id = db.Column(db.Integer, db.ForeignKey("beatmaps.id"), nullable=False)
-    number = db.Column(db.Integer, nullable=False)
+    version_number = db.Column(db.Integer, nullable=False)
     difficulty_rating = db.Column(db.Float, nullable=False)
     mode = db.Column(db.String, nullable=False)
     status = db.Column(db.String, nullable=False)

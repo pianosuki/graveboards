@@ -1,5 +1,5 @@
 import httpx
-from flask import request, abort
+from flask import abort
 from app import bm, cr
 from app.schemas import beatmaps_schema, beatmap_schema
 
@@ -14,8 +14,8 @@ def get(beatmap_id: int):
     return beatmap_schema.dump(beatmap), 200
 
 
-def post():
-    beatmap_id = request.json["beatmap_id"]
+def post(body: dict):
+    beatmap_id = body["beatmap_id"]
     try:
         bm.download(beatmap_id)
     except httpx.HTTPStatusError as e:

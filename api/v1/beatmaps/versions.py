@@ -1,11 +1,10 @@
 from flask import send_file
-from app import bm
-from app.models import BeatmapVersion, Beatmap
+from app import bm, cr
 
 
 def search(beatmap_id: int):
-    beatmap_versions = BeatmapVersion.query.filter_by(beatmap_id=beatmap_id).all()
-    return {beatmap_version.number: beatmap_version.checksum for beatmap_version in beatmap_versions}
+    beatmap_versions = cr.get_beatmap_versions(beatmap_id=beatmap_id)
+    return {beatmap_version.version_number: beatmap_version.checksum for beatmap_version in beatmap_versions}
 
 
 def get(beatmap_id: int, version_number: int):
