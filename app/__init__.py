@@ -28,3 +28,8 @@ cr = Crud(flask_app)
 from .routes import main_bp, oauth_bp
 flask_app.register_blueprint(main_bp, url_prefix="/")
 flask_app.register_blueprint(oauth_bp, url_prefix="/oauth")
+
+from .daemon import GraveboardsDaemon
+from .services import ScoreFetcher
+appd = GraveboardsDaemon(flask_app)
+appd.register_service(ScoreFetcher)
