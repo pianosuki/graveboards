@@ -104,6 +104,8 @@ class Score(db.Model):
     __tablename__ = "scores"
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
+    beatmap_id = db.Column(db.Integer, db.ForeignKey("beatmaps.id"), nullable=False)
+    beatmapset_id = db.Column(db.Integer, db.ForeignKey("beatmapsets.id"), nullable=False)
     leaderboard_id = db.Column(db.Integer, db.ForeignKey("leaderboards.id"), nullable=False)
     accuracy = db.Column(db.Float, nullable=False)
     created_at = db.Column(db.DateTime, nullable=False)
@@ -112,7 +114,7 @@ class Score(db.Model):
     mode_int = db.Column(db.Integer, nullable=False)
     mods = db.Column(db.Text, nullable=False)
     perfect = db.Column(db.Boolean, nullable=False)
-    pp = db.Column(db.Float, nullable=False)
+    pp = db.Column(db.Float)
     rank = db.Column(db.String, nullable=False)
     score = db.Column(db.Integer, nullable=False)
     statistics = db.Column(db.Text, nullable=False)

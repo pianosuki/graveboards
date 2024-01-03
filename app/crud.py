@@ -43,6 +43,11 @@ class Crud(CrudBase):
         self.db.session.add(leaderboard)
         self.db.session.commit()
 
+    def add_score(self, score_dict: dict):
+        score = score_schema.load(score_dict)
+        self.db.session.add(score)
+        self.db.session.commit()
+
     # Read #
     def get_latest_row_id(self) -> int:
         result = self.db.session.execute(text("SELECT last_insert_rowid()"))
@@ -66,11 +71,17 @@ class Crud(CrudBase):
     def get_beatmapsets(self, **kwargs) -> list[Beatmapset]:
         return Beatmapset.query.filter_by(**kwargs).all()
 
-    def get_leaderboard(self, **kwargs) -> Leaderboard:
+    def get_leaderboard(self, **kwargs) -> Leaderboard | None:
         return Leaderboard.query.filter_by(**kwargs).one_or_none()
 
     def get_leaderboards(self, **kwargs) -> list[Leaderboard]:
         return Leaderboard.query.filter_by(**kwargs).all()
+
+    def get_score(self, **kwargs) -> Score | None:
+        return Score.query.filter_by(**kwargs).one_or_none()
+
+    def get_scores(self, **kwargs) -> list[Score]:
+        return Score.query.filter_by(**kwargs).all()
 
     def get_latest_beatmap_version(self, beatmap_id: int) -> BeatmapVersion | None:
         return BeatmapVersion.query.filter_by(beatmap_id=beatmap_id).order_by(BeatmapVersion.id.desc()).first()

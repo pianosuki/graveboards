@@ -21,10 +21,10 @@ components:
             description: A JSON object containing an osu! user ID
             type: object
             properties:
-                osu_id:
+                user_id:
                     type: integer
             required:
-                - osu_id
+                - user_id
 
         BeatmapQuery:
             description: A JSON object containing a beatmap ID
@@ -46,46 +46,345 @@ components:
             required:
                 - beatmap_id
 
+        Mods:
+            description: A JSON array containing mod strings
+            type: array
+            items:
+                type: string
+
+        Statistics:
+            description: A JSON object containing score statistics
+            type: object
+            properties:
+                count_100:
+                    type: integer
+                count_300:
+                    type: integer
+                count_50:
+                    type: integer
+                count_geki:
+                    type: integer
+                count_katsu:
+                    type: integer
+                count_miss:
+                    type: integer
+
+        Score:
+            description: A JSON object containing score data
+            type: object
+            properties:
+                accuracy:
+                    type: number
+                    format: float
+                created_at:
+                    type: string
+                    format: date-time
+                max_combo:
+                    type: integer
+                mode:
+                    type: string
+                mode_int:
+                    type: integer
+                mods:
+                    $ref: "#/components/schemas/Mods"
+                perfect:
+                    type: boolean
+                pp:
+                    type: number
+                    format: float
+                    nullable: true
+                rank:
+                    type: string
+                score:
+                    type: integer
+                statistics:
+                    $ref: "#/components/schemas/Statistics"
+                type:
+                    type: string
+                user_id:
+                    type: integer
+                beatmap:
+                    $ref: "#/components/schemas/Beatmap"
+
+        Beatmap:
+            description: A JSON object containing beatmap data
+            type: object
+            properties:
+                beatmapset_id:
+                    type: integer
+                difficulty_rating:
+                    type: number
+                    format: float
+                id:
+                    type: integer
+                mode:
+                    type: string
+                mode_int:
+                    type: integer
+                status:
+                    type: string
+                total_length:
+                    type: integer
+                user_id:
+                    type: integer
+                version:
+                    type: string
+                accuracy:
+                    type: number
+                    format: float
+                ar:
+                    type: number
+                    format: float
+                bpm:
+                    type: number
+                    format: float
+                convert:
+                    type: boolean
+                count_circles:
+                    type: integer
+                count_sliders:
+                    type: integer
+                count_spinners:
+                    type: integer
+                cs:
+                    type: number
+                    format: float
+                deleted_at:
+                    type: string
+                    format: date-time
+                    nullable: true
+                drain:
+                    type: number
+                    format: float
+                hit_length:
+                    type: integer
+                is_scoreable:
+                    type: boolean
+                last_updated:
+                    type: string
+                    format: date-time
+                passcount:
+                    type: integer
+                playcount:
+                    type: integer
+                ranked:
+                    type: integer
+                url:
+                    type: string
+                    format: uri
+                checksum:
+                    type: string
+                    pattern: "^[0-9a-fA-F]{32}$"
+
+
     parameters:
-        osu_id:
-            name: osu_id
+        UserId:
+            name: user_id
             description: osu! user ID
             in: path
-            required: True
+            required: true
             schema:
                 type: integer
 
-        beatmap_id:
+        BeatmapId:
             name: beatmap_id
             description: osu! beatmap ID
             in: path
-            required: True
+            required: true
             schema:
                 type: integer
 
-        version_number:
-            name: version_number
-            description: osu! beatmap version ID
+        BeatmapsetId:
+            name: beatmapset_id
+            description: osu! beatmapset ID
             in: path
-            required: True
+            required: true
             schema:
                 type: integer
+
+        VersionNumber:
+            name: version_number
+            description: osu! beatmap version number
+            in: path
+            required: true
+            schema:
+                type: integer
+
+        Filter:
+            name: filter
+            description: Semicolon-separated string of filters to apply to the query. Supports relational operators (=, >, <, >=, <=, and !=)
+            in: query
+            schema:
+                type: string
+            example: 'user_id=124493;pp!=727;accuracy>=99.09;mods=["HD","HR"];created_at<"2017-04-13T23:55:30Z"'
+
+        UserIdQuery:
+            name: user_id
+            description: osu! user ID
+            in: query
+            schema:
+                type: integer
+
+        BeatmapIdQuery:
+            name: beatmap_id
+            description: osu! beatmap ID
+            in: query
+            schema:
+                type: integer
+
+        BeatmapsetIdQuery:
+            name: beatmapset_id
+            description: osu! beatmapset ID
+            in: query
+            schema:
+                type: integer
+
+        Accuracy:
+            name: accuracy
+            description: Accuracy of the score
+            in: query
+            schema:
+                type: number
+                format: float
+
+        CreatedAt:
+            name: created_at
+            description: Timestamp string in datetime format
+            in: query
+            schema:
+                type: string
+                format: date-time
+
+        MaxCombo:
+            name: max_combo
+            description: Max combo of the score
+            in: query
+            schema:
+                type: integer
+
+        Mode:
+            name: mode
+            description: Mode the score was played in
+            in: query
+            schema:
+                type: string
+
+        ModeInt:
+            name: mode_int
+            description: Mode the score was played in (integer version)
+            in: query
+            schema:
+                type: integer
+
+        Mods:
+            name: mods
+            description: List of mods. Supports full names and abbreviations (Hard Rock/HR)
+            in: query
+            schema:
+                $ref: "#/components/schemas/Mods"
+
+        Perfect:
+            name: perfect
+            description: Whether or not the score is a true full combo
+            in: query
+            schema:
+                type: boolean
+
+        PP:
+            name: pp
+            description: pp value of the score
+            in: query
+            schema:
+                type: number
+                format: float
+
+        Rank:
+            name: rank
+            description: Letter rank of the score
+            in: query
+            schema:
+                type: string
+
+        Score:
+            name: score
+            description: Score value of the score
+            in: query
+            schema:
+                type: integer
+
+        Count100:
+            name: count_300
+            description: 300 count in the score
+            in: query
+            schema:
+                type: integer
+
+        Count300:
+            name: count_100
+            description: 100 count in the score
+            in: query
+            schema:
+                type: integer
+
+        Count50:
+            name: count_50
+            description: 50 count in the score
+            in: query
+            schema:
+                type: integer
+
+        CountGeki:
+            name: count_geki
+            description: Geki count in the score
+            in: query
+            schema:
+                type: integer
+
+        CountKatsu:
+            name: count_katsu
+            description: Katsu count in the score
+            in: query
+            schema:
+                type: integer
+
+        CountMiss:
+            name: count_miss
+            description: Miss count in the score
+            in: query
+            schema:
+                type: integer
+
+        Type:
+            name: type
+            description: Type string of the score
+            in: query
+            schema:
+                type: string
 
     requestBodies:
-        BeatmapQuery:
+        Beatmap:
             description: Beatmap to download to the server
             required: true
             content:
                 application/json:
                     schema:
                         $ref: "#/components/schemas/BeatmapQuery"
-        LeaderboardQuery:
+
+        Leaderboard:
             description: Leaderboard to add to a beatmap
             required: true
             content:
                 application/json:
                     schema:
                         $ref: "#/components/schemas/LeaderboardQuery"
+
+        Score:
+            description: Score to add to a leaderboard
+            required: true
+            content:
+                application/json:
+                    schema:
+                        $ref: "#/components/schemas/Score"
 
     responses:
         UnauthorizedError:
@@ -128,7 +427,7 @@ paths:
 #            security:
 #                - ApiKeyAuth: []
             requestBody:
-                $ref: "#/components/requestBodies/BeatmapQuery"
+                $ref: "#/components/requestBodies/Beatmap"
             responses:
                 201:
                     description: Successfully downloaded beatmap to the server
@@ -141,7 +440,7 @@ paths:
             tags:
                 - Beatmaps
             parameters:
-                - $ref: "#/components/parameters/beatmap_id"
+                - $ref: "#/components/parameters/BeatmapId"
             responses:
                 200:
                     description: Successfully retrieved beatmap metadata
@@ -154,7 +453,7 @@ paths:
             tags:
                 - Beatmaps
             parameters:
-                - $ref: "#/components/parameters/beatmap_id"
+                - $ref: "#/components/parameters/BeatmapId"
             responses:
                 200:
                     description: Successfully retrieved beatmap versions
@@ -167,8 +466,8 @@ paths:
             tags:
                 - Beatmaps
             parameters:
-                - $ref: "#/components/parameters/beatmap_id"
-                - $ref: "#/components/parameters/version_number"
+                - $ref: "#/components/parameters/BeatmapId"
+                - $ref: "#/components/parameters/VersionNumber"
             responses:
                 200:
                     description: Successfully retrieved beatmap file
@@ -192,7 +491,7 @@ paths:
 #            security:
 #                - ApiKeyAuth: []
             requestBody:
-                $ref: "#/components/requestBodies/LeaderboardQuery"
+                $ref: "#/components/requestBodies/Leaderboard"
             responses:
                 201:
                     description: Successfully added leaderboard
@@ -205,7 +504,7 @@ paths:
             tags:
                 - Leaderboards
             parameters:
-                - $ref: "#/components/parameters/beatmap_id"
+                - $ref: "#/components/parameters/BeatmapId"
             responses:
                 200:
                     description: Successfully retrieved leaderboard
@@ -218,7 +517,7 @@ paths:
             tags:
                 - Leaderboards
             parameters:
-                - $ref: "#/components/parameters/beatmap_id"
+                - $ref: "#/components/parameters/BeatmapId"
             responses:
                 200:
                     description: Successfully retrieved leaderboard versions
@@ -231,10 +530,61 @@ paths:
             tags:
                 - Leaderboards
             parameters:
-                - $ref: "#/components/parameters/beatmap_id"
-                - $ref: "#/components/parameters/version_number"
+                - $ref: "#/components/parameters/BeatmapId"
+                - $ref: "#/components/parameters/VersionNumber"
             responses:
                 200:
                     description: Successfully retrieved leaderboard
+                default:
+                    description: Pass
+
+    /scores:
+        get:
+            summary: Returns a filterable list of scores
+            tags:
+                - Scores
+            parameters:
+                - $ref: "#/components/parameters/Filter"
+                - $ref: "#/components/parameters/UserIdQuery"
+                - $ref: "#/components/parameters/BeatmapIdQuery"
+                - $ref: "#/components/parameters/BeatmapsetIdQuery"
+                - $ref: "#/components/parameters/Accuracy"
+                - $ref: "#/components/parameters/CreatedAt"
+                - $ref: "#/components/parameters/MaxCombo"
+                - $ref: "#/components/parameters/Mode"
+                - $ref: "#/components/parameters/ModeInt"
+                - $ref: "#/components/parameters/Mods"
+                - $ref: "#/components/parameters/Perfect"
+                - $ref: "#/components/parameters/PP"
+                - $ref: "#/components/parameters/Rank"
+                - $ref: "#/components/parameters/Score"
+                - $ref: "#/components/parameters/Count300"
+                - $ref: "#/components/parameters/Count100"
+                - $ref: "#/components/parameters/Count50"
+                - $ref: "#/components/parameters/CountGeki"
+                - $ref: "#/components/parameters/CountKatsu"
+                - $ref: "#/components/parameters/CountMiss"
+                - $ref: "#/components/parameters/Type"
+            responses:
+                200:
+                    description: Successfully retrieved scores
+                default:
+                    description: Pass
+
+    /scores/{beatmap_id}/versions/{version_number}:
+        post:
+            summary: Adds a score to the specified leaderboard
+            tags:
+                - Scores
+#            security:
+#                - ApiKeyAuth: []
+            parameters:
+                - $ref: "#/components/parameters/BeatmapId"
+                - $ref: "#/components/parameters/VersionNumber"
+            requestBody:
+                $ref: "#/components/requestBodies/Score"
+            responses:
+                201:
+                    description: Successfully added score
                 default:
                     description: Pass

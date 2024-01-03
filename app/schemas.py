@@ -99,21 +99,26 @@ class ScoreSchema(ma.SQLAlchemyAutoSchema):
         load_instance = True
         sqla_session = db.session
         unknown = EXCLUDE
+        exclude = ("id",)
 
-    id = fields.Integer(dump_only=True)
-    user_id = fields.Integer()
-    beatmap_id = fields.Integer()
-    leaderboard_id = fields.Integer()
+    user_id = fields.Integer(load_only=True)
+    beatmap_id = fields.Integer(load_only=True)
+    beatmapset_id = fields.Integer(load_only=True)
+    leaderboard_id = fields.Integer(load_only=True)
     mods = fields.Method("dump_mods", "load_mods")
     statistics = fields.Nested("StatisticsSchema")
 
     def load(self, data, *args):
         if self.many is False:
             beatmap_data = data["beatmap"]
-            user = User.query.filter_by(osu_id=data["user_id"])
-            beatmap_version = BeatmapVersion.query.filter_by(checksum=beatmap_data["checksum"])
-            leaderboard = Leaderboard.query.filter_by(beatmap_version_id=beatmap_version.id)
+            user = User.query.get(data["user_id"])
+            beatmap = Beatmap.query.get(beatmap_data["id"])
+            beatmapset = Beatmapset.query.get(beatmap_data["beatmapset_id"])
+            beatmap_version = BeatmapVersion.query.filter_by(checksum=beatmap_data["checksum"]).one()
+            leaderboard = Leaderboard.query.filter_by(beatmap_version_id=beatmap_version.id).one()
             data["user_id"] = user.id
+            data["beatmap_id"] = beatmap.id
+            data["beatmapset_id"] = beatmapset.id
             data["leaderboard_id"] = leaderboard.id
         return super().load(data, *args)
 
