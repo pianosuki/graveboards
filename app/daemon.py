@@ -41,4 +41,8 @@ class GraveboardsDaemon:
         self.services.append(service_class(self.app))
 
     async def run(self):
-        await asyncio.gather(*self.services)
+        await asyncio.gather(*self.service_task_generator())
+
+    def service_task_generator(self):
+        for service in self.services:
+            yield asyncio.create_task(service.run())

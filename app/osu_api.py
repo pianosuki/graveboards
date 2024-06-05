@@ -21,6 +21,9 @@ class APIEndpoint(Enum):
     BEATMAPSET_LOOKUP = API_BASEURL + "/beatmapsets/lookup"
     BEATMAPSET = API_BASEURL + "/beatmapsets/{beatmapset}"
 
+    # Users
+    OWN_DATA = API_BASEURL + "/me"
+
     def format(self, *args, **kwargs) -> str:
         return str.format(self.value, *args, **kwargs)
 
@@ -47,6 +50,10 @@ class OsuAPIBase:
 
     def refresh_token(self):
         self.token = self.oauth.osu_client.fetch_access_token()
+
+    @staticmethod
+    def _get_user_auth_header(access_token: str) -> dict:
+        return {"Authorization": f"Bearer {access_token}"}
 
     @property
     def oauth(self) -> OAuth | None:
@@ -93,6 +100,17 @@ class OsuAPIClient(OsuAPIBase):
             "Content-Type": "application/json",
             "Accept": "application/json",
             **self.auth_headers
+        }
+        response = self.client.get(url, headers=headers)
+        response.raise_for_status()
+        return response.json()
+
+    def get_own_data(self, access_token: str) -> dict:
+        url = APIEndpoint.OWN_DATA.format()
+        headers = {
+            "Content-Type": "application/json",
+            "Accept": "application/json",
+            **self._get_user_auth_header(access_token)
         }
         response = self.client.get(url, headers=headers)
         response.raise_for_status()

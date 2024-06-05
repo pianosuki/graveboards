@@ -1,5 +1,7 @@
-import time, uuid, secrets
-from sqlalchemy.orm.collections import InstrumentedList
+import time
+import uuid
+import secrets
+from datetime import datetime, timezone
 
 
 def generate_nonce() -> str:
@@ -15,3 +17,7 @@ def generate_uuid() -> str:
 def generate_token(length: int) -> str:
     sequence = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
     return ''.join(secrets.choice(sequence) for _ in range(length))
+
+
+def aware_utcnow() -> datetime:
+    return datetime.now(tz=timezone.utc)

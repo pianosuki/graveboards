@@ -6,7 +6,7 @@ class Service:
         self.app = app
 
     def __await__(self):
-        return self.run()
+        return self.run
 
     async def run(self):
         ...

@@ -1,6 +1,5 @@
-from datetime import datetime
 from app import db
-from .utils import generate_token
+from .utils import generate_token, aware_utcnow
 
 __all__ = [
     "User",
@@ -17,6 +16,7 @@ class User(db.Model):
     __tablename__ = "users"
     id = db.Column(db.Integer, primary_key=True)
     scores = db.relationship("Score", backref="user", lazy=True)
+    tokens = db.relationship("OauthToken", backref="user", lazy=True)
 
 
 class ApiKey(db.Model):
@@ -24,7 +24,18 @@ class ApiKey(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     key = db.Column(db.String(32), unique=True, default=generate_token(32))
     user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=aware_utcnow)
+
+
+class OauthToken(db.Model):
+    __tablename__ = "oauth_tokens"
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    access_token = db.Column(db.String, nullable=False)
+    refresh_token = db.Column(db.String, nullable=False)
+    expires_at = db.Column(db.Integer, nullable=False)
+    is_revoked = db.Column(db.Boolean, default=False)
+    created_at = db.Column(db.DateTime, default=aware_utcnow)
 
 
 class Beatmap(db.Model):

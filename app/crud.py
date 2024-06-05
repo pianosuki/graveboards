@@ -23,6 +23,11 @@ class CrudBase:
 
 class Crud(CrudBase):
     # Create #
+    def add_user(self, user_id):
+        user = User(id=user_id)
+        self.db.session.add(user)
+        self.db.session.commit()
+
     def add_beatmap(self, beatmap_id: int, beatmapset_id: int):
         beatmap = Beatmap(id=beatmap_id, beatmapset_id=beatmapset_id)
         self.db.session.add(beatmap)
@@ -49,6 +54,9 @@ class Crud(CrudBase):
         self.db.session.commit()
 
     # Read #
+    def user_exists(self, user_id) -> bool:
+        return User.query.filter_by(id=user_id).one_or_none() is not None
+
     def get_latest_row_id(self) -> int:
         result = self.db.session.execute(text("SELECT last_insert_rowid()"))
         return result.scalar()

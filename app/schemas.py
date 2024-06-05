@@ -8,6 +8,7 @@ from .models import User, Score, Beatmap, Leaderboard, BeatmapVersion, Beatmapse
 __all__ = [
     "user_schema",
     "users_schema",
+    "oauth_token_schema",
     "beatmap_schema",
     "beatmaps_schema",
     "beatmap_version_schema",
@@ -27,6 +28,15 @@ class UserSchema(ma.SQLAlchemyAutoSchema):
         load_instance = True
         sqla_session = db.session
         include_relationships = True
+
+
+class OauthTokenSchema(ma.SQLAlchemyAutoSchema):
+    class Meta:
+        model = User
+        load_instance = True
+        sqla_session = db.session
+        include_relationships = True
+        unknown = EXCLUDE
 
 
 class BeatmapSchema(ma.SQLAlchemyAutoSchema):
@@ -159,6 +169,7 @@ class StatisticsSchema(JSONTextSchema):
 
 user_schema = UserSchema()
 users_schema = UserSchema(many=True)
+oauth_token_schema = OauthTokenSchema()
 beatmap_schema = BeatmapSchema()
 beatmaps_schema = BeatmapSchema(many=True)
 beatmap_version_schema = BeatmapVersionSchema()
