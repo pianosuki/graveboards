@@ -20,18 +20,22 @@ oauth = OAuth(flask_app)
 oauth.register(**OAUTH_AUTHORIZATION_CODE)
 oauth.register(**OAUTH_CLIENT_CREDENTIALS)
 
+from .thread_synchronization import ThreadSynchronization
+sync = ThreadSynchronization(flask_app)
+
 from .osu_api import OsuAPIClient
 from .beatmap_manager import BeatmapManager
 from .crud import Crud
-oac = OsuAPIClient(flask_app)
-bm = BeatmapManager(flask_app)
-cr = Crud(flask_app)
+oac = OsuAPIClient(app=flask_app)
+bm = BeatmapManager(app=flask_app)
+cr = Crud(app=flask_app)
 
 from .routes import main_bp, oauth_bp
 flask_app.register_blueprint(main_bp, url_prefix="/")
 flask_app.register_blueprint(oauth_bp, url_prefix="/oauth")
 
-from .daemon import GraveboardsDaemon
+from .daemon import GraveboardsDaemon, DaemonThread
 from .services import ScoreFetcher
-appd = GraveboardsDaemon(flask_app)
+appd = GraveboardsDaemon(app=flask_app)
 appd.register_service(ScoreFetcher)
+daemon_thread = DaemonThread(appd)

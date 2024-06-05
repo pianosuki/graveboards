@@ -46,3 +46,6 @@ class FlaskConfig:
     SECRET_KEY = os.getenv("SECRET_KEY")
     SQLALCHEMY_DATABASE_URI = "sqlite:///app.db"
     SQLALCHEMY_TRACK_MODIFICATIONS = False
+
+
+SCORE_FETCHER_INTERVAL_HOURS = 24

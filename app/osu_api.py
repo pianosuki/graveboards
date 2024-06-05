@@ -108,7 +108,7 @@ class OsuAPIClient(OsuAPIBase):
         return response.json()
 
     def get_own_data(self, access_token: str) -> dict:
-        url = APIEndpoint.OWN_DATA.format()
+        url = APIEndpoint.OWN_DATA.value
         headers = {
             "Content-Type": "application/json",
             "Accept": "application/json",

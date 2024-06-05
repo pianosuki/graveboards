@@ -5,12 +5,13 @@ from marshmallow import fields, Schema
 from marshmallow.utils import EXCLUDE, RAISE
 
 from app import db, ma
-from .models import User, Score, Beatmap, Leaderboard, BeatmapVersion, Beatmapset
+from .models import User, Score, Beatmap, Leaderboard, BeatmapVersion, Beatmapset, ScoreFetcherTask
 
 __all__ = [
     "user_schema",
     "users_schema",
     "oauth_token_schema",
+    "score_fetcher_task_schema",
     "beatmap_schema",
     "beatmaps_schema",
     "beatmap_version_schema",
@@ -37,8 +38,14 @@ class OauthTokenSchema(ma.SQLAlchemyAutoSchema):
         model = User
         load_instance = True
         sqla_session = db.session
-        include_relationships = True
         unknown = EXCLUDE
+
+
+class ScoreFetcherTaskSchema(ma.SQLAlchemyAutoSchema):
+    class Meta:
+        model = ScoreFetcherTask
+        load_instance = True
+        sqla_session = db.session
 
 
 class BeatmapSchema(ma.SQLAlchemyAutoSchema):
@@ -172,6 +179,7 @@ class StatisticsSchema(JSONTextSchema):
 user_schema = UserSchema()
 users_schema = UserSchema(many=True)
 oauth_token_schema = OauthTokenSchema()
+score_fetcher_task_schema = ScoreFetcherTaskSchema()
 beatmap_schema = BeatmapSchema()
 beatmaps_schema = BeatmapSchema(many=True)
 beatmap_version_schema = BeatmapVersionSchema()

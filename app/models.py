@@ -4,6 +4,8 @@ from .utils import generate_token, aware_utcnow
 __all__ = [
     "User",
     "ApiKey",
+    "OauthToken",
+    "ScoreFetcherTask",
     "Beatmap",
     "BeatmapVersion",
     "Beatmapset",
@@ -36,6 +38,14 @@ class OauthToken(db.Model):
     expires_at = db.Column(db.Integer, nullable=False)
     is_revoked = db.Column(db.Boolean, default=False)
     created_at = db.Column(db.DateTime, default=aware_utcnow)
+
+
+class ScoreFetcherTask(db.Model):
+    __tablename__ = "score_fetcher_tasks"
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
+    enabled = db.Column(db.Boolean, default=True)
+    last_fetch = db.Column(db.DateTime, default=None)
 
 
 class Beatmap(db.Model):

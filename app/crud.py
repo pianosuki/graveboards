@@ -29,6 +29,11 @@ class Crud(CrudBase):
         self.db.session.add(user)
         self.db.session.commit()
 
+    def add_score_fetcher_task(self, user_id):
+        score_fetcher_task = ScoreFetcherTask(user_id=user_id)
+        self.db.session.add(score_fetcher_task)
+        self.db.session.commit()
+
     def add_beatmap(self, beatmap_id: int, beatmapset_id: int):
         beatmap = Beatmap(id=beatmap_id, beatmapset_id=beatmapset_id)
         self.db.session.add(beatmap)
@@ -58,9 +63,11 @@ class Crud(CrudBase):
     def user_exists(self, user_id) -> bool:
         return User.query.filter_by(id=user_id).one_or_none() is not None
 
-    def get_latest_row_id(self) -> int:
-        result = self.db.session.execute(text("SELECT last_insert_rowid()"))
-        return result.scalar()
+    def get_score_fetcher_task(self, **kwargs) -> ScoreFetcherTask | None:
+        return ScoreFetcherTask.query.filter_by(**kwargs).one_or_none()
+
+    def get_score_fetcher_tasks(self, **kwargs) -> list[ScoreFetcherTask]:
+        return ScoreFetcherTask.query.filter_by(**kwargs).all()
 
     def get_beatmap(self, **kwargs) -> Beatmap | None:
         return Beatmap.query.filter_by(**kwargs).one_or_none()
@@ -108,5 +115,16 @@ class Crud(CrudBase):
         return beatmapset is not None
 
     # Update #
+    def update_score_fetcher_task(self, score_fetcher_task_id: int, **kwargs):
+        score_fetcher_task = ScoreFetcherTask.query.get(score_fetcher_task_id)
+
+        if score_fetcher_task is None:
+            raise ValueError(f"There is no task with the ID '{score_fetcher_task_id}'")
+
+        for key, value in kwargs.items():
+            setattr(score_fetcher_task, key, value)
+
+        self.db.session.merge(score_fetcher_task)
+        self.db.session.commit()
 
     # Delete #

@@ -32,7 +32,7 @@ class DaemonThread(threading.Thread):
 class GraveboardsDaemon:
     def __init__(self, app: Flask | None = None):
         self.app = app
-        self.services: list[Service] = []
+        self.services: dict[str, Service] = {}
 
         if app is not None:
             self.init_app(app)
@@ -42,11 +42,11 @@ class GraveboardsDaemon:
         app.extensions["daemon"] = self
 
     def register_service(self, service_class: type[Service]):
-        self.services.append(service_class(self.app))
+        self.services[service_class.__name__] = service_class(self.app)
 
     async def run(self):
         await asyncio.gather(*self.service_task_generator())
 
     def service_task_generator(self):
-        for service in self.services:
+        for service in self.services.values():
             yield asyncio.create_task(service.run())
