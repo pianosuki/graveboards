@@ -1,5 +1,7 @@
-import httpx, time
+import httpx
+import time
 from enum import Enum
+
 from flask import Flask
 from authlib.integrations.flask_client import OAuth
 

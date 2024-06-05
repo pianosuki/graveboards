@@ -1,4 +1,5 @@
 from pathlib import Path
+
 from app import connexion_app, appd
 from app.daemon import DaemonThread
 from setup import setup

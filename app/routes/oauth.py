@@ -1,5 +1,6 @@
 from flask import redirect, url_for, session, Blueprint
 from authlib.integrations.flask_client import OAuthError
+
 from app import oauth, cr, oac
 
 oauth_bp = Blueprint("oauth", __name__)

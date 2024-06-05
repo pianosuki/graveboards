@@ -1,6 +1,5 @@
-import asyncio
-
 from flask import Flask
+
 from .service import Service
 
 

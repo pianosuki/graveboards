@@ -30,7 +30,7 @@ class ApiKey(db.Model):
 class OauthToken(db.Model):
     __tablename__ = "oauth_tokens"
     id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
     access_token = db.Column(db.String, nullable=False)
     refresh_token = db.Column(db.String, nullable=False)
     expires_at = db.Column(db.Integer, nullable=False)

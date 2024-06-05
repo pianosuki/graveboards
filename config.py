@@ -1,7 +1,10 @@
 import os
+
 from dotenv import load_dotenv
 
 load_dotenv()
+
+BASE_URL = "http://localhost:8000"
 
 FLASK_SERVER_ARGS = {
     "static_url_path": os.path.abspath("/"),
@@ -18,7 +21,7 @@ OAUTH_AUTHORIZATION_CODE = {
     "access_token_url": "https://osu.ppy.sh/oauth/token",
     "access_token_params": None,
     "refresh_token_url": None,
-    "redirect_uri": "http://localhost:8000/oauth/callback",
+    "redirect_uri": BASE_URL + "/oauth/callback",
     "client_kwargs": {"scope": "public identify"}
 }
 

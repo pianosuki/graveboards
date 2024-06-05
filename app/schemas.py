@@ -1,7 +1,9 @@
 import json
 from typing import Any
+
 from marshmallow import fields, Schema
 from marshmallow.utils import EXCLUDE, RAISE
+
 from app import db, ma
 from .models import User, Score, Beatmap, Leaderboard, BeatmapVersion, Beatmapset
 

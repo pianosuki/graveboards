@@ -1,5 +1,5 @@
-from app.schemas import scores_schema
 from app import cr
+from app.schemas import scores_schema
 
 
 def search(**kwargs):

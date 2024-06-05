@@ -1,9 +1,11 @@
 import os
+
 from connexion import FlaskApp
 from connexion.resolver import RestyResolver
 from flask_sqlalchemy import SQLAlchemy
 from flask_marshmallow import Marshmallow
 from authlib.integrations.flask_client import OAuth
+
 from config import FlaskConfig, OAUTH_AUTHORIZATION_CODE, OAUTH_CLIENT_CREDENTIALS, SPEC_DIR, FLASK_SERVER_ARGS
 
 connexion_app = FlaskApp(__name__, specification_dir=SPEC_DIR, server_args=FLASK_SERVER_ARGS)

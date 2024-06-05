@@ -1,5 +1,8 @@
-import os, httpx
+import os
+import httpx
+
 from flask import Flask
+
 from .osu_api import OsuAPIClient
 from .crud import Crud
 
