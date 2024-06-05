@@ -66,12 +66,12 @@ class ScoreFetcher(Service):
 
     async def task_subscriber(self):
         while True:
-            try:
-                task = await asyncio.to_thread(self.queues[QueueName.SCORE_FETCHER_TASKS].get, block=True, timeout=1)
+            if self.queues[QueueName.SCORE_FETCHER_TASKS].qsize() > 0:
+                task = await asyncio.to_thread(self.queues[QueueName.SCORE_FETCHER_TASKS].get_nowait)
                 self.load_task(task)
                 self.events[EventName.SCORE_FETCHER_TASK_ADDED].set()
-            except queue.Empty:
-                continue
+
+            await asyncio.sleep(5)
 
     def _preload_tasks(self):
         with flask_app.app_context():
