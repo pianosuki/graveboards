@@ -144,3 +144,7 @@ class Score(db.Model):
     score = db.Column(db.Integer, nullable=False)
     statistics = db.Column(db.Text, nullable=False)
     type = db.Column(db.String, nullable=False)
+
+    __table_args__ = (
+        db.UniqueConstraint("beatmap_id", "created_at", name="_beatmap_and_creation_time_uc"),
+    )
