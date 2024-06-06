@@ -120,6 +120,10 @@ class Leaderboard(db.Model):
     beatmap_version_id = db.Column(db.Integer, db.ForeignKey("beatmap_versions.id"), nullable=False)
     scores = db.relationship("Score", backref="leaderboard", lazy=True)
 
+    __table_args__ = (
+        db.UniqueConstraint("beatmap_id", "beatmap_version_id", name="_beatmap_and_version_uc"),
+    )
+
 
 class Score(db.Model):
     __tablename__ = "scores"
