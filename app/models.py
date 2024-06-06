@@ -97,7 +97,7 @@ class Beatmapset(db.Model):
     covers = db.Column(db.Text, nullable=False)
     creator = db.Column(db.String, nullable=False)
     favourite_count = db.Column(db.Integer, nullable=False)
-    hype = db.Column(db.Integer)
+    hype = db.Column(db.Text)
     nsfw = db.Column(db.Boolean, nullable=False)
     offset = db.Column(db.Integer, nullable=False)
     play_count = db.Column(db.Integer, nullable=False)

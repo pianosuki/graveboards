@@ -89,6 +89,7 @@ class BeatmapsetSchema(ma.SQLAlchemyAutoSchema):
         unknown = EXCLUDE
 
     covers = fields.Nested("CoversSchema")
+    hype = fields.Nested("HypeSchema", allow_none=True)
 
 
 class LeaderboardSchema(ma.SQLAlchemyAutoSchema):
@@ -165,6 +166,11 @@ class CoversSchema(JSONTextSchema):
     list2x = fields.String(data_key="list@2x")
     slimcover = fields.String()
     slimcover2x = fields.String(data_key="slimcover@2x")
+
+
+class HypeSchema(JSONTextSchema):
+    current = fields.Integer()
+    required = fields.Integer()
 
 
 class StatisticsSchema(JSONTextSchema):
