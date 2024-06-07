@@ -1,8 +1,8 @@
 from flask import redirect, url_for, session, Blueprint
 from authlib.integrations.flask_client import OAuthError
 
-from app import oauth, cr, oac, sync
-from app.services.score_fetcher import ScoreFetcher, QueueName
+from api import v1 as api
+from app import oauth, oac, cr
 
 oauth_bp = Blueprint("oauth", __name__)
 
@@ -17,12 +17,12 @@ def authorized():
     try:
         token = oauth.osu_auth.authorize_access_token()
         session["oauth_token"] = token
+
         user_data = oac.get_own_data(token.get("access_token"))
         user_id = user_data.get("id")
+
         if not cr.user_exists(user_id):
-            cr.add_user(user_id)
-            cr.add_score_fetcher_task(user_id)
-            sync.daemon.services[ScoreFetcher.__name__].queues[QueueName.SCORE_FETCHER_TASKS].put(cr.get_score_fetcher_task(user_id=user_id))
+            api.users.post({"user_id": user_id})
     except OAuthError as e:
         print(f"OAuthError: {e}")
     except Exception as e:

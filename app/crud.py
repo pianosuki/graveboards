@@ -1,6 +1,7 @@
+from datetime import datetime
+
 from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
-from sqlalchemy import text
 
 from .models import *
 from .schemas import *
@@ -24,9 +25,14 @@ class CrudBase:
 
 class Crud(CrudBase):
     # Create #
-    def add_user(self, user_id):
+    def add_user(self, user_id: int):
         user = User(id=user_id)
         self.db.session.add(user)
+        self.db.session.commit()
+
+    def add_api_key(self, api_key: str, user_id: int):
+        api_key = ApiKey(key=api_key, user_id=user_id)
+        self.db.session.add(api_key)
         self.db.session.commit()
 
     def add_score_fetcher_task(self, user_id):
@@ -92,6 +98,9 @@ class Crud(CrudBase):
 
     def get_leaderboards(self, **kwargs) -> list[Leaderboard]:
         return Leaderboard.query.filter_by(**kwargs).all()
+
+    def score_unique(self, beatmap_id: int, created_at: datetime) -> bool:
+        return Score.query.filter_by(beatmap_id=beatmap_id, created_at=created_at).one_or_none() is None
 
     def get_score(self, **kwargs) -> Score | None:
         return Score.query.filter_by(**kwargs).one_or_none()

@@ -21,3 +21,12 @@ def generate_token(length: int) -> str:
 
 def aware_utcnow() -> datetime:
     return datetime.now(tz=timezone.utc)
+
+
+def parse_iso8601(datetime_string) -> datetime:
+    if datetime_string.endswith("Z"):
+        return datetime.strptime(datetime_string, "%Y-%m-%dT%H:%M:%S%z")
+    elif "+" in datetime_string:
+        return datetime.strptime(datetime_string, "%Y-%m-%dT%H:%M:%S%z")
+    else:
+        return datetime.strptime(datetime_string, "%Y-%m-%dT%H:%M:%S")

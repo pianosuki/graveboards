@@ -362,6 +362,14 @@ components:
                 type: string
 
     requestBodies:
+        User:
+            description: User to add
+            required: true
+            content:
+                application/json:
+                    schema:
+                        $ref: "#/components/schemas/UserQuery"
+
         Beatmap:
             description: Beatmap to download to the server
             required: true
@@ -407,6 +415,20 @@ paths:
                     description: Successfully retrieved all users
                 401:
                     $ref: "#/components/responses/UnauthorizedError"
+                default:
+                    description: Pass
+
+        post:
+            summary: Adds a user
+            tags:
+                - Users
+#            security:
+#                - ApiKeyAuth: []
+            requestBody:
+                $ref: "#/components/requestBodies/User"
+            responses:
+                201:
+                    description: Successfully added user
                 default:
                     description: Pass
 
@@ -571,9 +593,23 @@ paths:
                 default:
                     description: Pass
 
+        post:
+            summary: Adds a score to the latest version of the appropriate beatmap's leaderboard
+            tags:
+                - Scores
+#            security:
+#                - ApiKeyAuth: []
+            requestBody:
+                $ref: "#/components/requestBodies/Score"
+            responses:
+                201:
+                    description: Successfully added score
+                default:
+                    description: Pass
+
     /scores/{beatmap_id}/versions/{version_number}:
         post:
-            summary: Adds a score to the specified leaderboard
+            summary: Adds a score to the specified beatmap version's leaderboard
             tags:
                 - Scores
 #            security:

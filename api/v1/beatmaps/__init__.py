@@ -18,6 +18,10 @@ def get(beatmap_id: int):
 
 def post(body: dict):
     beatmap_id = body["beatmap_id"]
+
+    if cr.beatmap_exists(beatmap_id):
+        abort(409, f"The beatmap with ID '{beatmap_id}' already exists")
+
     try:
         bm.download(beatmap_id)
     except httpx.HTTPStatusError as e:
