@@ -12,7 +12,8 @@ from app.osu_api import ScoreType
 from app.utils import aware_utcnow
 from app.models import ScoreFetcherTask
 from .service import Service
-from config import SCORE_FETCHER_INTERVAL_HOURS
+
+SCORE_FETCHER_INTERVAL_HOURS = 24
 
 
 class QueueName(Enum):

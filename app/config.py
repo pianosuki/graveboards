@@ -7,7 +7,7 @@ load_dotenv()
 BASE_URL = "http://localhost:8000"
 
 FLASK_SERVER_ARGS = {
-    "static_url_path": os.path.abspath("/"),
+    "static_url_path": os.path.abspath(""),
     "static_folder": os.path.abspath("app/static"),
     "template_folder": os.path.abspath("app/templates")
 }
@@ -46,6 +46,3 @@ class FlaskConfig:
     SECRET_KEY = os.getenv("SECRET_KEY")
     SQLALCHEMY_DATABASE_URI = "sqlite:///app.db"
     SQLALCHEMY_TRACK_MODIFICATIONS = False
-
-
-SCORE_FETCHER_INTERVAL_HOURS = 24
