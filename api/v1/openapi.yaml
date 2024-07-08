@@ -496,6 +496,33 @@ paths:
                 default:
                     description: Pass
 
+    /beatmaps/{beatmap_id}/difficulty:
+        get:
+            summary: Calculates and returns the difficulty values of the beatmap's latest version
+            tags:
+                - Beatmaps
+            parameters:
+                -   $ref: "#/components/parameters/BeatmapId"
+            responses:
+                200:
+                    description: Successfully retrieved beatmap difficulty values
+                default:
+                    description: Pass
+
+    /beatmaps/{beatmap_id}/difficulty/{version_number}:
+        get:
+            summary: Calculates and returns the difficulty values of the beatmap's specified version
+            tags:
+                - Beatmaps
+            parameters:
+                -   $ref: "#/components/parameters/BeatmapId"
+                -   $ref: "#/components/parameters/VersionNumber"
+            responses:
+                200:
+                    description: Successfully retrieved beatmap difficulty values
+                default:
+                    description: Pass
+
     /leaderboards:
         get:
             summary: Returns a list of leaderboards

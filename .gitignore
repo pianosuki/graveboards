@@ -5,7 +5,7 @@ instance/
 .env
 
 # Python virtual environment
-venv/
+.venv/
 
 # Pycharm project files
 .idea/
