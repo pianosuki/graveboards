@@ -35,6 +35,11 @@ class Crud(CrudBase):
         self.db.session.add(api_key)
         self.db.session.commit()
 
+    def add_oauth_token(self, user_id: int, access_token: str, refresh_token: str, expires_at: int):
+        oauth_token = OauthToken(user_id=user_id, access_token=access_token, refresh_token=refresh_token, expires_at=expires_at)
+        self.db.session.add(oauth_token)
+        self.db.session.commit()
+
     def add_score_fetcher_task(self, user_id):
         score_fetcher_task = ScoreFetcherTask(user_id=user_id)
         self.db.session.add(score_fetcher_task)
@@ -68,6 +73,9 @@ class Crud(CrudBase):
     # Read #
     def user_exists(self, user_id) -> bool:
         return User.query.filter_by(id=user_id).one_or_none() is not None
+
+    def get_oauth_tokens(self, **kwargs) -> list[OauthToken]:
+        return OauthToken.query.filter_by(**kwargs).all()
 
     def get_score_fetcher_task(self, **kwargs) -> ScoreFetcherTask | None:
         return ScoreFetcherTask.query.filter_by(**kwargs).one_or_none()
@@ -124,6 +132,18 @@ class Crud(CrudBase):
         return beatmapset is not None
 
     # Update #
+    def update_oauth_token(self, oauth_token_id: int, **kwargs):
+        oauth_token = OauthToken.query.get(oauth_token_id)
+
+        if oauth_token is None:
+            raise ValueError(f"There is no oauth token with the ID '{oauth_token_id}'")
+
+        for key, value in kwargs.items():
+            setattr(oauth_token, key, value)
+
+        self.db.session.merge(oauth_token)
+        self.db.session.commit()
+
     def update_score_fetcher_task(self, score_fetcher_task_id: int, **kwargs):
         score_fetcher_task = ScoreFetcherTask.query.get(score_fetcher_task_id)
 
