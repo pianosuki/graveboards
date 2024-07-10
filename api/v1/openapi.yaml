@@ -17,6 +17,15 @@ components:
             x-apikeyInfoFunc: app.auth.api_key_info
 
     schemas:
+        AuthorizationCodeQuery:
+            description: A form object containing an osu! OAuth Authorization Code
+            type: object
+            properties:
+                code:
+                    type: string
+            required:
+                - code
+
         UserQuery:
             description: A JSON object containing an osu! user ID
             type: object
@@ -362,6 +371,14 @@ components:
                 type: string
 
     requestBodies:
+        AuthorizationCode:
+            description: Authorization Code received from the osu! OAuth flow to authenticate with
+            required: true
+            content:
+                application/x-www-form-urlencoded:
+                    schema:
+                        $ref: "#/components/schemas/AuthorizationCodeQuery"
+
         User:
             description: User to add
             required: true
@@ -403,6 +420,28 @@ components:
                         type: string
 
 paths:
+    /login:
+        get:
+            summary: Begins the OAuth 2.0 flow
+            tags:
+                - OAuth
+            responses:
+                302:
+                    description: Redirecting back to frontend
+
+    /token:
+        post:
+            summary: Uses the Authorization Code from the osu! OAuth flow to authenticate a user
+            tags:
+                - OAuth
+            security:
+                - ApiKeyAuth: []
+            requestBody:
+                $ref: "#/components/requestBodies/AuthorizationCode"
+            responses:
+                201:
+                    description: Successfully authenticated user
+
     /users:
         get:
             summary: Returns a list of users
@@ -415,22 +454,18 @@ paths:
                     description: Successfully retrieved all users
                 401:
                     $ref: "#/components/responses/UnauthorizedError"
-                default:
-                    description: Pass
 
         post:
             summary: Adds a user
             tags:
                 - Users
-#            security:
-#                - ApiKeyAuth: []
+            security:
+                - ApiKeyAuth: []
             requestBody:
                 $ref: "#/components/requestBodies/User"
             responses:
                 201:
                     description: Successfully added user
-                default:
-                    description: Pass
 
     /beatmaps:
         get:
@@ -440,21 +475,18 @@ paths:
             responses:
                 200:
                     description: Successfully retrieved beatmaps
-                default:
-                    description: Pass
+
         post:
             summary: Downloads a new beatmap to the server
             tags:
                 - Beatmaps
-#            security:
-#                - ApiKeyAuth: []
+            security:
+                - ApiKeyAuth: []
             requestBody:
                 $ref: "#/components/requestBodies/Beatmap"
             responses:
                 201:
                     description: Successfully downloaded beatmap to the server
-                default:
-                    description: Pass
 
     /beatmaps/{beatmap_id}:
         get:
@@ -466,8 +498,6 @@ paths:
             responses:
                 200:
                     description: Successfully retrieved beatmap metadata
-                default:
-                    description: Pass
 
     /beatmaps/{beatmap_id}/versions:
         get:
@@ -479,8 +509,6 @@ paths:
             responses:
                 200:
                     description: Successfully retrieved beatmap versions
-                default:
-                    description: Pass
 
     /beatmaps/{beatmap_id}/versions/{version_number}:
         get:
@@ -493,8 +521,6 @@ paths:
             responses:
                 200:
                     description: Successfully retrieved beatmap file
-                default:
-                    description: Pass
 
     /beatmaps/{beatmap_id}/difficulty:
         get:
@@ -506,8 +532,6 @@ paths:
             responses:
                 200:
                     description: Successfully retrieved beatmap difficulty values
-                default:
-                    description: Pass
 
     /beatmaps/{beatmap_id}/difficulty/{version_number}:
         get:
@@ -520,8 +544,6 @@ paths:
             responses:
                 200:
                     description: Successfully retrieved beatmap difficulty values
-                default:
-                    description: Pass
 
     /leaderboards:
         get:
@@ -531,21 +553,18 @@ paths:
             responses:
                 200:
                     description: Successfully retrieved leaderboards
-                default:
-                    description: Pass
+
         post:
             summary: Adds a leaderboard for a beatmap
             tags:
                 - Leaderboards
-#            security:
-#                - ApiKeyAuth: []
+            security:
+                - ApiKeyAuth: []
             requestBody:
                 $ref: "#/components/requestBodies/Leaderboard"
             responses:
                 201:
                     description: Successfully added leaderboard
-                default:
-                    description: Pass
 
     /leaderboards/{beatmap_id}:
         get:
@@ -557,8 +576,6 @@ paths:
             responses:
                 200:
                     description: Successfully retrieved leaderboard
-                default:
-                    description: Pass
 
     /leaderboards/{beatmap_id}/versions:
         get:
@@ -570,8 +587,6 @@ paths:
             responses:
                 200:
                     description: Successfully retrieved leaderboard versions
-                default:
-                    description: Pass
 
     /leaderboards/{beatmap_id}/versions/{version_number}:
         get:
@@ -584,8 +599,6 @@ paths:
             responses:
                 200:
                     description: Successfully retrieved leaderboard
-                default:
-                    description: Pass
 
     /scores:
         get:
@@ -617,30 +630,26 @@ paths:
             responses:
                 200:
                     description: Successfully retrieved scores
-                default:
-                    description: Pass
 
         post:
             summary: Adds a score to the latest version of the appropriate beatmap's leaderboard
             tags:
                 - Scores
-#            security:
-#                - ApiKeyAuth: []
+            security:
+                - ApiKeyAuth: []
             requestBody:
                 $ref: "#/components/requestBodies/Score"
             responses:
                 201:
                     description: Successfully added score
-                default:
-                    description: Pass
 
     /scores/{beatmap_id}/versions/{version_number}:
         post:
             summary: Adds a score to the specified beatmap version's leaderboard
             tags:
                 - Scores
-#            security:
-#                - ApiKeyAuth: []
+            security:
+                - ApiKeyAuth: []
             parameters:
                 - $ref: "#/components/parameters/BeatmapId"
                 - $ref: "#/components/parameters/VersionNumber"
@@ -649,5 +658,3 @@ paths:
             responses:
                 201:
                     description: Successfully added score
-                default:
-                    description: Pass
