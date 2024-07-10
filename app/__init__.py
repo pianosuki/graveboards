@@ -30,12 +30,8 @@ oac = OsuAPIClient(app=flask_app)
 bm = BeatmapManager(app=flask_app)
 cr = Crud(app=flask_app)
 
-from .routes import main_bp, oauth_bp
-flask_app.register_blueprint(main_bp, url_prefix="/")
-flask_app.register_blueprint(oauth_bp, url_prefix="/oauth")
-
 from .daemon import GraveboardsDaemon, DaemonThread
-from .services import ScoreFetcher
+from .services import ScoreFetcher, ServiceName
 appd = GraveboardsDaemon(app=flask_app)
-appd.register_service(ScoreFetcher)
+appd.register_service(ServiceName.SCORE_FETCHER, ScoreFetcher)
 daemon_thread = DaemonThread(appd)

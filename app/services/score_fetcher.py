@@ -2,7 +2,6 @@ import asyncio
 import heapq
 import queue
 from datetime import datetime, timedelta, timezone
-from enum import Enum
 
 from flask import Flask
 
@@ -11,22 +10,10 @@ from app import flask_app, cr, oac
 from app.osu_api import ScoreType
 from app.utils import aware_utcnow
 from app.models import ScoreFetcherTask
+from .enums import QueueName, EventName, RuntimeTaskName
 from .service import Service
 
 SCORE_FETCHER_INTERVAL_HOURS = 24
-
-
-class QueueName(Enum):
-    SCORE_FETCHER_TASKS = "score_fetcher_tasks"
-
-
-class EventName(Enum):
-    SCORE_FETCHER_TASK_ADDED = "score_fetcher_task_added"
-
-
-class RuntimeTaskName(Enum):
-    SCHEDULER_TASK = "scheduler_task"
-    SUBSCRIBER_TASK = "subscriber_task"
 
 
 class ScoreFetcher(Service):

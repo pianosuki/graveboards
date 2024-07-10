@@ -4,7 +4,7 @@ import traceback
 
 from flask import Flask
 
-from .services.service import Service
+from .services import ServiceName, Service
 
 
 class DaemonThread(threading.Thread):
@@ -32,7 +32,7 @@ class DaemonThread(threading.Thread):
 class GraveboardsDaemon:
     def __init__(self, app: Flask | None = None):
         self.app = app
-        self.services: dict[str, Service] = {}
+        self.services: dict[ServiceName, Service] = {}
 
         if app is not None:
             self.init_app(app)
@@ -41,8 +41,8 @@ class GraveboardsDaemon:
         self.app = app
         app.extensions["daemon"] = self
 
-    def register_service(self, service_class: type[Service]):
-        self.services[service_class.__name__] = service_class(self.app)
+    def register_service(self, service_name: ServiceName, service_class: type[Service]):
+        self.services[service_name] = service_class(self.app)
 
     async def run(self):
         await asyncio.gather(*self.service_task_generator())

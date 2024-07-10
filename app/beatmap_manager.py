@@ -1,10 +1,14 @@
+from __future__ import annotations
+
 import os
 import httpx
+from typing import TYPE_CHECKING
 
 from flask import Flask
 
-from .osu_api import OsuAPIClient
-from .crud import Crud
+if TYPE_CHECKING:
+    from .osu_api import OsuAPIClient
+    from .crud import Crud
 
 BEATMAPS_PATH = os.path.abspath("instance/beatmaps")
 BEATMAP_DOWNLOAD_BASEURL = "https://osu.ppy.sh/osu/"

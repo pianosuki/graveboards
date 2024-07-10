@@ -7,9 +7,7 @@ load_dotenv()
 BASE_URL = "http://localhost:8000"
 
 FLASK_SERVER_ARGS = {
-    "static_url_path": os.path.abspath(""),
-    "static_folder": os.path.abspath("app/static"),
-    "template_folder": os.path.abspath("app/templates")
+    "static_url_path": os.path.abspath("")
 }
 
 OAUTH_AUTHORIZATION_CODE = {

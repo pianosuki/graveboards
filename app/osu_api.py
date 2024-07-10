@@ -1,9 +1,14 @@
+from __future__ import annotations
+
 import httpx
 import time
 from enum import Enum
+from typing import TYPE_CHECKING
 
 from flask import Flask
-from authlib.integrations.flask_client import OAuth
+
+if TYPE_CHECKING:
+    from authlib.integrations.flask_client import OAuth
 
 API_BASEURL = "https://osu.ppy.sh/api/v2"
 

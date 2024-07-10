@@ -3,7 +3,7 @@ from flask import abort
 from app import cr, sync
 from app.models import User
 from app.schemas import users_schema
-from app.services.score_fetcher import ScoreFetcher, QueueName
+from app.services import ServiceName, QueueName
 
 
 def search():
@@ -24,4 +24,4 @@ def post(body: dict):
     if not score_fetcher_task:
         cr.add_score_fetcher_task(user_id)
         task = cr.get_score_fetcher_task(user_id=user_id)
-        sync.daemon.services[ScoreFetcher.__name__].queues[QueueName.SCORE_FETCHER_TASKS].put(task.id)
+        sync.daemon.services[ServiceName.SCORE_FETCHER].queues[QueueName.SCORE_FETCHER_TASKS].put(task.id)
