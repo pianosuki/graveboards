@@ -37,20 +37,24 @@ class BeatmapManagerBase:
 
 
 class BeatmapManager(BeatmapManagerBase):
-    def download_map(self, beatmap_id: int):
+    def download_map(self, beatmap_id: int) -> bool:
         beatmap_dict = self.api.get_beatmap(beatmap_id)
 
-        self._download(beatmap_dict)
+        result = self._download(beatmap_dict)
+        return result
 
-    def download_set(self, beatmapset_id: int):
+    def download_set(self, beatmapset_id: int) -> dict[str, bool]:
+        results = {}
         beatmapset_dict = self.api.get_beatmapset(beatmapset_id)
 
         for beatmap_dict in beatmapset_dict["beatmaps"]:
-            self._download(beatmap_dict)
+            result = self._download(beatmap_dict)
+            results[beatmap_dict["id"]] = result
 
-    def _download(self, beatmap_dict: dict):
+        return results
+
+    def _download(self, beatmap_dict: dict) -> bool:
         beatmap_id = beatmap_dict["id"]
-
         self._ensure_populated(beatmap_dict)
 
         if not self.crud.get_beatmap_version(checksum=beatmap_dict["checksum"]):
@@ -60,14 +64,16 @@ class BeatmapManager(BeatmapManagerBase):
             version_number = len(self.crud.get_beatmap_versions(beatmap_id=beatmap_id)) + 1
             output_path = os.path.join(output_directory, f"{version_number}.osu")
 
-            if not os.path.exists(output_path):
-                with httpx.stream("GET", url) as response:
-                    with open(output_path, 'wb') as f:
-                        for chunk in response.iter_bytes():
-                            f.write(chunk)
+            with httpx.stream("GET", url) as response:
+                with open(output_path, 'wb') as f:
+                    for chunk in response.iter_bytes():
+                        f.write(chunk)
 
-                self.crud.add_beatmap_version(beatmap_dict)
-                print(f"Downloaded beatmap version: {beatmap_id}/{version_number}")
+            self.crud.add_beatmap_version(beatmap_dict)
+            print(f"Downloaded beatmap version: {beatmap_id}/{version_number}")
+            return True
+
+        return False
 
     def _ensure_populated(self, beatmap_dict: dict):
         beatmap_id = beatmap_dict["id"]

@@ -48,7 +48,7 @@ components:
             description: A JSON object containing a beatmapset ID
             type: object
             properties:
-                beatmap_id:
+                beatmapset_id:
                     type: integer
             required:
                 - beatmapset_id
@@ -544,8 +544,10 @@ paths:
             requestBody:
                 $ref: "#/components/requestBodies/Beatmap"
             responses:
+                200:
+                    description: The latest version of the beatmap has already been downloaded
                 201:
-                    description: Successfully downloaded beatmap to the server
+                    description: Successfully downloaded the latest version of the beatmap to the server
 
     /beatmaps/{beatmap_id}:
         get:
@@ -614,6 +616,8 @@ paths:
             requestBody:
                 $ref: "#/components/requestBodies/Beatmapset"
             responses:
+                200:
+                    description: All of the latest versions of the beatmaps in the beatmapset have already been downloaded
                 201:
                     description: Successfully downloaded entire beatmapset to the server
 
