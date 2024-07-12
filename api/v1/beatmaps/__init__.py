@@ -23,6 +23,6 @@ def post(body: dict):
         abort(409, f"The beatmap with ID '{beatmap_id}' already exists")
 
     try:
-        bm.download(beatmap_id)
+        bm.download_map(beatmap_id)
     except httpx.HTTPStatusError as e:
         abort(e.response.status_code, e.response.json())

@@ -5,7 +5,7 @@ from marshmallow import fields, Schema
 from marshmallow.utils import EXCLUDE, RAISE
 
 from app import db, ma
-from .models import User, Score, Beatmap, Leaderboard, BeatmapVersion, Beatmapset, ScoreFetcherTask
+from .models import User, Score, Beatmap, Leaderboard, BeatmapVersion, Beatmapset, ScoreFetcherTask, Request
 
 __all__ = [
     "user_schema",
@@ -21,7 +21,9 @@ __all__ = [
     "leaderboard_schema",
     "leaderboards_schema",
     "score_schema",
-    "scores_schema"
+    "scores_schema",
+    "request_schema",
+    "requests_schema"
 ]
 
 
@@ -149,6 +151,15 @@ class ScoreSchema(ma.SQLAlchemyAutoSchema):
         return json.dumps(value) if value else "[]"
 
 
+class RequestSchema(ma.SQLAlchemyAutoSchema):
+    class Meta:
+        model = Request
+        load_instance = True
+        sqla_session = db.session
+
+    beatmapset_id = fields.Integer()
+
+
 class JSONTextSchema(Schema):
     def _serialize(self, obj: str, many: bool = False) -> Any | None:
         return json.loads(obj) if obj is not None else None
@@ -196,3 +207,5 @@ leaderboard_schema = LeaderboardSchema()
 leaderboards_schema = LeaderboardSchema(many=True)
 score_schema = ScoreSchema()
 scores_schema = ScoreSchema(many=True)
+request_schema = RequestSchema()
+requests_schema = RequestSchema(many=True)

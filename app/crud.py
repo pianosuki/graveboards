@@ -70,6 +70,11 @@ class Crud(CrudBase):
         self.db.session.add(score)
         self.db.session.commit()
 
+    def add_request(self, request_dict: dict):
+        request = request_schema.load(request_dict)
+        self.db.session.add(request)
+        self.db.session.commit()
+
     # Read #
     def user_exists(self, user_id) -> bool:
         return User.query.filter_by(id=user_id).one_or_none() is not None
@@ -116,16 +121,18 @@ class Crud(CrudBase):
     def get_scores(self, **kwargs) -> list[Score]:
         return Score.query.filter_by(**kwargs).all()
 
+    def get_request(self, **kwargs) -> Request | None:
+        return Request.query.filter_by(**kwargs).one_or_none()
+
+    def get_requests(self, **kwargs) -> list[Request]:
+        return Request.query.filter_by(**kwargs).all()
+
     def get_latest_beatmap_version(self, beatmap_id: int) -> BeatmapVersion | None:
         return BeatmapVersion.query.filter_by(beatmap_id=beatmap_id).order_by(BeatmapVersion.id.desc()).first()
 
     def beatmap_exists(self, beatmap_id: int) -> bool:
         beatmap = Beatmap.query.get(beatmap_id)
         return beatmap is not None
-
-    def beatmap_version_exists(self, checksum: str) -> bool:
-        beatmap_version = BeatmapVersion.query.filter_by(checksum=checksum).first()
-        return beatmap_version is not None
 
     def beatmapset_exists(self, beatmapset_id: int) -> bool:
         beatmapset = Beatmapset.query.get(beatmapset_id)

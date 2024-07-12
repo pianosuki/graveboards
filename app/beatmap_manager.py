@@ -37,11 +37,23 @@ class BeatmapManagerBase:
 
 
 class BeatmapManager(BeatmapManagerBase):
-    def download(self, beatmap_id: int):
+    def download_map(self, beatmap_id: int):
         beatmap_dict = self.api.get_beatmap(beatmap_id)
-        self.ensure_populated(beatmap_dict)
 
-        if not self.crud.beatmap_version_exists(beatmap_dict["checksum"]):
+        self._download(beatmap_dict)
+
+    def download_set(self, beatmapset_id: int):
+        beatmapset_dict = self.api.get_beatmapset(beatmapset_id)
+
+        for beatmap_dict in beatmapset_dict["beatmaps"]:
+            self._download(beatmap_dict)
+
+    def _download(self, beatmap_dict: dict):
+        beatmap_id = beatmap_dict["id"]
+
+        self._ensure_populated(beatmap_dict)
+
+        if not self.crud.get_beatmap_version(checksum=beatmap_dict["checksum"]):
             url = BEATMAP_DOWNLOAD_BASEURL + str(beatmap_id)
             output_directory = os.path.join(BEATMAPS_PATH, str(beatmap_id))
             os.makedirs(output_directory, exist_ok=True)
@@ -57,7 +69,7 @@ class BeatmapManager(BeatmapManagerBase):
                 self.crud.add_beatmap_version(beatmap_dict)
                 print(f"Downloaded beatmap version: {beatmap_id}/{version_number}")
 
-    def ensure_populated(self, beatmap_dict: dict):
+    def _ensure_populated(self, beatmap_dict: dict):
         beatmap_id = beatmap_dict["id"]
 
         if not self.crud.beatmap_exists(beatmap_id):

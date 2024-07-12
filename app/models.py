@@ -10,7 +10,8 @@ __all__ = [
     "BeatmapVersion",
     "Beatmapset",
     "Leaderboard",
-    "Score"
+    "Score",
+    "Request"
 ]
 
 
@@ -148,3 +149,11 @@ class Score(db.Model):
     __table_args__ = (
         db.UniqueConstraint("beatmap_id", "created_at", name="_beatmap_and_creation_time_uc"),
     )
+
+
+class Request(db.Model):
+    __tablename__ = "requests"
+    id = db.Column(db.Integer, primary_key=True)
+    beatmapset_id = db.Column(db.Integer, db.ForeignKey("beatmapsets.id"), nullable=False)
+    comment = db.Column(db.Text)
+    mv_checked = db.Column(db.Boolean, default=False)
