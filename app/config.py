@@ -9,7 +9,7 @@ CONNEXION_BASE_URL = "http://127.0.0.1:8000"
 ANGULAR_BASE_URL = "http://127.0.0.1:4200"
 
 FLASK_SERVER_ARGS = {
-    "static_url_path": os.path.abspath("")
+    "static_url_path": ""
 }
 
 OAUTH_AUTHORIZATION_CODE = {
