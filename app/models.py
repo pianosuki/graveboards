@@ -7,17 +7,28 @@ __all__ = [
     "OauthToken",
     "ScoreFetcherTask",
     "Beatmap",
-    "BeatmapVersion",
+    "BeatmapSnapshot",
     "Beatmapset",
+    "BeatmapsetSnapshot",
+    "BeatmapsetListing",
     "Leaderboard",
     "Score",
     "Request"
 ]
 
 
+beatmap_snapshot_to_beatmapset_snapshot = db.Table(
+    "beatmap_snapshots_to_beatmapset_snapshots",
+    db.Column("beatmap_snapshot_id", db.Integer, db.ForeignKey("beatmap_snapshots.id"), primary_key=True),
+    db.Column("beatmapset_snapshot_id", db.Integer, db.ForeignKey("beatmapset_snapshots.id"), primary_key=True)
+)
+
+
 class User(db.Model):
     __tablename__ = "users"
     id = db.Column(db.Integer, primary_key=True)
+
+    # Relationships
     scores = db.relationship("Score", backref="user", lazy=True)
     tokens = db.relationship("OauthToken", backref="user", lazy=True)
 
@@ -53,15 +64,21 @@ class Beatmap(db.Model):
     __tablename__ = "beatmaps"
     id = db.Column(db.Integer, primary_key=True)
     beatmapset_id = db.Column(db.Integer, db.ForeignKey("beatmapsets.id"), nullable=False)
+
+    # Relationships
     leaderboards = db.relationship("Leaderboard", backref="beatmap", lazy=True)
-    versions = db.relationship("BeatmapVersion", backref="beatmap", lazy=True)
+    snapshots = db.relationship("BeatmapSnapshot", backref="beatmap", lazy=True)
 
 
-class BeatmapVersion(db.Model):
-    __tablename__ = "beatmap_versions"
+class BeatmapSnapshot(db.Model):
+    __tablename__ = "beatmap_snapshots"
     id = db.Column(db.Integer, primary_key=True)
     beatmap_id = db.Column(db.Integer, db.ForeignKey("beatmaps.id"), nullable=False)
-    version_number = db.Column(db.Integer, nullable=False)
+    snapshot_number = db.Column(db.Integer, nullable=False)
+    snapshot_date = db.Column(db.DateTime, default=aware_utcnow)
+    checksum = db.Column(db.String(32), unique=True, nullable=False)
+
+    # osu! API datastructure
     difficulty_rating = db.Column(db.Float, nullable=False)
     mode = db.Column(db.String, nullable=False)
     status = db.Column(db.String, nullable=False)
@@ -86,13 +103,29 @@ class BeatmapVersion(db.Model):
     playcount = db.Column(db.Integer, nullable=False)
     ranked = db.Column(db.Integer, nullable=False)
     url = db.Column(db.String, nullable=False)
-    checksum = db.Column(db.String(32), unique=True, nullable=False)
+
+    # Relationships
     leaderboard = db.relationship("Leaderboard", uselist=False, lazy=True)
 
 
 class Beatmapset(db.Model):
     __tablename__ = "beatmapsets"
     id = db.Column(db.Integer, primary_key=True)
+
+    # Relationships
+    snapshots = db.relationship("BeatmapsetSnapshot", backref="beatmapset", lazy=True)
+
+
+class BeatmapsetSnapshot(db.Model):
+    __tablename__ = "beatmapset_snapshots"
+    id = db.Column(db.Integer, primary_key=True)
+    beatmapset_id = db.Column(db.Integer, db.ForeignKey("beatmapsets.id"), nullable=False)
+    snapshot_number = db.Column(db.Integer, nullable=False)
+    snapshot_date = db.Column(db.DateTime, default=aware_utcnow)
+    checksum = db.Column(db.String(32), unique=True, nullable=False)
+    verified = db.Column(db.Boolean, default=False)
+
+    # osu! API datastructure
     artist = db.Column(db.String, nullable=False)
     artist_unicode = db.Column(db.String, nullable=False)
     covers = db.Column(db.Text, nullable=False)
@@ -111,18 +144,37 @@ class Beatmapset(db.Model):
     track_id = db.Column(db.Integer)
     user_id = db.Column(db.Integer, nullable=False)
     video = db.Column(db.Boolean, nullable=False)
-    beatmaps = db.relationship("Beatmap", backref="beatmapset", lazy=True)
+
+    # Relationships
+    beatmap_snapshots = db.relationship("BeatmapSnapshot", secondary=beatmap_snapshot_to_beatmapset_snapshot, backref="beatmapset_snapshots", lazy=True)
+    # beatmapset_listing = db.relationship("BeatmapsetListing", back_populates="beatmapset_snapshot")
+
+
+class BeatmapsetListing(db.Model):
+    __tablename__ = "beatmapset_listings"
+    id = db.Column(db.Integer, primary_key=True)
+    beatmapset_id = db.Column(db.Integer, db.ForeignKey("beatmapsets.id"), nullable=False)
+    beatmapset_snapshot_id = db.Column(db.Integer, db.ForeignKey("beatmapset_snapshots.id"), nullable=False)
+
+    # Relationships
+    beatmapset_snapshot = db.relationship("BeatmapsetSnapshot", primaryjoin="BeatmapsetListing.beatmapset_snapshot_id == BeatmapsetSnapshot.id", uselist=False)
+
+    __table_args__ = (
+        db.UniqueConstraint("beatmapset_id", "beatmapset_snapshot_id", name="_beatmapset_and_snapshot_uc"),
+    )
 
 
 class Leaderboard(db.Model):
     __tablename__ = "leaderboards"
     id = db.Column(db.Integer, primary_key=True)
     beatmap_id = db.Column(db.Integer, db.ForeignKey("beatmaps.id"), nullable=False)
-    beatmap_version_id = db.Column(db.Integer, db.ForeignKey("beatmap_versions.id"), nullable=False)
+    beatmap_snapshot_id = db.Column(db.Integer, db.ForeignKey("beatmap_snapshots.id"), nullable=False)
+
+    # Relationships
     scores = db.relationship("Score", backref="leaderboard", lazy=True)
 
     __table_args__ = (
-        db.UniqueConstraint("beatmap_id", "beatmap_version_id", name="_beatmap_and_version_uc"),
+        db.UniqueConstraint("beatmap_id", "beatmap_snapshot_id", name="_beatmap_and_snapshot_uc"),
     )
 
 
@@ -133,6 +185,8 @@ class Score(db.Model):
     beatmap_id = db.Column(db.Integer, db.ForeignKey("beatmaps.id"), nullable=False)
     beatmapset_id = db.Column(db.Integer, db.ForeignKey("beatmapsets.id"), nullable=False)
     leaderboard_id = db.Column(db.Integer, db.ForeignKey("leaderboards.id"), nullable=False)
+
+    # osu! API datastructure
     accuracy = db.Column(db.Float, nullable=False)
     created_at = db.Column(db.DateTime, nullable=False)
     max_combo = db.Column(db.Integer, nullable=False)
@@ -154,6 +208,8 @@ class Score(db.Model):
 class Request(db.Model):
     __tablename__ = "requests"
     id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
     beatmapset_id = db.Column(db.Integer, db.ForeignKey("beatmapsets.id"), nullable=False)
     comment = db.Column(db.Text)
     mv_checked = db.Column(db.Boolean, default=False)
+    created_at = db.Column(db.DateTime, default=aware_utcnow)

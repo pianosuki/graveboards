@@ -3,22 +3,28 @@ from __future__ import annotations
 import os
 import httpx
 from typing import TYPE_CHECKING
+from io import BytesIO
+from zipfile import ZipFile
 
 from flask import Flask
+
+from .utils import combine_checksums
 
 if TYPE_CHECKING:
     from .osu_api import OsuAPIClient
     from .crud import Crud
 
 BEATMAPS_PATH = os.path.abspath("instance/beatmaps")
+BEATMAPSETS_PATH = os.path.abspath("instance/beatmapsets")
 BEATMAP_DOWNLOAD_BASEURL = "https://osu.ppy.sh/osu/"
-BEATMAP_VERSION_FILE_PATH = os.path.join(BEATMAPS_PATH, "{beatmap_id}/{version_number}.osu")
+BEATMAP_SNAPSHOT_FILE_PATH = os.path.join(BEATMAPS_PATH, "{beatmap_id}/{snapshot_number}.osu")
 
 
 class BeatmapManagerBase:
     def __init__(self, app: Flask | None = None):
         self.app = app
         os.makedirs(BEATMAPS_PATH, exist_ok=True)
+        os.makedirs(BEATMAPSETS_PATH, exist_ok=True)
 
         if app is not None:
             self.init_app(app)
@@ -28,7 +34,7 @@ class BeatmapManagerBase:
         app.extensions["beatmap_manager"] = self
 
     @property
-    def api(self) -> OsuAPIClient | None:
+    def osu_api(self) -> OsuAPIClient | None:
         return self.app.extensions.get("osu_api")
 
     @property
@@ -37,59 +43,67 @@ class BeatmapManagerBase:
 
 
 class BeatmapManager(BeatmapManagerBase):
-    def download_map(self, beatmap_id: int) -> bool:
-        beatmap_dict = self.api.get_beatmap(beatmap_id)
+    def archive(self, beatmapset_id: int) -> list[int]:
+        beatmapset_dict = self.osu_api.get_beatmapset(beatmapset_id)
+        checksum = combine_checksums([beatmap["checksum"] for beatmap in beatmapset_dict["beatmaps"]])
 
-        result = self._download(beatmap_dict)
-        return result
+        self._ensure_populated(beatmapset_dict)
 
-    def download_set(self, beatmapset_id: int) -> dict[str, bool]:
-        results = {}
-        beatmapset_dict = self.api.get_beatmapset(beatmapset_id)
+        if not self.crud.get_beatmapset_snapshot(checksum=checksum):
+            beatmap_ids = self._snapshot(beatmapset_dict)
+            self._download(beatmap_ids)
 
+            return beatmap_ids
+        else:
+            return []
+
+    def _ensure_populated(self, beatmapset_dict: dict):
+        beatmapset_id = beatmapset_dict["id"]
+
+        # Beatmapset
+        if not self.crud.get_beatmapset(id=beatmapset_id):
+            self.crud.add_beatmapset(beatmapset_id)
+
+        # Beatmap
         for beatmap_dict in beatmapset_dict["beatmaps"]:
-            result = self._download(beatmap_dict)
-            results[beatmap_dict["id"]] = result
+            beatmap_id = beatmap_dict["id"]
 
-        return results
+            if not self.crud.get_beatmap(id=beatmap_id):
+                self.crud.add_beatmap(beatmap_id, beatmapset_id)
 
-    def _download(self, beatmap_dict: dict) -> bool:
-        beatmap_id = beatmap_dict["id"]
-        self._ensure_populated(beatmap_dict)
+    def _snapshot(self, beatmapset_dict: dict) -> list[int]:
+        beatmap_snapshots = []
 
-        if not self.crud.get_beatmap_version(checksum=beatmap_dict["checksum"]):
-            url = BEATMAP_DOWNLOAD_BASEURL + str(beatmap_id)
+        # BeatmapSnapshot
+        for beatmap_dict in beatmapset_dict["beatmaps"]:
+            checksum = beatmap_dict["checksum"]
+
+            if not self.crud.get_beatmap_snapshot(checksum=checksum):
+                beatmap_snapshot = self.crud.add_beatmap_snapshot(beatmap_dict)
+                beatmap_snapshots.append(beatmap_snapshot)
+
+        # BeatmapsetSnapshot
+        self.crud.add_beatmapset_snapshot(beatmapset_dict, beatmap_snapshots)
+
+        return [beatmap_snapshot.beatmap_id for beatmap_snapshot in beatmap_snapshots]
+
+    def _download(self, beatmap_ids: list[int]):
+        for beatmap_id in beatmap_ids:
+            url = os.path.join(BEATMAP_DOWNLOAD_BASEURL, str(beatmap_id))
+
             output_directory = os.path.join(BEATMAPS_PATH, str(beatmap_id))
             os.makedirs(output_directory, exist_ok=True)
-            version_number = len(self.crud.get_beatmap_versions(beatmap_id=beatmap_id)) + 1
-            output_path = os.path.join(output_directory, f"{version_number}.osu")
+            snapshot_number = self.crud.get_latest_beatmap_snapshot(beatmap_id).snapshot_number
+            output_path = os.path.join(output_directory, f"{snapshot_number}.osu")
 
             with httpx.stream("GET", url) as response:
                 with open(output_path, 'wb') as f:
                     for chunk in response.iter_bytes():
                         f.write(chunk)
 
-            self.crud.add_beatmap_version(beatmap_dict)
-            print(f"Downloaded beatmap version: {beatmap_id}/{version_number}")
-            return True
-
-        return False
-
-    def _ensure_populated(self, beatmap_dict: dict):
-        beatmap_id = beatmap_dict["id"]
-
-        if not self.crud.beatmap_exists(beatmap_id):
-            beatmapset_id = beatmap_dict["beatmapset_id"]
-
-            if not self.crud.beatmapset_exists(beatmapset_id):
-                beatmapset_dict = self.api.get_beatmapset(beatmapset_id)
-                self.crud.add_beatmapset(beatmapset_dict)
-
-            self.crud.add_beatmap(beatmap_id=beatmap_id, beatmapset_id=beatmapset_id)
-
     @staticmethod
-    def get(beatmap_id: int, version_number: int) -> bytes:
-        file_path = BEATMAP_VERSION_FILE_PATH.format(beatmap_id=beatmap_id, version_number=version_number)
+    def get(beatmap_id: int, snapshot_number: int) -> bytes:
+        file_path = BEATMAP_SNAPSHOT_FILE_PATH.format(beatmap_id=beatmap_id, snapshot_number=snapshot_number)
 
         with open(file_path, "rb") as file:
             file_bytes = file.read()
@@ -97,5 +111,19 @@ class BeatmapManager(BeatmapManagerBase):
         return file_bytes
 
     @staticmethod
-    def get_path(beatmap_id: int, version_number: int) -> str:
-        return BEATMAP_VERSION_FILE_PATH.format(beatmap_id=beatmap_id, version_number=version_number)
+    def get_path(beatmap_id: int, snapshot_number: int) -> str:
+        return BEATMAP_SNAPSHOT_FILE_PATH.format(beatmap_id=beatmap_id, snapshot_number=snapshot_number)
+
+    def get_zip(self, beatmapset_id: int, snapshot_number: int) -> BytesIO:
+        zip_buffer = BytesIO()
+
+        with ZipFile(zip_buffer, "w") as zip_file:
+            beatmapset_snapshot = self.crud.get_beatmapset_snapshot(beatmapset_id=beatmapset_id, snapshot_number=snapshot_number)
+
+            for beatmap_snapshot in beatmapset_snapshot.beatmap_snapshots:
+                beatmap_path = self.get_path(beatmap_snapshot.beatmap_id, beatmap_snapshot.snapshot_number)
+                zip_file.write(beatmap_path, f"{beatmap_snapshot.beatmap_id}.osu")
+
+        zip_buffer.seek(0)
+
+        return zip_buffer

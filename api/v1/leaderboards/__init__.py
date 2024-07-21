@@ -2,6 +2,7 @@ from flask import abort
 
 from app import cr
 from app.schemas import leaderboards_schema, leaderboard_schema
+from . import snapshots
 
 
 def search():

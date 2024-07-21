@@ -1,6 +1,7 @@
 import time
 import uuid
 import secrets
+import hashlib
 from datetime import datetime, timezone
 
 
@@ -30,3 +31,12 @@ def parse_iso8601(datetime_string) -> datetime:
         return datetime.strptime(datetime_string, "%Y-%m-%dT%H:%M:%S%z")
     else:
         return datetime.strptime(datetime_string, "%Y-%m-%dT%H:%M:%S")
+
+
+def combine_checksums(checksums: list[str]) -> str:
+    combined_hash = hashlib.md5()
+
+    for checksum in checksums:
+        combined_hash.update(checksum.encode())
+
+    return combined_hash.hexdigest()

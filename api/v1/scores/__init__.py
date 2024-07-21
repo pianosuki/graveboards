@@ -3,7 +3,7 @@ from flask import abort
 from api import v1 as api
 from app import cr
 from app.schemas import scores_schema
-from . import versions
+from . import snapshots
 
 
 def search(**kwargs):

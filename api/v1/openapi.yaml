@@ -54,12 +54,12 @@ components:
                 - beatmapset_id
 
         LeaderboardQuery:
-            description: A JSON object containing a beatmap ID and version number. Defaults to latest version if no version number specified
+            description: A JSON object containing a beatmap ID and snapshot number. Defaults to latest snapshot if no snapshot number specified
             type: object
             properties:
                 beatmap_id:
                     type: integer
-                version_number:
+                snapshot_number:
                     type: integer
             required:
                 - beatmap_id
@@ -230,9 +230,9 @@ components:
             schema:
                 type: integer
 
-        VersionNumber:
-            name: version_number
-            description: osu! beatmap version number
+        SnapshotNumber:
+            name: snapshot_number
+            description: osu! beatmap snapshot number
             in: path
             required: true
             schema:
@@ -430,14 +430,6 @@ components:
                     schema:
                         $ref: "#/components/schemas/UserQuery"
 
-        Beatmap:
-            description: Beatmap to download to the server
-            required: true
-            content:
-                application/json:
-                    schema:
-                        $ref: "#/components/schemas/BeatmapQuery"
-
         Beatmapset:
             description: Beatmapset to download to the server
             required: true
@@ -535,20 +527,6 @@ paths:
                 200:
                     description: Successfully retrieved beatmaps
 
-        post:
-            summary: Downloads a new beatmap to the server
-            tags:
-                - Beatmaps
-            security:
-                - ApiKeyAuth: []
-            requestBody:
-                $ref: "#/components/requestBodies/Beatmap"
-            responses:
-                200:
-                    description: The latest version of the beatmap has already been downloaded
-                201:
-                    description: Successfully downloaded the latest version of the beatmap to the server
-
     /beatmaps/{beatmap_id}:
         get:
             summary: Returns the metadata of the beatmap
@@ -560,32 +538,44 @@ paths:
                 200:
                     description: Successfully retrieved beatmap metadata
 
-    /beatmaps/{beatmap_id}/versions:
+    /beatmaps/{beatmap_id}/snapshots:
         get:
-            summary: Returns a list of the beatmap's version IDs
+            summary: Returns a list of the beatmap's snapshots
             tags:
                 - Beatmaps
             parameters:
                 - $ref: "#/components/parameters/BeatmapId"
             responses:
                 200:
-                    description: Successfully retrieved beatmap versions
+                    description: Successfully retrieved beatmap snapshots
 
-    /beatmaps/{beatmap_id}/versions/{version_number}:
+    /beatmaps/{beatmap_id}/snapshots/{snapshot_number}:
         get:
-            summary: Returns the .osu file of the beatmap's specified version
+            summary: Returns the beatmap's specified snapshot
             tags:
                 - Beatmaps
             parameters:
                 - $ref: "#/components/parameters/BeatmapId"
-                - $ref: "#/components/parameters/VersionNumber"
+                - $ref: "#/components/parameters/SnapshotNumber"
+            responses:
+                200:
+                    description: Successfully retrieved beatmap snapshot
+
+    /beatmaps/{beatmap_id}/snapshots/{snapshot_number}/osu:
+        get:
+            summary: Returns the .osu file of the beatmap's specified snapshot
+            tags:
+                - Beatmaps
+            parameters:
+                -   $ref: "#/components/parameters/BeatmapId"
+                -   $ref: "#/components/parameters/SnapshotNumber"
             responses:
                 200:
                     description: Successfully retrieved beatmap file
 
     /beatmaps/{beatmap_id}/difficulty:
         get:
-            summary: Calculates and returns the difficulty values of the beatmap's latest version
+            summary: Calculates and returns the difficulty values of the beatmap's latest snapshot
             tags:
                 - Beatmaps
             parameters:
@@ -594,19 +584,27 @@ paths:
                 200:
                     description: Successfully retrieved beatmap difficulty values
 
-    /beatmaps/{beatmap_id}/difficulty/{version_number}:
+    /beatmaps/{beatmap_id}/difficulty/{snapshot_number}:
         get:
-            summary: Calculates and returns the difficulty values of the beatmap's specified version
+            summary: Calculates and returns the difficulty values of the beatmap's specified snapshot
             tags:
                 - Beatmaps
             parameters:
                 -   $ref: "#/components/parameters/BeatmapId"
-                -   $ref: "#/components/parameters/VersionNumber"
+                -   $ref: "#/components/parameters/SnapshotNumber"
             responses:
                 200:
                     description: Successfully retrieved beatmap difficulty values
 
     /beatmapsets:
+        get:
+            summary: Returns a list of beatmapsets
+            tags:
+                - Beatmapsets
+            responses:
+                200:
+                    description: Successfully retrieved beatmapsets
+
         post:
             summary: Downloads all beatmaps in a beatmapset to the server
             tags:
@@ -617,9 +615,53 @@ paths:
                 $ref: "#/components/requestBodies/Beatmapset"
             responses:
                 200:
-                    description: All of the latest versions of the beatmaps in the beatmapset have already been downloaded
+                    description: All of the latest snapshots of the beatmaps in the beatmapset have already been downloaded
                 201:
                     description: Successfully downloaded entire beatmapset to the server
+
+    /beatmapsets/listings:
+        get:
+            summary: Returns a list of beatmapset data for the frontend
+            tags:
+                - Beatmapsets
+            responses:
+                200:
+                    description: Successfully retrieved beatmapset listings
+
+    /beatmapsets/{beatmapset_id}/snapshots:
+        get:
+            summary: Returns a list of the beatmapset's snapshots
+            tags:
+                - Beatmapsets
+            parameters:
+                -   $ref: "#/components/parameters/BeatmapsetId"
+            responses:
+                200:
+                    description: Successfully retrieved beatmapset snapshots
+
+    /beatmapsets/{beatmapset_id}/snapshots/{snapshot_number}:
+        get:
+            summary: Returns the beatmapset's specified snapshot
+            tags:
+                - Beatmapsets
+            parameters:
+                -   $ref: "#/components/parameters/BeatmapsetId"
+                -   $ref: "#/components/parameters/SnapshotNumber"
+            responses:
+                200:
+                    description: Successfully retrieved beatmapset snapshot
+
+    /beatmapsets/{beatmapset_id}/snapshots/{snapshot_number}/zip:
+        get:
+            summary: Returns a .zip of the .osu files of the beatmapset's specified snapshot
+            tags:
+                - Beatmapsets
+            parameters:
+                -   $ref: "#/components/parameters/BeatmapsetId"
+                -   $ref: "#/components/parameters/SnapshotNumber"
+            responses:
+                200:
+                    description: Successfully retrieved zipped beatmap files
 
     /leaderboards:
         get:
@@ -644,7 +686,7 @@ paths:
 
     /leaderboards/{beatmap_id}:
         get:
-            summary: Returns the leaderboard of the beatmap's latest version
+            summary: Returns the leaderboard of the beatmap's latest snapshot
             tags:
                 - Leaderboards
             parameters:
@@ -653,25 +695,25 @@ paths:
                 200:
                     description: Successfully retrieved leaderboard
 
-    /leaderboards/{beatmap_id}/versions:
+    /leaderboards/{beatmap_id}/snapshots:
         get:
-            summary: Returns a list of the beatmap's leaderboard versions
+            summary: Returns a list of the beatmap's leaderboard snapshots
             tags:
                 - Leaderboards
             parameters:
                 - $ref: "#/components/parameters/BeatmapId"
             responses:
                 200:
-                    description: Successfully retrieved leaderboard versions
+                    description: Successfully retrieved leaderboard snapshots
 
-    /leaderboards/{beatmap_id}/versions/{version_number}:
+    /leaderboards/{beatmap_id}/snapshots/{snapshot_number}:
         get:
-            summary: Returns the leaderboard of the beatmap's specified version
+            summary: Returns the leaderboard of the beatmap's specified snapshot
             tags:
                 - Leaderboards
             parameters:
                 - $ref: "#/components/parameters/BeatmapId"
-                - $ref: "#/components/parameters/VersionNumber"
+                - $ref: "#/components/parameters/SnapshotNumber"
             responses:
                 200:
                     description: Successfully retrieved leaderboard
@@ -708,7 +750,7 @@ paths:
                     description: Successfully retrieved scores
 
         post:
-            summary: Adds a score to the latest version of the appropriate beatmap's leaderboard
+            summary: Adds a score to the latest snapshot of the appropriate beatmap's leaderboard
             tags:
                 - Scores
             security:
@@ -719,16 +761,16 @@ paths:
                 201:
                     description: Successfully added score
 
-    /scores/{beatmap_id}/versions/{version_number}:
+    /scores/{beatmap_id}/snapshots/{snapshot_number}:
         post:
-            summary: Adds a score to the specified beatmap version's leaderboard
+            summary: Adds a score to the specified beatmap snapshot's leaderboard
             tags:
                 - Scores
             security:
                 - ApiKeyAuth: []
             parameters:
                 - $ref: "#/components/parameters/BeatmapId"
-                - $ref: "#/components/parameters/VersionNumber"
+                - $ref: "#/components/parameters/SnapshotNumber"
             requestBody:
                 $ref: "#/components/requestBodies/Score"
             responses:

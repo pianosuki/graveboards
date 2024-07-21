@@ -3,21 +3,28 @@ import httpx
 from flask import abort
 
 from app import bm, cr
+from app.schemas import beatmapsets_schema
+from . import listings, snapshots
+
+
+def search(**kwargs):
+    # To-do: handle filtering
+    beatmapsets = cr.get_beatmapsets()
+    return beatmapsets_schema.dump(beatmapsets), 200
 
 
 def post(body: dict):
     beatmapset_id = body["beatmapset_id"]
 
     try:
-        results = bm.download_set(beatmapset_id)
+        beatmap_ids = bm.archive(beatmapset_id)
 
-        if any(results.values()):
+        if any(beatmap_ids):
             response = {}
 
-            for beatmap_id, result in results.items():
-                if result:
-                    version_number = cr.get_latest_beatmap_version(beatmap_id).version_number
-                    response[beatmap_id] = version_number
+            for beatmap_id in beatmap_ids:
+                snapshot_number = cr.get_latest_beatmap_snapshot(beatmap_id).snapshot_number
+                response[beatmap_id] = snapshot_number
 
             return response, 201
         else:

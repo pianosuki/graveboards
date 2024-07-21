@@ -30,6 +30,8 @@ oac = OsuAPIClient(app=flask_app)
 bm = BeatmapManager(app=flask_app)
 cr = Crud(app=flask_app)
 
+from .events import *
+
 from .daemon import GraveboardsDaemon, DaemonThread
 from .services import ScoreFetcher, ServiceName
 appd = GraveboardsDaemon(app=flask_app)

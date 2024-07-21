@@ -31,9 +31,13 @@ class APIEndpoint(Enum):
     # Users
     ME = API_BASEURL + "/me"
     SCORES = API_BASEURL + "/users/{user}/scores/{type}"
+    USER = API_BASEURL + "/users/{user}/{mode}"
 
     def format(self, *args, **kwargs) -> str:
-        return str.format(self.value, *args, **kwargs)
+        args = [arg if arg is not None else "" for arg in args]
+        kwargs = {key: value if value is not None else "" for key, value in kwargs.items()}
+
+        return str.format(self.value, *args, **kwargs).rstrip("/")
 
 
 class ScoreType(Enum):
@@ -174,6 +178,19 @@ class OsuAPIClient(OsuAPIBase):
             query_parameters["offset"] = offset
 
         url += self.format_query_parameters(query_parameters)
+
+        response = self.client.get(url, headers=headers)
+        response.raise_for_status()
+        return response.json()
+
+    def get_user(self, user_id: int, mode: Ruleset | None = None) -> dict:
+        url = APIEndpoint.USER.format(user=user_id, mode=mode)
+
+        headers = {
+            "Content-Type": "application/json",
+            "Accept": "application/json",
+            **self.auth_headers
+        }
 
         response = self.client.get(url, headers=headers)
         response.raise_for_status()
