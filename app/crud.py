@@ -6,6 +6,10 @@ from flask_sqlalchemy import SQLAlchemy
 from .models import *
 from .schemas import *
 
+MIN_LIMIT = 1
+MAX_LIMIT = 100
+DEFAULT_LIMIT = 50
+
 
 class CrudBase:
     def __init__(self, app: Flask | None = None):
@@ -126,23 +130,26 @@ class Crud(CrudBase):
     def get_user(self, **kwargs) -> User | None:
         return User.query.filter_by(**kwargs).one_or_none()
 
+    def get_users(self, limit: int = DEFAULT_LIMIT, offset: int = 0, **kwargs) -> list[User]:
+        return User.query.filter_by(**kwargs).limit(limit).offset(offset).all()
+
     def user_exists(self, user_id) -> bool:
         return User.query.filter_by(id=user_id).one_or_none() is not None
 
-    def get_oauth_tokens(self, **kwargs) -> list[OauthToken]:
-        return OauthToken.query.filter_by(**kwargs).all()
+    def get_oauth_tokens(self, limit: int = DEFAULT_LIMIT, offset: int = 0, **kwargs) -> list[OauthToken]:
+        return OauthToken.query.filter_by(**kwargs).limit(limit).offset(offset).all()
 
     def get_score_fetcher_task(self, **kwargs) -> ScoreFetcherTask | None:
         return ScoreFetcherTask.query.filter_by(**kwargs).one_or_none()
 
-    def get_score_fetcher_tasks(self, **kwargs) -> list[ScoreFetcherTask]:
-        return ScoreFetcherTask.query.filter_by(**kwargs).all()
+    def get_score_fetcher_tasks(self, limit: int = DEFAULT_LIMIT, offset: int = 0, **kwargs) -> list[ScoreFetcherTask]:
+        return ScoreFetcherTask.query.filter_by(**kwargs).limit(limit).offset(offset).all()
 
     def get_beatmap(self, **kwargs) -> Beatmap | None:
         return Beatmap.query.filter_by(**kwargs).one_or_none()
 
-    def get_beatmaps(self, **kwargs) -> list[Beatmap]:
-        return Beatmap.query.filter_by(**kwargs).all()
+    def get_beatmaps(self, limit: int = DEFAULT_LIMIT, offset: int = 0, **kwargs) -> list[Beatmap]:
+        return Beatmap.query.filter_by(**kwargs).limit(limit).offset(offset).all()
 
     def beatmap_exists(self, beatmap_id: int) -> bool:
         beatmap = Beatmap.query.get(beatmap_id)
@@ -151,8 +158,8 @@ class Crud(CrudBase):
     def get_beatmap_snapshot(self, **kwargs) -> BeatmapSnapshot | None:
         return BeatmapSnapshot.query.filter_by(**kwargs).one_or_none()
 
-    def get_beatmap_snapshots(self, **kwargs) -> list[BeatmapSnapshot]:
-        return BeatmapSnapshot.query.filter_by(**kwargs).all()
+    def get_beatmap_snapshots(self, limit: int = DEFAULT_LIMIT, offset: int = 0, **kwargs) -> list[BeatmapSnapshot]:
+        return BeatmapSnapshot.query.filter_by(**kwargs).limit(limit).offset(offset).all()
 
     def get_latest_beatmap_snapshot(self, beatmap_id: int) -> BeatmapSnapshot | None:
         return BeatmapSnapshot.query.filter_by(beatmap_id=beatmap_id).order_by(BeatmapSnapshot.id.desc()).first()
@@ -160,14 +167,14 @@ class Crud(CrudBase):
     def get_beatmapset(self, **kwargs) -> Beatmapset | None:
         return Beatmapset.query.filter_by(**kwargs).one_or_none()
 
-    def get_beatmapsets(self, **kwargs) -> list[Beatmapset]:
-        return Beatmapset.query.filter_by(**kwargs).all()
+    def get_beatmapsets(self, limit: int = DEFAULT_LIMIT, offset: int = 0, **kwargs) -> list[Beatmapset]:
+        return Beatmapset.query.filter_by(**kwargs).limit(limit).offset(offset).all()
 
     def get_beatmapset_snapshot(self, **kwargs) -> BeatmapsetSnapshot | None:
         return BeatmapsetSnapshot.query.filter_by(**kwargs).one_or_none()
 
-    def get_beatmapset_snapshots(self, **kwargs) -> list[BeatmapsetSnapshot]:
-        return BeatmapsetSnapshot.query.filter_by(**kwargs).all()
+    def get_beatmapset_snapshots(self, limit: int = DEFAULT_LIMIT, offset: int = 0, **kwargs) -> list[BeatmapsetSnapshot]:
+        return BeatmapsetSnapshot.query.filter_by(**kwargs).limit(limit).offset(offset).all()
 
     def get_latest_beatmapset_snapshot(self, beatmapset_id: int) -> BeatmapsetSnapshot | None:
         return BeatmapsetSnapshot.query.filter_by(beatmapset_id=beatmapset_id).order_by(BeatmapsetSnapshot.id.desc()).first()
@@ -175,29 +182,29 @@ class Crud(CrudBase):
     def get_beatmapset_listing(self, **kwargs) -> BeatmapsetListing | None:
         return BeatmapsetListing.query.filter_by(**kwargs).one_or_none()
 
-    def get_beatmapset_listings(self, **kwargs) -> list[BeatmapsetListing]:
-        return BeatmapsetListing.query.filter_by(**kwargs).all()
+    def get_beatmapset_listings(self, limit: int = DEFAULT_LIMIT, offset: int = 0, **kwargs) -> list[BeatmapsetListing]:
+        return BeatmapsetListing.query.filter_by(**kwargs).limit(limit).offset(offset).all()
 
     def get_leaderboard(self, **kwargs) -> Leaderboard | None:
         return Leaderboard.query.filter_by(**kwargs).one_or_none()
 
-    def get_leaderboards(self, **kwargs) -> list[Leaderboard]:
-        return Leaderboard.query.filter_by(**kwargs).all()
+    def get_leaderboards(self, limit: int = DEFAULT_LIMIT, offset: int = 0, **kwargs) -> list[Leaderboard]:
+        return Leaderboard.query.filter_by(**kwargs).limit(limit).offset(offset).all()
 
-    def score_unique(self, beatmap_id: int, created_at: datetime) -> bool:
+    def score_is_unique(self, beatmap_id: int, created_at: datetime) -> bool:
         return Score.query.filter_by(beatmap_id=beatmap_id, created_at=created_at).one_or_none() is None
 
     def get_score(self, **kwargs) -> Score | None:
         return Score.query.filter_by(**kwargs).one_or_none()
 
-    def get_scores(self, **kwargs) -> list[Score]:
-        return Score.query.filter_by(**kwargs).all()
+    def get_scores(self, limit: int = DEFAULT_LIMIT, offset: int = 0, **kwargs) -> list[Score]:
+        return Score.query.filter_by(**kwargs).limit(limit).offset(offset).all()
 
     def get_request(self, **kwargs) -> Request | None:
         return Request.query.filter_by(**kwargs).one_or_none()
 
-    def get_requests(self, **kwargs) -> list[Request]:
-        return Request.query.filter_by(**kwargs).all()
+    def get_requests(self, limit: int = DEFAULT_LIMIT, offset: int = 0, **kwargs) -> list[Request]:
+        return Request.query.filter_by(**kwargs).limit(limit).offset(offset).all()
 
     # Update #
     def update_oauth_token(self, oauth_token_id: int, **kwargs):

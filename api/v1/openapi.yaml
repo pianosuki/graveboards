@@ -415,6 +415,24 @@ components:
                 type: string
             example: 'total_unresolved=0;total_resolved<20;unique_modders<=3;total_mods>5'
 
+        Limit:
+            name: limit
+            description: Number of items to limit in the response for pagination
+            in: query
+            schema:
+                type: integer
+                minimum: 1
+                maximum: 100
+
+        Offset:
+            name: offset
+            description: Offset of limited items in the response for pagination
+            in: query
+            schema:
+                type: integer
+                minimum: 0
+
+
     requestBodies:
         AuthorizationCode:
             description: Authorization Code received from the osu! OAuth flow to authenticate with
@@ -502,6 +520,9 @@ paths:
                 - Users
             security:
                 - ApiKeyAuth: []
+            parameters:
+                - $ref: "#/components/parameters/Limit"
+                - $ref: "#/components/parameters/Offset"
             responses:
                 200:
                     description: Successfully retrieved all users
@@ -525,6 +546,9 @@ paths:
             summary: Returns a list of beatmaps stored on the server
             tags:
                 - Beatmaps
+            parameters:
+                - $ref: "#/components/parameters/Limit"
+                - $ref: "#/components/parameters/Offset"
             responses:
                 200:
                     description: Successfully retrieved beatmaps
@@ -536,6 +560,8 @@ paths:
                 - Beatmaps
             parameters:
                 - $ref: "#/components/parameters/BeatmapId"
+                - $ref: "#/components/parameters/Limit"
+                - $ref: "#/components/parameters/Offset"
             responses:
                 200:
                     description: Successfully retrieved beatmap metadata
@@ -547,6 +573,8 @@ paths:
                 - Beatmaps
             parameters:
                 - $ref: "#/components/parameters/BeatmapId"
+                - $ref: "#/components/parameters/Limit"
+                - $ref: "#/components/parameters/Offset"
             responses:
                 200:
                     description: Successfully retrieved beatmap snapshots
@@ -603,6 +631,9 @@ paths:
             summary: Returns a list of beatmapsets
             tags:
                 - Beatmapsets
+            parameters:
+                - $ref: "#/components/parameters/Limit"
+                - $ref: "#/components/parameters/Offset"
             responses:
                 200:
                     description: Successfully retrieved beatmapsets
@@ -626,6 +657,9 @@ paths:
             summary: Returns a list of beatmapset data for the frontend
             tags:
                 - Beatmapsets
+            parameters:
+                - $ref: "#/components/parameters/Limit"
+                - $ref: "#/components/parameters/Offset"
             responses:
                 200:
                     description: Successfully retrieved beatmapset listings
@@ -636,7 +670,9 @@ paths:
             tags:
                 - Beatmapsets
             parameters:
-                -   $ref: "#/components/parameters/BeatmapsetId"
+                - $ref: "#/components/parameters/BeatmapsetId"
+                - $ref: "#/components/parameters/Limit"
+                - $ref: "#/components/parameters/Offset"
             responses:
                 200:
                     description: Successfully retrieved beatmapset snapshots
@@ -670,6 +706,9 @@ paths:
             summary: Returns a list of leaderboards
             tags:
                 - Leaderboards
+            parameters:
+                - $ref: "#/components/parameters/Limit"
+                - $ref: "#/components/parameters/Offset"
             responses:
                 200:
                     description: Successfully retrieved leaderboards
@@ -704,6 +743,8 @@ paths:
                 - Leaderboards
             parameters:
                 - $ref: "#/components/parameters/BeatmapId"
+                - $ref: "#/components/parameters/Limit"
+                - $ref: "#/components/parameters/Offset"
             responses:
                 200:
                     description: Successfully retrieved leaderboard snapshots
@@ -747,6 +788,8 @@ paths:
                 - $ref: "#/components/parameters/ScoreCountKatsu"
                 - $ref: "#/components/parameters/ScoreCountMiss"
                 - $ref: "#/components/parameters/ScoreType"
+                - $ref: "#/components/parameters/Limit"
+                - $ref: "#/components/parameters/Offset"
             responses:
                 200:
                     description: Successfully retrieved scores
@@ -788,6 +831,8 @@ paths:
                 - $ref: "#/components/parameters/RequestMapperFilter"
                 - $ref: "#/components/parameters/RequestBeatmapsetFilter"
                 - $ref: "#/components/parameters/RequestBeatmapsetDiscussionFilter"
+                - $ref: "#/components/parameters/Limit"
+                - $ref: "#/components/parameters/Offset"
             security:
                 - ApiKeyAuth: []
             responses:

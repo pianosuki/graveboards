@@ -24,7 +24,7 @@ def post(beatmap_id: int, version_number: int, body: dict):
     if not leaderboard:
         abort(404, f"There is no leaderboard for the beatmap with ID '{beatmap_id}' and version ID '{beatmap_version.id}'")
 
-    if not cr.score_unique(beatmap_id, created_at):
+    if not cr.score_is_unique(beatmap_id, created_at):
         abort(409, f"The score created at '{created_at}' on the beatmap with ID '{beatmap_id}' already exists")
 
     cr.add_score(body)
