@@ -2,7 +2,7 @@ from flask import abort
 
 from api import v1 as api
 from app import cr
-from app.schemas import requests_schema
+from app.schemas import requests_schema, request_schema
 
 
 def search(**kwargs):
@@ -12,11 +12,16 @@ def search(**kwargs):
 
 
 def post(body: dict):
-    beatmapset_id = body.get("beatmapset_id")
+    errors = request_schema.validate(body)
 
-    api.beatmapsets.post({"beatmapset_id": beatmapset_id})
+    if errors:
+        abort(400, "Invalid input data")
+
+    beatmapset_id = body["beatmapset_id"]
 
     if cr.get_request(beatmapset_id=beatmapset_id):
         abort(409, f"The request with beatmapset ID '{beatmapset_id}' already exists")
+
+    api.beatmapsets.post({"beatmapset_id": beatmapset_id})
 
     cr.add_request(body)

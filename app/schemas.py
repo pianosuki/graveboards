@@ -233,6 +233,7 @@ class RequestSchema(ma.SQLAlchemyAutoSchema):
         load_instance = True
         sqla_session = db.session
 
+    user_id = fields.Integer()
     beatmapset_id = fields.Integer()
 
 
