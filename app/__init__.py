@@ -33,7 +33,8 @@ cr = Crud(app=flask_app)
 from .events import *
 
 from .daemon import GraveboardsDaemon, DaemonThread
-from .services import ScoreFetcher, ServiceName
+from .services import ServiceName, ScoreFetcher, MapperInfoFetcher
 appd = GraveboardsDaemon(app=flask_app)
 appd.register_service(ServiceName.SCORE_FETCHER, ScoreFetcher)
+appd.register_service(ServiceName.MAPPER_INFO_FETCHER, MapperInfoFetcher)
 daemon_thread = DaemonThread(appd)

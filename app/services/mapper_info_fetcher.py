@@ -5,18 +5,16 @@ from datetime import datetime, timedelta, timezone
 
 from flask import Flask
 
-from api import v1 as api
 from app import flask_app, cr, oac
-from app.osu_api import ScoreType
 from app.utils import aware_utcnow
-from app.models import ScoreFetcherTask
+from app.models import MapperInfoFetcherTask
 from .enums import QueueName, EventName, RuntimeTaskName
 from .service import Service
 
-SCORE_FETCHER_INTERVAL_HOURS = 24
+MAPPER_INFO_FETCHER_INTERVAL_HOURS = 24
 
 
-class ScoreFetcher(Service):
+class MapperInfoFetcher(Service):
     def __init__(self, app: Flask):
         super().__init__(app)
 
@@ -41,68 +39,55 @@ class ScoreFetcher(Service):
                 if delay > 0:
                     await asyncio.sleep(delay)
 
-                self.fetch_scores(task_id)
+                self.fetch_mapper_info(task_id)
 
                 fetch_time = aware_utcnow()
-                next_execution_time = fetch_time + timedelta(hours=SCORE_FETCHER_INTERVAL_HOURS)
+                next_execution_time = fetch_time + timedelta(hours=MAPPER_INFO_FETCHER_INTERVAL_HOURS)
                 heapq.heappush(self.tasks_heap, (next_execution_time, task_id))
 
                 with flask_app.app_context():
-                    cr.update_score_fetcher_task(task_id, last_fetch=fetch_time)
+                    cr.update_mapper_info_fetcher_task(task_id, last_fetch=fetch_time)
             else:
-                await self.events[EventName.SCORE_FETCHER_TASK_ADDED].wait()
-                self.events[EventName.SCORE_FETCHER_TASK_ADDED].clear()
+                await self.events[EventName.MAPPER_INFO_FETCHER_TASK_ADDED].wait()
+                self.events[EventName.MAPPER_INFO_FETCHER_TASK_ADDED].clear()
 
     async def task_subscriber(self):
         while True:
-            if self.queues[QueueName.SCORE_FETCHER_TASKS].qsize() > 0:
-                task_id = self.queues[QueueName.SCORE_FETCHER_TASKS].get_nowait()
+            if self.queues[QueueName.MAPPER_INFO_FETCHER_TASKS].qsize() > 0:
+                task_id = self.queues[QueueName.MAPPER_INFO_FETCHER_TASKS].get_nowait()
 
                 with flask_app.app_context():
-                    task = cr.get_score_fetcher_task(id=task_id)
+                    task = cr.get_mapper_info_fetcher_task(id=task_id)
 
                 self.load_task(task)
-                self.events[EventName.SCORE_FETCHER_TASK_ADDED].set()
+                self.events[EventName.MAPPER_INFO_FETCHER_TASK_ADDED].set()
 
             await asyncio.sleep(5)
 
     def preload_tasks(self):
         with flask_app.app_context():
-            tasks = cr.get_score_fetcher_tasks(limit=-1)
+            tasks = cr.get_mapper_info_fetcher_tasks(limit=-1)
 
         for task in tasks:
             self.load_task(task)
 
-    def load_task(self, task: ScoreFetcherTask):
+    def load_task(self, task: MapperInfoFetcherTask):
         if not task.enabled:
             return
 
         if task.last_fetch is not None:
-            execution_time = task.last_fetch.replace(tzinfo=timezone.utc) + timedelta(hours=SCORE_FETCHER_INTERVAL_HOURS)
+            execution_time = task.last_fetch.replace(tzinfo=timezone.utc) + timedelta(hours=MAPPER_INFO_FETCHER_INTERVAL_HOURS)
         else:
             execution_time = aware_utcnow()
 
         heapq.heappush(self.tasks_heap, (execution_time, task.id))
 
-    def fetch_scores(self, task_id: int):
+    def fetch_mapper_info(self, task_id: int):
         with flask_app.app_context():
-            task = cr.get_score_fetcher_task(id=task_id)
+            task = cr.get_mapper_info_fetcher_task(id=task_id)
 
-        user_id = task.user_id
-        scores = oac.get_user_scores(user_id, ScoreType.RECENT)
-
-        for score in scores:
-            if not self.score_is_submittable(score):
-                continue
-
-            with flask_app.app_context():
-                api.scores.post(score)
-
-    @staticmethod
-    def score_is_submittable(score: dict) -> bool:
-        beatmap_id = score["beatmap"]["id"]
+        mapper_id = task.mapper_id
+        mapper_info = oac.get_user(mapper_id)
 
         with flask_app.app_context():
-            leaderboards = cr.get_leaderboards(beatmap_id=beatmap_id)
-
-        return bool(leaderboards)
+            cr.update_mapper(mapper_id, **mapper_info)

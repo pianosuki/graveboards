@@ -59,17 +59,29 @@ class BeatmapManager(BeatmapManagerBase):
 
     def _ensure_populated(self, beatmapset_dict: dict):
         beatmapset_id = beatmapset_dict["id"]
+        beatmapset_mapper_id = beatmapset_dict["user_id"]
 
         # Beatmapset
+        self._ensure_mapper_populated(beatmapset_mapper_id)
+
         if not self.crud.get_beatmapset(id=beatmapset_id):
-            self.crud.add_beatmapset(beatmapset_id)
+            self.crud.add_beatmapset(beatmapset_id, beatmapset_mapper_id)
 
         # Beatmap
         for beatmap_dict in beatmapset_dict["beatmaps"]:
             beatmap_id = beatmap_dict["id"]
+            beatmap_mapper_id = beatmap_dict["user_id"]
+
+            self._ensure_mapper_populated(beatmap_mapper_id)
 
             if not self.crud.get_beatmap(id=beatmap_id):
-                self.crud.add_beatmap(beatmap_id, beatmapset_id)
+                self.crud.add_beatmap(beatmap_id, beatmapset_id, beatmap_mapper_id)
+
+    def _ensure_mapper_populated(self, mapper_id: int):
+        if not self.crud.get_mapper(id=mapper_id):
+            from api import v1 as api
+
+            api.mappers.post({"user_id": mapper_id})
 
     def _snapshot(self, beatmapset_dict: dict) -> list[int]:
         beatmap_snapshots = []

@@ -391,29 +391,29 @@ components:
             schema:
                 type: string
 
-        RequestMapperFilter:
+        MapperFilter:
             name: mapper_filter
-            description: Semicolon-separated string of filters to apply to the query. Supports relational operators (=, >, <, >=, <=, and !=)
+            description: Json string of filters to apply to the query. Supports relational operators (eq, gt, lt, gte, lte, and neq)
             in: query
             schema:
                 type: string
-            example: 'ranked_maps=1;kudosu>10;total_maps>=10;total_maps<=100'
+            example: '{"ranked_maps": {"eq": 1}, "kudosu": {"gt": 10}, "total_maps": {"gte": 10}, "total_maps": {"lte": 100}}'
 
-        RequestBeatmapsetFilter:
+        BeatmapsetFilter:
             name: beatmapset_filter
-            description: Semicolon-separated string of filters to apply to the query. Supports relational operators (=, >, <, >=, <=, and !=)
+            description: Json string of filters to apply to the query. Supports relational operators (eq, gt, lt, gte, lte, and neq)
             in: query
             schema:
                 type: string
-            example: 'difficulties<7;sr_gap<1.5;sr_gap>0.5;total_drain_time<720.5'
+            example: '{"difficulties": {"lt": 7}, "sr_gap": {"gt": 0.5, "lt": 1.5}, "total_drain_time": {"lt": 720.5}}'
 
-        RequestBeatmapsetDiscussionFilter:
+        BeatmapsetDiscussionFilter:
             name: beatmapset_discussion_filter
-            description: Semicolon-separated string of filters to apply to the query. Supports relational operators (=, >, <, >=, <=, and !=)
+            description: Json string of filters to apply to the query. Supports relational operators (eq, gt, lt, gte, lte, and neq)
             in: query
             schema:
                 type: string
-            example: 'total_unresolved=0;total_resolved<20;unique_modders<=3;total_mods>5'
+            example: '{"total_unresolved": {"eq": 0}, "total_resolved": {"lt": 20}, "unique_modders": {"lte": 3}, "total_mods": {"gt": 5}}'
 
         Limit:
             name: limit
@@ -541,6 +541,32 @@ paths:
                 201:
                     description: Successfully added user
 
+    /mappers:
+        get:
+            summary: Returns a list of mappers
+            tags:
+                - Mappers
+            parameters:
+                - $ref: "#/components/parameters/Limit"
+                - $ref: "#/components/parameters/Offset"
+            responses:
+                200:
+                    description: Successfully retrieved all mappers
+                401:
+                    $ref: "#/components/responses/UnauthorizedError"
+
+        post:
+            summary: Adds a mapper
+            tags:
+                - Mappers
+            security:
+                - ApiKeyAuth: []
+            requestBody:
+                $ref: "#/components/requestBodies/User"
+            responses:
+                201:
+                    description: Successfully added mapper
+
     /beatmaps:
         get:
             summary: Returns a list of beatmaps stored on the server
@@ -654,12 +680,15 @@ paths:
 
     /beatmapsets/listings:
         get:
-            summary: Returns a list of beatmapset data for the frontend
+            summary: Filters and returns a list of beatmapset data for the frontend
             tags:
                 - Beatmapsets
             parameters:
                 - $ref: "#/components/parameters/Limit"
                 - $ref: "#/components/parameters/Offset"
+                - $ref: "#/components/parameters/MapperFilter"
+                - $ref: "#/components/parameters/BeatmapsetFilter"
+                - $ref: "#/components/parameters/BeatmapsetDiscussionFilter"
             responses:
                 200:
                     description: Successfully retrieved beatmapset listings
@@ -824,13 +853,10 @@ paths:
 
     /requests:
         get:
-            summary: Returns a filterable list of map requests in the queue
+            summary: Returns a list of map requests in the queue
             tags:
                 - Requests
             parameters:
-                - $ref: "#/components/parameters/RequestMapperFilter"
-                - $ref: "#/components/parameters/RequestBeatmapsetFilter"
-                - $ref: "#/components/parameters/RequestBeatmapsetDiscussionFilter"
                 - $ref: "#/components/parameters/Limit"
                 - $ref: "#/components/parameters/Offset"
             security:

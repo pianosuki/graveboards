@@ -3,9 +3,11 @@ from .utils import generate_token, aware_utcnow
 
 __all__ = [
     "User",
+    "Mapper",
     "ApiKey",
     "OauthToken",
     "ScoreFetcherTask",
+    "MapperInfoFetcherTask",
     "Beatmap",
     "BeatmapSnapshot",
     "Beatmapset",
@@ -31,6 +33,25 @@ class User(db.Model):
     # Relationships
     scores = db.relationship("Score", backref="user", lazy=True)
     tokens = db.relationship("OauthToken", backref="user", lazy=True)
+
+
+class Mapper(db.Model):
+    __tablename__ = "mappers"
+    id = db.Column(db.Integer, primary_key=True)
+
+    # osu! API datastructure
+    avatar_url = db.Column(db.String, nullable=False)
+    username = db.Column(db.String, nullable=False)
+    country_code = db.Column(db.String(2), nullable=False)
+    graveyard_beatmapset_count = db.Column(db.Integer, nullable=False)
+    loved_beatmapset_count = db.Column(db.Integer, nullable=False)
+    pending_beatmapset_count = db.Column(db.Integer, nullable=False)
+    ranked_beatmapset_count = db.Column(db.Integer, nullable=False)
+    kudosu = db.Column(db.Text, nullable=False)
+
+    # Relationships
+    beatmaps = db.relationship("Beatmap", backref="mapper", lazy=True)
+    beatmapsets = db.relationship("Beatmapset", backref="mapper", lazy=True)
 
 
 class ApiKey(db.Model):
@@ -60,10 +81,19 @@ class ScoreFetcherTask(db.Model):
     last_fetch = db.Column(db.DateTime, default=None)
 
 
+class MapperInfoFetcherTask(db.Model):
+    __tablename__ = "mapper_info_fetcher_tasks"
+    id = db.Column(db.Integer, primary_key=True)
+    mapper_id = db.Column(db.Integer, db.ForeignKey("mappers.id"), nullable=False)
+    enabled = db.Column(db.Boolean, default=True)
+    last_fetch = db.Column(db.DateTime, default=None)
+
+
 class Beatmap(db.Model):
     __tablename__ = "beatmaps"
     id = db.Column(db.Integer, primary_key=True)
     beatmapset_id = db.Column(db.Integer, db.ForeignKey("beatmapsets.id"), nullable=False)
+    mapper_id = db.Column(db.Integer, db.ForeignKey("mappers.id"), nullable=False)
 
     # Relationships
     leaderboards = db.relationship("Leaderboard", backref="beatmap", lazy=True)
@@ -111,6 +141,7 @@ class BeatmapSnapshot(db.Model):
 class Beatmapset(db.Model):
     __tablename__ = "beatmapsets"
     id = db.Column(db.Integer, primary_key=True)
+    mapper_id = db.Column(db.Integer, db.ForeignKey("mappers.id"), nullable=False)
 
     # Relationships
     snapshots = db.relationship("BeatmapsetSnapshot", backref="beatmapset", lazy=True)

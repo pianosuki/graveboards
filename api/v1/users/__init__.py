@@ -22,6 +22,5 @@ def post(body: dict):
     score_fetcher_task = cr.get_score_fetcher_task(user_id=user_id)
 
     if not score_fetcher_task:
-        cr.add_score_fetcher_task(user_id)
-        task = cr.get_score_fetcher_task(user_id=user_id)
+        task = cr.add_score_fetcher_task(user_id)
         sync.daemon.services[ServiceName.SCORE_FETCHER].queues[QueueName.SCORE_FETCHER_TASKS].put(task.id)

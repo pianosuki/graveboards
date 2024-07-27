@@ -5,14 +5,18 @@ from marshmallow import fields, Schema, post_dump
 from marshmallow.utils import EXCLUDE, RAISE
 
 from app import db, ma
-from .models import User, Score, Beatmap, Leaderboard, BeatmapSnapshot, Beatmapset, BeatmapsetSnapshot, ScoreFetcherTask, Request, BeatmapsetListing
+from .models import *
+from .schema_fields import *
 from .utils import combine_checksums
 
 __all__ = [
     "user_schema",
     "users_schema",
+    "mapper_schema",
+    "mappers_schema",
     "oauth_token_schema",
     "score_fetcher_task_schema",
+    "mapper_info_fetcher_task_schema",
     "beatmap_schema",
     "beatmaps_schema",
     "beatmap_snapshot_schema",
@@ -40,6 +44,17 @@ class UserSchema(ma.SQLAlchemyAutoSchema):
         include_relationships = True
 
 
+class MapperSchema(ma.SQLAlchemyAutoSchema):
+    class Meta:
+        model = Mapper
+        load_instance = True
+        sqla_session = db.session
+        include_relationships = True
+        unknown = EXCLUDE
+
+    kudosu = fields.Nested("KudosuSchema")
+
+
 class OauthTokenSchema(ma.SQLAlchemyAutoSchema):
     class Meta:
         model = User
@@ -53,6 +68,17 @@ class ScoreFetcherTaskSchema(ma.SQLAlchemyAutoSchema):
         model = ScoreFetcherTask
         load_instance = True
         sqla_session = db.session
+
+    last_fetch = CustomDateTime()
+
+
+class MapperInfoFetcherTaskSchema(ma.SQLAlchemyAutoSchema):
+    class Meta:
+        model = MapperInfoFetcherTask
+        load_instance = True
+        sqla_session = db.session
+
+    last_fetch = CustomDateTime()
 
 
 class BeatmapSchema(ma.SQLAlchemyAutoSchema):
@@ -245,6 +271,11 @@ class JSONTextSchema(Schema):
         return json.dumps(data) if data is not None else None
 
 
+class KudosuSchema(JSONTextSchema):
+    available = fields.Integer()
+    total = fields.Integer()
+
+
 class CoversSchema(JSONTextSchema):
     cover = fields.String()
     cover2x = fields.String(data_key="cover@2x")
@@ -272,8 +303,11 @@ class StatisticsSchema(JSONTextSchema):
 
 user_schema = UserSchema()
 users_schema = UserSchema(many=True)
+mapper_schema = MapperSchema()
+mappers_schema = MapperSchema(many=True)
 oauth_token_schema = OauthTokenSchema()
 score_fetcher_task_schema = ScoreFetcherTaskSchema()
+mapper_info_fetcher_task_schema = MapperInfoFetcherTaskSchema()
 beatmap_schema = BeatmapSchema()
 beatmaps_schema = BeatmapSchema(many=True)
 beatmap_snapshot_schema = BeatmapSnapshotSchema()
