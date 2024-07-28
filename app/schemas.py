@@ -3,6 +3,7 @@ from typing import Any
 
 from marshmallow import fields, Schema, post_dump
 from marshmallow.utils import EXCLUDE, RAISE
+from sqlalchemy import select
 
 from app import db, ma
 from .models import *
@@ -166,15 +167,13 @@ class BeatmapsetListingSchema(ma.SQLAlchemyAutoSchema):
 
     @post_dump
     def add_display_data(self, data, many: bool, **kwargs):
-        from app import oac
-
         beatmapset_snapshot = data["beatmapset_snapshot"]
         display_data = {
             "title": beatmapset_snapshot["title"],
             "artist": beatmapset_snapshot["artist"],
             "thumbnail": beatmapset_snapshot["covers"]["cover@2x"],
             "mapper": beatmapset_snapshot["creator"],
-            "mapper_avatar": oac.get_user(beatmapset_snapshot["user_id"])["avatar_url"],
+            "mapper_avatar": self.session.execute(select(Mapper).filter_by(id=beatmapset_snapshot["user_id"])).scalar().avatar_url,
             "length": max(beatmapset_snapshot["beatmap_snapshots"], key=lambda beatmap_snapshot: beatmap_snapshot["total_length"])["total_length"],
             "difficulties": [beatmap_snapshot["difficulty_rating"] for beatmap_snapshot in beatmapset_snapshot["beatmap_snapshots"]],
         }
