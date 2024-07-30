@@ -21,7 +21,7 @@ OAUTH_AUTHORIZATION_CODE = {
     "access_token_url": "https://osu.ppy.sh/oauth/token",
     "access_token_params": None,
     "refresh_token_url": None,
-    "redirect_uri": os.path.join(ANGULAR_BASE_URL, "oauth/callback"),
+    "redirect_uri": ANGULAR_BASE_URL + "/callback",
     "client_kwargs": {"scope": "public identify"}
 }
 

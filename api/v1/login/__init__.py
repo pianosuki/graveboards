@@ -1,5 +1,8 @@
+from flask import jsonify
+
 from app import oauth
 
 
 def search():
-    return oauth.osu_auth.authorize_redirect()
+    response = oauth.osu_auth.authorize_redirect()
+    return jsonify({"authorization_url": response.headers["Location"]})
