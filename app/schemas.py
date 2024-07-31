@@ -175,7 +175,7 @@ class BeatmapsetListingSchema(ma.SQLAlchemyAutoSchema):
             "mapper": beatmapset_snapshot["creator"],
             "mapper_avatar": self.session.execute(select(Mapper).filter_by(id=beatmapset_snapshot["user_id"])).scalar().avatar_url,
             "length": max(beatmapset_snapshot["beatmap_snapshots"], key=lambda beatmap_snapshot: beatmap_snapshot["total_length"])["total_length"],
-            "difficulties": [beatmap_snapshot["difficulty_rating"] for beatmap_snapshot in beatmapset_snapshot["beatmap_snapshots"]],
+            "difficulties": sorted([beatmap_snapshot["difficulty_rating"] for beatmap_snapshot in beatmapset_snapshot["beatmap_snapshots"]]),
         }
 
         data["display_data"] = BeatmapsetListingDisplayDataSchema().dump(display_data)
