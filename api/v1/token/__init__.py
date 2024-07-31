@@ -1,5 +1,3 @@
-import json
-
 from flask import abort, jsonify, make_response
 from authlib.integrations.flask_client import OAuthError
 

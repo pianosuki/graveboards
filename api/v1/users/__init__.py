@@ -1,6 +1,6 @@
-from flask import abort
+from flask import abort, jsonify
 
-from app import cr, sync
+from app import cr, sync, oac
 from app.models import User
 from app.schemas import users_schema
 from app.services import ServiceName, QueueName
@@ -9,6 +9,11 @@ from app.services import ServiceName, QueueName
 def search():
     users = User.query.all()
     return users_schema.dump(users), 200
+
+
+def get(user_id: int):
+    user_profile = oac.get_user(user_id)
+    return jsonify(user_profile)
 
 
 def post(body: dict):
