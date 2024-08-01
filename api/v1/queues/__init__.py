@@ -15,6 +15,7 @@ def get(queue_id: int):
 
 
 def post(body: dict):
+    print(body)
     errors = queue_schema.validate(body)
 
     if errors:

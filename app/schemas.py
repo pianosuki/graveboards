@@ -259,8 +259,10 @@ class QueueSchema(ma.SQLAlchemyAutoSchema):
         model = Queue
         load_instance = True
         sqla_session = db.session
+        include_relationships = True
 
     user_id = fields.Integer()
+    requests = fields.Nested("RequestSchema", many=True)
 
 
 class RequestSchema(ma.SQLAlchemyAutoSchema):
@@ -271,6 +273,7 @@ class RequestSchema(ma.SQLAlchemyAutoSchema):
 
     user_id = fields.Integer()
     beatmapset_id = fields.Integer()
+    queue_id = fields.Integer()
 
 
 class JSONTextSchema(Schema):
