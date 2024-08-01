@@ -57,11 +57,12 @@ class Mapper(db.Model):
     avatar_url = db.Column(db.String, nullable=False)
     username = db.Column(db.String, nullable=False)
     country_code = db.Column(db.String(2), nullable=False)
-    graveyard_beatmapset_count = db.Column(db.Integer, nullable=False)
-    loved_beatmapset_count = db.Column(db.Integer, nullable=False)
-    pending_beatmapset_count = db.Column(db.Integer, nullable=False)
-    ranked_beatmapset_count = db.Column(db.Integer, nullable=False)
-    kudosu = db.Column(db.Text, nullable=False)
+    graveyard_beatmapset_count = db.Column(db.Integer)
+    loved_beatmapset_count = db.Column(db.Integer)
+    pending_beatmapset_count = db.Column(db.Integer)
+    ranked_beatmapset_count = db.Column(db.Integer)
+    kudosu = db.Column(db.Text)
+    is_restricted = db.Column(db.Boolean, default=False)
 
     # Relationships
     beatmaps = db.relationship("Beatmap", lazy=True)

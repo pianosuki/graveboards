@@ -7,6 +7,7 @@ from io import BytesIO
 from zipfile import ZipFile
 
 from flask import Flask
+from connexion.exceptions import HTTPException
 
 from .utils import combine_checksums
 
@@ -62,7 +63,10 @@ class BeatmapManager(BeatmapManagerBase):
         beatmapset_mapper_id = beatmapset_dict["user_id"]
 
         # Beatmapset
-        self._ensure_mapper_populated(beatmapset_mapper_id)
+        try:
+            self._ensure_mapper_populated(beatmapset_mapper_id)
+        except httpx.HTTPError:
+            self._add_banned_mapper(beatmapset_dict["user"])
 
         if not self.crud.get_beatmapset(id=beatmapset_id):
             self.crud.add_beatmapset(beatmapset_id, beatmapset_mapper_id)
@@ -82,6 +86,15 @@ class BeatmapManager(BeatmapManagerBase):
             from api import v1 as api
 
             api.mappers.post({"user_id": mapper_id})
+
+    def _add_banned_mapper(self, user_dict: dict):
+        self.crud.add_mapper({
+            "id": user_dict["id"],
+            "avatar_url": user_dict["avatar_url"],
+            "username": user_dict["username"],
+            "country_code": user_dict["country_code"],
+            "is_restricted": True
+        })
 
     def _snapshot(self, beatmapset_dict: dict) -> list[int]:
         beatmap_snapshots = []
