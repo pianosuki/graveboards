@@ -201,7 +201,6 @@ class LeaderboardSchema(ma.SQLAlchemyAutoSchema):
         load_instance = True
         sqla_session = db.session
         include_relationships = True
-        exclude = ("beatmap",)
 
     id = fields.Integer(load_only=True)
     beatmap_id = fields.Integer()

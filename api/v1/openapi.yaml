@@ -200,8 +200,13 @@ components:
             properties:
                 user_id:
                     type: integer
+                name:
+                    type: string
+                description:
+                    type: string
             required:
                 - user_id
+                - name
 
         Request:
             description: A JSON object containing request data

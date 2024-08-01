@@ -41,6 +41,10 @@ OSU_USER_ID = os.getenv("OSU_USER_ID")
 
 API_KEY = os.getenv("API_KEY")
 
+MASTER_QUEUE_NAME = "Graveboards Queue"
+
+MASTER_QUEUE_DESCRIPTION = "Master queue for beatmaps to receive leaderboards"
+
 
 class FlaskConfig:
     SECRET_KEY = os.getenv("SECRET_KEY")

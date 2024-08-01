@@ -19,11 +19,22 @@ __all__ = [
     "Request"
 ]
 
-
 beatmap_snapshot_to_beatmapset_snapshot = db.Table(
     "beatmap_snapshots_to_beatmapset_snapshots",
     db.Column("beatmap_snapshot_id", db.Integer, db.ForeignKey("beatmap_snapshots.id"), primary_key=True),
     db.Column("beatmapset_snapshot_id", db.Integer, db.ForeignKey("beatmapset_snapshots.id"), primary_key=True)
+)
+
+queue_admin_association = db.Table(
+    "queue_admin_association",
+    db.Column('queue_id', db.Integer, db.ForeignKey('queues.id'), primary_key=True),
+    db.Column('user_id', db.Integer, db.ForeignKey('users.id'), primary_key=True)
+)
+
+queue_view_association = db.Table(
+    "queue_view_association",
+    db.Column('queue_id', db.Integer, db.ForeignKey('queues.id'), primary_key=True),
+    db.Column('user_id', db.Integer, db.ForeignKey('users.id'), primary_key=True)
 )
 
 
@@ -32,10 +43,10 @@ class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
 
     # Relationships
-    scores = db.relationship("Score", backref="user", lazy=True)
-    tokens = db.relationship("OauthToken", backref="user", lazy=True)
-    queues = db.relationship("Queue", backref="user", lazy=True)
-    requests = db.relationship("Request", backref="user", lazy=True)
+    scores = db.relationship("Score", lazy=True)
+    tokens = db.relationship("OauthToken", lazy=True)
+    queues = db.relationship("Queue", lazy=True)
+    requests = db.relationship("Request", lazy=True)
 
 
 class Mapper(db.Model):
@@ -53,8 +64,8 @@ class Mapper(db.Model):
     kudosu = db.Column(db.Text, nullable=False)
 
     # Relationships
-    beatmaps = db.relationship("Beatmap", backref="mapper", lazy=True)
-    beatmapsets = db.relationship("Beatmapset", backref="mapper", lazy=True)
+    beatmaps = db.relationship("Beatmap", lazy=True)
+    beatmapsets = db.relationship("Beatmapset", lazy=True)
 
 
 class ApiKey(db.Model):
@@ -99,8 +110,8 @@ class Beatmap(db.Model):
     mapper_id = db.Column(db.Integer, db.ForeignKey("mappers.id"), nullable=False)
 
     # Relationships
-    leaderboards = db.relationship("Leaderboard", backref="beatmap", lazy=True)
-    snapshots = db.relationship("BeatmapSnapshot", backref="beatmap", lazy=True)
+    leaderboards = db.relationship("Leaderboard", lazy=True)
+    snapshots = db.relationship("BeatmapSnapshot", lazy=True)
 
 
 class BeatmapSnapshot(db.Model):
@@ -147,7 +158,7 @@ class Beatmapset(db.Model):
     mapper_id = db.Column(db.Integer, db.ForeignKey("mappers.id"), nullable=False)
 
     # Relationships
-    snapshots = db.relationship("BeatmapsetSnapshot", backref="beatmapset", lazy=True)
+    snapshots = db.relationship("BeatmapsetSnapshot", lazy=True)
 
 
 class BeatmapsetSnapshot(db.Model):
@@ -181,7 +192,6 @@ class BeatmapsetSnapshot(db.Model):
 
     # Relationships
     beatmap_snapshots = db.relationship("BeatmapSnapshot", secondary=beatmap_snapshot_to_beatmapset_snapshot, backref="beatmapset_snapshots", lazy=True)
-    # beatmapset_listing = db.relationship("BeatmapsetListing", back_populates="beatmapset_snapshot")
 
 
 class BeatmapsetListing(db.Model):
@@ -205,7 +215,7 @@ class Leaderboard(db.Model):
     beatmap_snapshot_id = db.Column(db.Integer, db.ForeignKey("beatmap_snapshots.id"), nullable=False)
 
     # Relationships
-    scores = db.relationship("Score", backref="leaderboard", lazy=True)
+    scores = db.relationship("Score", lazy=True)
 
     __table_args__ = (
         db.UniqueConstraint("beatmap_id", "beatmap_snapshot_id", name="_beatmap_and_snapshot_uc"),
@@ -243,9 +253,17 @@ class Queue(db.Model):
     __tablename__ = "queues"
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
+    name = db.Column(db.String, nullable=False)
+    description = db.Column(db.Text)
 
     # Relationships
-    requests = db.relationship("Request", backref="queue", lazy=False)
+    requests = db.relationship("Request", lazy=False)
+    admins = db.relationship("User", secondary=queue_admin_association, backref="managed_queues")
+    viewers = db.relationship("User", secondary=queue_view_association, backref="viewable_queues")
+
+    __table_args__ = (
+        db.UniqueConstraint("user_id", "name", name="_user_and_name_uc"),
+    )
 
 
 class Request(db.Model):

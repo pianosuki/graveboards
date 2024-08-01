@@ -1,4 +1,3 @@
-import queue
 from datetime import datetime
 
 from flask import Flask
@@ -135,8 +134,8 @@ class Crud(CrudBase):
 
         return score
 
-    def add_queue(self, user_id: int) -> Queue:
-        queue = Queue(user_id=user_id)
+    def add_queue(self, user_id: int, name: str, description: str | None = None) -> Queue:
+        queue = Queue(user_id=user_id, name=name, description=description)
 
         self.db.session.add(queue)
         self.db.session.commit()
