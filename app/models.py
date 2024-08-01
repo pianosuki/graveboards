@@ -15,6 +15,7 @@ __all__ = [
     "BeatmapsetListing",
     "Leaderboard",
     "Score",
+    "Queue",
     "Request"
 ]
 
@@ -33,6 +34,8 @@ class User(db.Model):
     # Relationships
     scores = db.relationship("Score", backref="user", lazy=True)
     tokens = db.relationship("OauthToken", backref="user", lazy=True)
+    queues = db.relationship("Queue", backref="user", lazy=True)
+    requests = db.relationship("Request", backref="user", lazy=True)
 
 
 class Mapper(db.Model):
@@ -236,11 +239,21 @@ class Score(db.Model):
     )
 
 
+class Queue(db.Model):
+    __tablename__ = "queues"
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
+
+    # Relationships
+    requests = db.relationship("Request", backref="queue", lazy=False)
+
+
 class Request(db.Model):
     __tablename__ = "requests"
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
     beatmapset_id = db.Column(db.Integer, db.ForeignKey("beatmapsets.id"), nullable=False)
+    queue_id = db.Column(db.Integer, db.ForeignKey("queues.id"))
     comment = db.Column(db.Text)
     mv_checked = db.Column(db.Boolean, default=False)
     created_at = db.Column(db.DateTime, default=aware_utcnow)

@@ -32,6 +32,8 @@ __all__ = [
     "leaderboards_schema",
     "score_schema",
     "scores_schema",
+    "queue_schema",
+    "queues_schema",
     "request_schema",
     "requests_schema"
 ]
@@ -252,6 +254,15 @@ class ScoreSchema(ma.SQLAlchemyAutoSchema):
         return json.dumps(value) if value else "[]"
 
 
+class QueueSchema(ma.SQLAlchemyAutoSchema):
+    class Meta:
+        model = Queue
+        load_instance = True
+        sqla_session = db.session
+
+    user_id = fields.Integer()
+
+
 class RequestSchema(ma.SQLAlchemyAutoSchema):
     class Meta:
         model = Request
@@ -321,5 +332,7 @@ leaderboard_schema = LeaderboardSchema()
 leaderboards_schema = LeaderboardSchema(many=True)
 score_schema = ScoreSchema()
 scores_schema = ScoreSchema(many=True)
+queue_schema = QueueSchema()
+queues_schema = QueueSchema(many=True)
 request_schema = RequestSchema()
 requests_schema = RequestSchema(many=True)

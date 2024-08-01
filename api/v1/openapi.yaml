@@ -194,6 +194,15 @@ components:
                     type: string
                     pattern: "^[0-9a-fA-F]{32}$"
 
+        Queue:
+            description: A JSON object containing queue data
+            type: object
+            properties:
+                user_id:
+                    type: integer
+            required:
+                - user_id
+
         Request:
             description: A JSON object containing request data
             type: object
@@ -206,6 +215,12 @@ components:
                     type: boolean
                 user_id:
                     type: integer
+                queue_id:
+                    type: integer
+            required:
+                - beatmapset_id
+                - user_id
+                - queue_id
 
     parameters:
         UserId:
@@ -424,6 +439,13 @@ components:
                 type: integer
                 minimum: 0
 
+        QueueId:
+            name: queue_id
+            description: Queue ID
+            in: path
+            required: true
+            schema:
+                type: integer
 
     requestBodies:
         AuthorizationCode:
@@ -465,6 +487,14 @@ components:
                 application/json:
                     schema:
                         $ref: "#/components/schemas/Score"
+
+        Queue:
+            description: Queue to add
+            required: true
+            content:
+                application/json:
+                    schema:
+                        $ref: "#/components/schemas/Queue"
 
         Request:
             description: Request to add to the queue
@@ -853,9 +883,48 @@ paths:
                 201:
                     description: Successfully added score
 
+    /queues:
+        get:
+            summary: Returns a list of queues
+            tags:
+                - Queues
+            parameters:
+                - $ref: "#/components/parameters/Limit"
+                - $ref: "#/components/parameters/Offset"
+            security:
+                - ApiKeyAuth: []
+            responses:
+                200:
+                    description: Successfully retrieved queues
+
+        post:
+            summary: Adds a queue
+            tags:
+                - Queues
+            security:
+                - ApiKeyAuth: []
+            requestBody:
+                $ref: "#/components/requestBodies/Queue"
+            responses:
+                201:
+                    description: Successfully added queue
+
+    /queues/{queue_id}:
+        get:
+            summary: Returns the specified queue
+            tags:
+                - Queues
+            parameters:
+                - $ref: "#/components/parameters/QueueId"
+            security:
+                - ApiKeyAuth: []
+            responses:
+                200:
+                    description: Successfully retrieved queue
+
     /requests:
         get:
-            summary: Returns a list of map requests in the queue
+            summary: Returns a list of map requests
             tags:
                 - Requests
             parameters:

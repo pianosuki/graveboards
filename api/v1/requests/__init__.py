@@ -6,7 +6,6 @@ from app.schemas import requests_schema, request_schema
 
 
 def search(**kwargs):
-    # To-do: handle filtering
     requests = cr.get_requests()
     return requests_schema.dump(requests), 200
 

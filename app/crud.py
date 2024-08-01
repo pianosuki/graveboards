@@ -1,3 +1,4 @@
+import queue
 from datetime import datetime
 
 from flask import Flask
@@ -134,6 +135,14 @@ class Crud(CrudBase):
 
         return score
 
+    def add_queue(self, user_id: int) -> Queue:
+        queue = Queue(user_id=user_id)
+
+        self.db.session.add(queue)
+        self.db.session.commit()
+
+        return queue
+
     def add_request(self, request_dict: dict) -> Request:
         request = request_schema.load(request_dict)
 
@@ -227,6 +236,12 @@ class Crud(CrudBase):
 
     def get_scores(self, limit: int = DEFAULT_LIMIT, offset: int = 0, **kwargs) -> list[Score]:
         return Score.query.filter_by(**kwargs).limit(limit).offset(offset).all()
+
+    def get_queue(self, **kwargs) -> Queue | None:
+        return Queue.query.filter_by(**kwargs).one_or_none()
+
+    def get_queues(self, limit: int = DEFAULT_LIMIT, offset: int = 0, **kwargs) -> list[Queue]:
+        return Queue.query.filter_by(**kwargs).limit(limit).offset(offset).all()
 
     def get_request(self, **kwargs) -> Request | None:
         return Request.query.filter_by(**kwargs).one_or_none()
