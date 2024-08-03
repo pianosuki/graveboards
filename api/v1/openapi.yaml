@@ -427,6 +427,14 @@ components:
                 type: string
             example: '{"difficulties": {"lt": 7}, "sr_gap": {"gt": 0.5, "lt": 1.5}, "total_drain_time": {"lt": 720.5}}'
 
+        RequestFilter:
+            name: request_filter
+            description: Json string of filters to apply to the query. Supports relational operators (eq, gt, lt, gte, lte, and neq)
+            in: query
+            schema:
+                type: string
+            example: '{"user_id": {"eq": 1047883}}'
+
         Limit:
             name: limit
             description: Number of items to limit in the response for pagination
@@ -726,6 +734,7 @@ paths:
                 - $ref: "#/components/parameters/Offset"
                 - $ref: "#/components/parameters/MapperFilter"
                 - $ref: "#/components/parameters/BeatmapsetFilter"
+                - $ref: "#/components/parameters/RequestFilter"
             responses:
                 200:
                     description: Successfully retrieved beatmapset listings

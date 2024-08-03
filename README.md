@@ -83,7 +83,7 @@ Frontend: https://github.com/FlavioAngnes/graveboards-frontend
 
 2. Create and activate a virtual environment:
     ```bash
-    python -m venv venv
+    python -m venv venv  # On Windows use: py -m venv venv
     source venv/bin/activate  # On Windows use: venv\Scripts\activate
     ```
 
@@ -104,7 +104,7 @@ Frontend: https://github.com/FlavioAngnes/graveboards-frontend
 5. Run the application:
     ```bash
     # Development mode:
-    python main.py
+     python main.py  # On Windows use: py main.py
     ```
 
 ## Documentation

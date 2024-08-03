@@ -7,7 +7,6 @@ from io import BytesIO
 from zipfile import ZipFile
 
 from flask import Flask
-from connexion.exceptions import HTTPException
 
 from .utils import combine_checksums
 
