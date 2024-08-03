@@ -18,3 +18,7 @@ def setup():
 
             cr.add_queue(OSU_USER_ID, MASTER_QUEUE_NAME, description=MASTER_QUEUE_DESCRIPTION)
             print(f"Added queue for admin: {OSU_USER_ID}")
+
+
+if __name__ == "__main__":
+    setup()
