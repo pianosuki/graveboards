@@ -6,6 +6,10 @@ instance/
 
 # Python virtual environment
 .venv/
+venv/
 
 # Pycharm project files
 .idea/
+
+# Pycache
+**/__pycache__/
