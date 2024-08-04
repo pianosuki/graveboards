@@ -99,6 +99,7 @@ Frontend: https://github.com/FlavioAngnes/graveboards-frontend
     CLIENT_SECRET=<osu! API client secret>
     OSU_USER_ID=<Your osu! user ID>
     API_KEY=<Graveboards API key for the frontend to use>
+    BASE_URL=http://localhost:4200
     ```
 
 5. Run the application:
@@ -109,4 +110,4 @@ Frontend: https://github.com/FlavioAngnes/graveboards-frontend
 
 ## Documentation
 
-The API spec can be viewed locally at: http://127.0.0.1:8000/api/v1/ui
+The API spec can be viewed locally at: http://localhost:8000/api/v1/ui
