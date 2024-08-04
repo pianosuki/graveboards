@@ -2,6 +2,7 @@ from datetime import datetime
 
 from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
+from sqlalchemy import desc
 
 from .models import *
 from .schemas import *
@@ -213,13 +214,18 @@ class Crud(CrudBase):
         return BeatmapsetSnapshot.query.filter_by(**kwargs).limit(limit).offset(offset).all()
 
     def get_latest_beatmapset_snapshot(self, beatmapset_id: int) -> BeatmapsetSnapshot | None:
-        return BeatmapsetSnapshot.query.filter_by(beatmapset_id=beatmapset_id).order_by(BeatmapsetSnapshot.id.desc()).first()
+        return BeatmapsetSnapshot.query.filter_by(beatmapset_id=beatmapset_id).first()
 
     def get_beatmapset_listing(self, **kwargs) -> BeatmapsetListing | None:
         return BeatmapsetListing.query.filter_by(**kwargs).one_or_none()
 
-    def get_beatmapset_listings(self, limit: int = DEFAULT_LIMIT, offset: int = 0, **kwargs) -> list[BeatmapsetListing]:
-        return BeatmapsetListing.query.filter_by(**kwargs).limit(limit).offset(offset).all()
+    def get_beatmapset_listings(self, limit: int = DEFAULT_LIMIT, offset: int = 0, reverse: bool = True, **kwargs) -> list[BeatmapsetListing]:
+        query = BeatmapsetListing.query.filter_by(**kwargs)
+
+        if reverse:
+            query = query.order_by(desc(BeatmapsetListing.id))
+
+        return query.limit(limit).offset(offset).all()
 
     def get_leaderboard(self, **kwargs) -> Leaderboard | None:
         return Leaderboard.query.filter_by(**kwargs).one_or_none()

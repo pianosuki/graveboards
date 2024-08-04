@@ -1,4 +1,4 @@
-from sqlalchemy import select, func
+from sqlalchemy import select, func, desc
 from sqlalchemy.orm import aliased
 
 from app import db, cr
@@ -23,7 +23,12 @@ class BeatmapFilter:
         return cr.get_beatmapset_listings(**kwargs)
 
     def my_requests(self, user_id: int) -> list[BeatmapsetListing]:
-        subquery = select(Request.beatmapset_id).where(Request.user_id == user_id).subquery()
+        subquery = (
+            select(
+                Request.beatmapset_id, Request.id.label("request_id")
+            )
+            .where(Request.user_id == user_id).subquery()
+        )
 
         latest_snapshot = aliased(BeatmapsetSnapshot, name="latest_snapshot")
         beatmapset_listing_alias = aliased(BeatmapsetListing, name="beatmapset_listing")
@@ -48,6 +53,11 @@ class BeatmapFilter:
                 latest_snapshot_subquery,
                 latest_snapshot.id == latest_snapshot_subquery.c.latest_id
             )
+            .join(
+                subquery,
+                latest_snapshot.beatmapset_id == subquery.c.beatmapset_id
+            )
+            .order_by(desc(subquery.c.request_id))
         )
 
         result = db.session.execute(query).scalars()
