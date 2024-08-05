@@ -10,23 +10,39 @@ class BeatmapFilter:
         self.filters: dict[str: dict] = {}
 
     def add_filters(self, mapper_filter: dict | None = None, beatmapset_filter: dict | None = None, request_filter: dict | None = None):
-        self.mapper_filter = mapper_filter
-        self.beatmapset_filter = beatmapset_filter
-        self.request_filter = request_filter
+        if mapper_filter is not None:
+            self.mapper_filter = mapper_filter
+        if beatmapset_filter is not None:
+            self.beatmapset_filter = beatmapset_filter
+        if request_filter is not None:
+            self.request_filter = request_filter
 
     def filter(self, **kwargs) -> list[BeatmapsetListing]:
-        # TODO: Come up with a good way to combine filters, this is just a workaround for now
+        # TODO: Come up with a good way to combine filters using CTEs, this is just a workaround for now
 
         if self.request_filter and "user_id" in self.request_filter:
             return self.my_requests(self.request_filter["user_id"]["eq"])
 
+        if self.request_filter is not None:
+            return self.all_requests()
+
         return cr.get_beatmapset_listings(**kwargs)
+
+    def all_requests(self) -> list[BeatmapsetListing]:
+        subquery = select(Request.beatmapset_id, Request.id.label("request_id")).subquery()
+
+        query = (
+            select(BeatmapsetListing)
+            .join(subquery, BeatmapsetListing.beatmapset_id == subquery.c.beatmapset_id)
+            .order_by(desc(subquery.c.request_id))
+        )
+
+        result = db.session.execute(query).scalars()
+        return result
 
     def my_requests(self, user_id: int) -> list[BeatmapsetListing]:
         subquery = (
-            select(
-                Request.beatmapset_id, Request.id.label("request_id")
-            )
+            select(Request.beatmapset_id, Request.id.label("request_id"))
             .where(Request.user_id == user_id).subquery()
         )
 
@@ -64,25 +80,25 @@ class BeatmapFilter:
         return result
 
     @property
-    def mapper_filter(self) -> dict:
-        return self.filters.get("mapper_filter", {})
+    def mapper_filter(self) -> dict | None:
+        return self.filters.get("mapper_filter")
 
     @mapper_filter.setter
     def mapper_filter(self, mapper_filter_: dict | None):
-        self.filters["mapper_filter"] = mapper_filter_ if mapper_filter_ else {}
+        self.filters["mapper_filter"] = mapper_filter_
 
     @property
-    def beatmapset_filter(self) -> dict:
-        return self.filters.get("beatmapset_filter", {})
+    def beatmapset_filter(self) -> dict | None:
+        return self.filters.get("beatmapset_filter")
 
     @beatmapset_filter.setter
     def beatmapset_filter(self, beatmapset_filter_: dict | None):
-        self.filters["beatmapset_filter"] = beatmapset_filter_ if beatmapset_filter_ else {}
+        self.filters["beatmapset_filter"] = beatmapset_filter_
 
     @property
-    def request_filter(self) -> dict:
-        return self.filters.get("request_filter", {})
+    def request_filter(self) -> dict | None:
+        return self.filters.get("request_filter")
 
     @request_filter.setter
     def request_filter(self, request_filter_: dict | None):
-        self.filters["request_filter"] = request_filter_ if request_filter_ else {}
+        self.filters["request_filter"] = request_filter_
