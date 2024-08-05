@@ -1,7 +1,7 @@
 import json
 from typing import Any
 
-from marshmallow import fields, Schema, post_dump
+from marshmallow import fields, Schema, post_dump, pre_load, ValidationError
 from marshmallow.utils import EXCLUDE, RAISE
 from sqlalchemy import select
 
@@ -13,6 +13,8 @@ from .utils import combine_checksums
 __all__ = [
     "user_schema",
     "users_schema",
+    "role_schema",
+    "roles_schema",
     "mapper_schema",
     "mappers_schema",
     "oauth_token_schema",
@@ -45,6 +47,29 @@ class UserSchema(ma.SQLAlchemyAutoSchema):
         load_instance = True
         sqla_session = db.session
         include_relationships = True
+
+    roles = fields.Nested("RoleSchema", many=True)
+    queues = fields.Nested("QueueSchema", many=True)
+
+
+class RoleSchema(ma.SQLAlchemyAutoSchema):
+    class Meta:
+        model = Role
+        load_instance = True
+        sqla_session = db.session
+
+    @pre_load
+    def handle_role_identifier(self, data, **kwargs):
+        if "id" in data:
+            role = db.session.get(Role, data["id"])
+            data["name"] = role.name
+        elif "name" in data:
+            role = db.session.execute(select(Role).filter_by(name=data["name"])).scalar()
+            data["id"] = role.id
+        else:
+            raise ValidationError("Invalid input format")
+
+        return data
 
 
 class MapperSchema(ma.SQLAlchemyAutoSchema):
@@ -315,6 +340,8 @@ class StatisticsSchema(JSONTextSchema):
 
 user_schema = UserSchema()
 users_schema = UserSchema(many=True)
+role_schema = RoleSchema()
+roles_schema = RoleSchema(many=True)
 mapper_schema = MapperSchema()
 mappers_schema = MapperSchema(many=True)
 oauth_token_schema = OauthTokenSchema()

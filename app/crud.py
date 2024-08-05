@@ -30,13 +30,23 @@ class CrudBase:
 
 class Crud(CrudBase):
     # Create #
-    def add_user(self, user_id: int) -> User:
-        user = User(id=user_id)
+    def add_user(self, user_id: int, roles: list[Role] | None = None) -> User:
+        roles = roles if roles else []
+
+        user = User(id=user_id, roles=roles)
 
         self.db.session.add(user)
         self.db.session.commit()
 
         return user
+
+    def add_role(self, name: str) -> Role:
+        role = Role(name=name)
+
+        self.db.session.add(role)
+        self.db.session.commit()
+
+        return role
 
     def add_mapper(self, user_dict: dict) -> Mapper:
         mapper = mapper_schema.load(user_dict)

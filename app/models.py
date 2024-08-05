@@ -3,6 +3,7 @@ from .utils import generate_token, aware_utcnow
 
 __all__ = [
     "User",
+    "Role",
     "Mapper",
     "ApiKey",
     "OauthToken",
@@ -18,6 +19,12 @@ __all__ = [
     "Queue",
     "Request"
 ]
+
+user_role_association = db.Table(
+    "user_role_association",
+    db.Column('user_id', db.Integer, db.ForeignKey('users.id'), primary_key=True),
+    db.Column('role_id', db.Integer, db.ForeignKey('roles.id'), primary_key=True)
+)
 
 beatmap_snapshot_to_beatmapset_snapshot = db.Table(
     "beatmap_snapshots_to_beatmapset_snapshots",
@@ -43,10 +50,17 @@ class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
 
     # Relationships
+    roles = db.relationship("Role", secondary=user_role_association, lazy=True)
     scores = db.relationship("Score", lazy=True)
     tokens = db.relationship("OauthToken", lazy=True)
     queues = db.relationship("Queue", lazy=True)
     requests = db.relationship("Request", lazy=True)
+
+
+class Role(db.Model):
+    __tablename__ = "roles"
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String, unique=True, nullable=False)
 
 
 class Mapper(db.Model):

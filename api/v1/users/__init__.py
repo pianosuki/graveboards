@@ -2,7 +2,7 @@ from flask import abort, jsonify
 
 from app import cr, sync, oac
 from app.models import User
-from app.schemas import users_schema
+from app.schemas import users_schema, roles_schema
 from app.services import ServiceName, QueueName
 
 
@@ -18,11 +18,12 @@ def get(user_id: int):
 
 def post(body: dict):
     user_id = body["user_id"]
+    roles = roles_schema.load(body["roles"])
 
     if cr.user_exists(user_id):
         abort(409, f"The user with ID '{user_id}' already exists")
     else:
-        cr.add_user(user_id)
+        cr.add_user(user_id, roles=roles)
 
     score_fetcher_task = cr.get_score_fetcher_task(user_id=user_id)
 

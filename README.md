@@ -89,15 +89,18 @@ Frontend: https://github.com/FlavioAngnes/graveboards-frontend
 
 3. Install the dependencies:
     ```bash
-    pip install -r requirements.txt
+    pip install -r requirements.txt  # On Windows comment out uvloop first
     ```
 
 4. Create the `.env` file:
     ```
     SECRET_KEY=<Some secret key>
+   
     CLIENT_ID=<osu! API client ID>
     CLIENT_SECRET=<osu! API client secret>
     OSU_USER_ID=<Your osu! user ID>
+    ADMIN_OSU_USER_IDS=<Comma-separated list of osu! user IDs>
+   
     API_KEY=<Graveboards API key for the frontend to use>
     BASE_URL=http://localhost:4200
     ```
@@ -111,3 +114,7 @@ Frontend: https://github.com/FlavioAngnes/graveboards-frontend
 ## Documentation
 
 The API spec can be viewed locally at: http://localhost:8000/api/v1/ui
+
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
