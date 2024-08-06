@@ -986,6 +986,7 @@ paths:
             parameters:
                 - $ref: "#/components/parameters/Limit"
                 - $ref: "#/components/parameters/Offset"
+                - $ref: "#/components/parameters/RequestFilter"
             security:
                 - ApiKeyAuth: []
             responses:

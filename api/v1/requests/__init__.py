@@ -1,3 +1,5 @@
+import json
+
 from flask import abort, jsonify
 
 from api import v1 as api
@@ -6,7 +8,15 @@ from app.schemas import requests_schema, request_schema
 
 
 def search(**kwargs):
-    requests = cr.get_requests()
+    kwargs.pop("user")
+    kwargs.pop("token_info")
+    
+    request_filter = json.loads(kwargs.pop("request_filter")) if "request_filter" in kwargs else {}
+    
+    if "user_id" in request_filter:
+        kwargs["user_id"] = request_filter["user_id"]["eq"]
+    
+    requests = cr.get_requests(**kwargs)
     return requests_schema.dump(requests), 200
 
 
