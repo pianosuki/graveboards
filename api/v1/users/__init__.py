@@ -18,7 +18,7 @@ def get(user_id: int):
 
 def post(body: dict):
     user_id = body["user_id"]
-    roles = roles_schema.load(body["roles"])
+    roles = roles_schema.load(body["roles"]) if "roles" in body else []
 
     if cr.user_exists(user_id):
         abort(409, f"The user with ID '{user_id}' already exists")
