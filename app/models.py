@@ -60,6 +60,7 @@ class Role(db.Model):
 class Mapper(db.Model):
     __tablename__ = "mappers"
     id = db.Column(db.Integer, primary_key=True)
+    updated_at = db.Column(db.DateTime, default=aware_utcnow)
 
     # osu! API datastructure
     avatar_url = db.Column(db.String, nullable=False)
@@ -94,6 +95,7 @@ class OauthToken(db.Model):
     expires_at = db.Column(db.Integer, nullable=False)
     is_revoked = db.Column(db.Boolean, default=False)
     created_at = db.Column(db.DateTime, default=aware_utcnow)
+    updated_at = db.Column(db.DateTime, default=aware_utcnow)
 
 
 class ScoreFetcherTask(db.Model):
@@ -208,6 +210,7 @@ class BeatmapsetListing(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     beatmapset_id = db.Column(db.Integer, db.ForeignKey("beatmapsets.id"), nullable=False)
     beatmapset_snapshot_id = db.Column(db.Integer, db.ForeignKey("beatmapset_snapshots.id"), nullable=False)
+    updated_at = db.Column(db.DateTime, default=aware_utcnow)
 
     # Relationships
     beatmapset_snapshot = db.relationship("BeatmapsetSnapshot", primaryjoin="BeatmapsetListing.beatmapset_snapshot_id == BeatmapsetSnapshot.id", uselist=False)
@@ -264,6 +267,7 @@ class Queue(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
     name = db.Column(db.String, nullable=False)
     description = db.Column(db.Text)
+    updated_at = db.Column(db.DateTime, default=aware_utcnow)
 
     # Relationships
     requests = db.relationship("Request", lazy=False)

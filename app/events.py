@@ -1,9 +1,9 @@
 from sqlalchemy import event, Connection
-from sqlalchemy.orm import Mapper
+from sqlalchemy.orm import Mapper as Mapper_
 from sqlalchemy.sql import update
 
 from app import cr
-from .models import BeatmapsetSnapshot, BeatmapsetListing, Request
+from .models import BeatmapsetSnapshot, BeatmapsetListing, Request, Mapper, Queue, OauthToken
 from .utils import aware_utcnow
 
 __all__ = [
@@ -12,7 +12,7 @@ __all__ = [
 
 
 @event.listens_for(BeatmapsetSnapshot, "after_insert")
-def receive_after_insert(mapper: Mapper, connection: Connection, target: BeatmapsetSnapshot):
+def receive_after_insert(mapper: Mapper_, connection: Connection, target: BeatmapsetSnapshot):
     beatmapset_listing = cr.get_beatmapset_listing(beatmapset_id=target.beatmapset_id)
 
     if not beatmapset_listing:
@@ -25,7 +25,6 @@ def receive_after_insert(mapper: Mapper, connection: Connection, target: Beatmap
 
         connection.execute(insert_stmt)
     else:
-        print(beatmapset_listing, "already exists!")
         update_stmt = (
             update(BeatmapsetListing.__table__)
             .where(BeatmapsetListing.__table__.c.id == beatmapset_listing.id)
@@ -35,6 +34,32 @@ def receive_after_insert(mapper: Mapper, connection: Connection, target: Beatmap
         connection.execute(update_stmt)
 
 
-@event.listens_for(Request, "before_update")
-def receive_before_update(mapper, connection: Connection, target: Request):
+@event.listens_for(Mapper, "before_update")
+def receive_before_update(mapper: Mapper_, connection: Connection, target: Mapper):
     target.updated_at = aware_utcnow()
+
+
+@event.listens_for(OauthToken, "before_update")
+def receive_before_update(mapper: Mapper_, connection: Connection, target: OauthToken):
+    target.updated_at = aware_utcnow()
+
+
+@event.listens_for(BeatmapsetListing, "before_update")
+def receive_before_update(mapper: Mapper_, connection: Connection, target: BeatmapsetListing):
+    target.updated_at = aware_utcnow()
+
+
+@event.listens_for(Queue, "before_update")
+def receive_before_update(mapper: Mapper_, connection: Connection, target: Queue):
+    target.updated_at = aware_utcnow()
+
+
+@event.listens_for(Request, "before_update")
+def receive_before_update(mapper: Mapper_, connection: Connection, target: Request):
+    target.updated_at = aware_utcnow()
+
+
+
+
+
+
