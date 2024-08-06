@@ -31,3 +31,9 @@ def post(body: dict):
     cr.add_request(body)
 
     return jsonify({"message": "Request submitted successfully!"}), 201
+
+
+def patch(request_id: int, body: dict):
+    cr.update_request(request_id, **body)
+
+    return jsonify({"message": "Request successfully updated!"}), 200

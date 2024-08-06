@@ -350,4 +350,21 @@ class Crud(CrudBase):
         self.db.session.merge(beatmapset_listing)
         self.db.session.commit()
 
+    def update_request(self, request_id: int, **kwargs):
+        request = Request.query.get(request_id)
+        request_ = request_schema.load(kwargs)
+
+        if request is None:
+            raise ValueError(f"There is no request with the ID '{request_id}'")
+
+        excluded_columns = []
+
+        for column in request_.__table__.columns:
+            if column.name in request.__table__.columns and column.name not in excluded_columns and column.name in kwargs:
+                value = getattr(request_, column.name)
+                setattr(request, column.name, value)
+
+        self.db.session.merge(request)
+        self.db.session.commit()
+
     # Delete #

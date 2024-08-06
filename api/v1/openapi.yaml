@@ -227,6 +227,17 @@ components:
                 - user_id
                 - queue_id
 
+        RequestPatch:
+            description: A JSON object containing request data to update
+            type: object
+            properties:
+                status:
+                    type: integer
+                    enum:
+                        - -1 # Rejected
+                        - 0 # Undetermined
+                        - 1 # Accepted
+
     parameters:
         UserId:
             name: user_id
@@ -460,6 +471,14 @@ components:
             schema:
                 type: integer
 
+        RequestId:
+            name: request_id
+            description: Request ID
+            in: path
+            required: true
+            schema:
+                type: integer
+
     requestBodies:
         AuthorizationCode:
             description: Authorization Code received from the osu! OAuth flow to authenticate with
@@ -516,6 +535,14 @@ components:
                 application/json:
                     schema:
                         $ref: "#/components/schemas/Request"
+
+        RequestPatch:
+            description: Request data to update
+            required: true
+            content:
+                application/json:
+                    schema:
+                        $ref: "#/components/schemas/RequestPatch"
 
     responses:
         UnauthorizedError:
@@ -976,3 +1003,18 @@ paths:
             responses:
                 201:
                     description: Successfully added request
+
+    /requests/{request_id}:
+        patch:
+            summary: Updates a request
+            tags:
+                - Requests
+            parameters:
+                - $ref: "#/components/parameters/RequestId"
+            security:
+                - ApiKeyAuth: []
+            requestBody:
+                $ref: "#/components/requestBodies/RequestPatch"
+            responses:
+                200:
+                    description: Successfully updated request

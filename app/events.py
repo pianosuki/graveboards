@@ -3,7 +3,8 @@ from sqlalchemy.orm import Mapper
 from sqlalchemy.sql import update
 
 from app import cr
-from .models import BeatmapsetSnapshot, BeatmapsetListing
+from .models import BeatmapsetSnapshot, BeatmapsetListing, Request
+from .utils import aware_utcnow
 
 __all__ = [
     "receive_after_insert"
@@ -32,3 +33,8 @@ def receive_after_insert(mapper: Mapper, connection: Connection, target: Beatmap
         )
 
         connection.execute(update_stmt)
+
+
+@event.listens_for(Request, "before_update")
+def receive_before_update(mapper, connection: Connection, target: Request):
+    target.updated_at = aware_utcnow()
