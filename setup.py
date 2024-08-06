@@ -14,8 +14,7 @@ def setup():
             api.users.post({"user_id": OSU_USER_ID, "roles": [{"name": ADMIN_ROLE_NAME}]})
             print(f"Added primary admin: {OSU_USER_ID}")
 
-            admin_user_ids = ADMIN_OSU_USER_IDS.copy()
-            admin_user_ids.remove(OSU_USER_ID)
+            admin_user_ids = [user_id for user_id in ADMIN_OSU_USER_IDS if user_id != OSU_USER_ID]
 
             for user_id in admin_user_ids:
                 api.users.post({"user_id": user_id, "roles": [{"name": ADMIN_ROLE_NAME}]})
