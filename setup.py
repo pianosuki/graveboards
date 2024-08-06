@@ -8,7 +8,7 @@ def setup():
         db.create_all()
 
         if not cr.user_exists(OSU_USER_ID):
-            admin_role = cr.add_role(ADMIN_ROLE_NAME)
+            cr.add_role(ADMIN_ROLE_NAME)
             print(f"Added role: '{ADMIN_ROLE_NAME}'")
 
             api.users.post({"user_id": OSU_USER_ID, "roles": [{"name": ADMIN_ROLE_NAME}]})

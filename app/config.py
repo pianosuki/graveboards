@@ -37,7 +37,7 @@ SPEC_DIR = os.path.abspath("api/v1")
 
 OSU_USER_ID = int(os.getenv("OSU_USER_ID"))
 
-ADMIN_OSU_USER_IDS = [int(id_.strip()) for id_ in os.getenv("ADMIN_OSU_USER_IDS").split(',')]
+ADMIN_OSU_USER_IDS = [int(id_.strip()) for id_ in os.getenv("ADMIN_OSU_USER_IDS").split(",")]
 
 ADMIN_ROLE_NAME = "admin"
 

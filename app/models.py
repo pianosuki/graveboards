@@ -22,8 +22,8 @@ __all__ = [
 
 user_role_association = db.Table(
     "user_role_association",
-    db.Column('user_id', db.Integer, db.ForeignKey('users.id'), primary_key=True),
-    db.Column('role_id', db.Integer, db.ForeignKey('roles.id'), primary_key=True)
+    db.Column("user_id", db.Integer, db.ForeignKey("users.id"), primary_key=True),
+    db.Column("role_id", db.Integer, db.ForeignKey("roles.id"), primary_key=True)
 )
 
 beatmap_snapshot_to_beatmapset_snapshot = db.Table(
@@ -32,16 +32,10 @@ beatmap_snapshot_to_beatmapset_snapshot = db.Table(
     db.Column("beatmapset_snapshot_id", db.Integer, db.ForeignKey("beatmapset_snapshots.id"), primary_key=True)
 )
 
-queue_admin_association = db.Table(
-    "queue_admin_association",
-    db.Column('queue_id', db.Integer, db.ForeignKey('queues.id'), primary_key=True),
-    db.Column('user_id', db.Integer, db.ForeignKey('users.id'), primary_key=True)
-)
-
-queue_view_association = db.Table(
-    "queue_view_association",
-    db.Column('queue_id', db.Integer, db.ForeignKey('queues.id'), primary_key=True),
-    db.Column('user_id', db.Integer, db.ForeignKey('users.id'), primary_key=True)
+queue_manager_association = db.Table(
+    "queue_manager_association",
+    db.Column("queue_id", db.Integer, db.ForeignKey("queues.id"), primary_key=True),
+    db.Column("user_id", db.Integer, db.ForeignKey("users.id"), primary_key=True)
 )
 
 
@@ -273,8 +267,7 @@ class Queue(db.Model):
 
     # Relationships
     requests = db.relationship("Request", lazy=False)
-    admins = db.relationship("User", secondary=queue_admin_association, backref="managed_queues")
-    viewers = db.relationship("User", secondary=queue_view_association, backref="viewable_queues")
+    managers = db.relationship("User", secondary=queue_manager_association, backref="managed_queues")
 
     __table_args__ = (
         db.UniqueConstraint("user_id", "name", name="_user_and_name_uc"),
@@ -290,3 +283,4 @@ class Request(db.Model):
     comment = db.Column(db.Text)
     mv_checked = db.Column(db.Boolean, default=False)
     created_at = db.Column(db.DateTime, default=aware_utcnow)
+

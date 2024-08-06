@@ -2,7 +2,7 @@ from flask import abort, jsonify
 
 from app import cr, sync, oac
 from app.models import User
-from app.schemas import users_schema, roles_schema
+from app.schemas import users_schema, roles_schema, user_schema
 from app.services import ServiceName, QueueName
 
 
@@ -12,8 +12,8 @@ def search():
 
 
 def get(user_id: int):
-    user_profile = oac.get_user(user_id)
-    return jsonify(user_profile)
+    user = User.query.get(user_id)
+    return user_schema.dump(user), 200
 
 
 def post(body: dict):

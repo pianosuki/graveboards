@@ -578,14 +578,29 @@ paths:
 
     /users/{user_id}:
         get:
-            summary: Returns the user profile
+            summary: Returns the user
             tags:
                 - Users
+            security:
+                - ApiKeyAuth: []
             parameters:
                 - $ref: "#/components/parameters/UserId"
             responses:
                 200:
-                    description: Successfully retrieved user profile
+                    description: Successfully retrieved user
+
+    /users/{user_id}/profile:
+        get:
+            summary: Returns the user osu profile
+            tags:
+                - Users
+            security:
+                - ApiKeyAuth: []
+            parameters:
+                - $ref: "#/components/parameters/UserId"
+            responses:
+                200:
+                    description: Successfully retrieved user osu profile
 
     /mappers:
         get:
