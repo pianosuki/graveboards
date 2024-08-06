@@ -283,4 +283,4 @@ class Request(db.Model):
     comment = db.Column(db.Text)
     mv_checked = db.Column(db.Boolean, default=False)
     created_at = db.Column(db.DateTime, default=aware_utcnow)
-
+    status = db.Column(db.Integer, default=0)
