@@ -198,7 +198,7 @@ class BeatmapsetListingSchema(ma.SQLAlchemyAutoSchema):
         display_data = {
             "title": beatmapset_snapshot["title"],
             "artist": beatmapset_snapshot["artist"],
-            "thumbnail": beatmapset_snapshot["covers"]["cover@2x"],
+            "thumbnail": beatmapset_snapshot["covers"]["cover"],
             "mapper": beatmapset_snapshot["creator"],
             "mapper_avatar": self.session.execute(select(Mapper).filter_by(id=beatmapset_snapshot["user_id"])).scalar().avatar_url,
             "length": max(beatmapset_snapshot["beatmap_snapshots"], key=lambda beatmap_snapshot: beatmap_snapshot["total_length"])["total_length"],

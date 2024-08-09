@@ -9,7 +9,7 @@ from .schemas import *
 
 MIN_LIMIT = 1
 MAX_LIMIT = 100
-DEFAULT_LIMIT = 50
+DEFAULT_LIMIT = None
 
 
 class CrudBase:
