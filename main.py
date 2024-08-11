@@ -1,6 +1,7 @@
 from pathlib import Path
 
-from app import connexion_app, daemon_thread
+from app import connexion_app
+from daemon import daemon_thread
 from setup import setup
 
 

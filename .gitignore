@@ -1,4 +1,4 @@
-# Database
+# Instance
 instance/
 
 # Dotenv
@@ -8,8 +8,9 @@ instance/
 .venv/
 venv/
 
-# Pycharm project files
+# IDE Project Files
 .idea/
+.vscode/
 
 # Pycache
 **/__pycache__/

@@ -14,7 +14,7 @@ components:
             type: apiKey
             in: header
             name: X-API-KEY
-            x-apikeyInfoFunc: app.auth.api_key_info
+            x-apikeyInfoFunc: api.v1.auth.api_key_info
 
     schemas:
         AuthorizationCodeQuery:
@@ -717,29 +717,6 @@ paths:
                 200:
                     description: Successfully retrieved beatmap file
 
-    /beatmaps/{beatmap_id}/difficulty:
-        get:
-            summary: Calculates and returns the difficulty values of the beatmap's latest snapshot
-            tags:
-                - Beatmaps
-            parameters:
-                -   $ref: "#/components/parameters/BeatmapId"
-            responses:
-                200:
-                    description: Successfully retrieved beatmap difficulty values
-
-    /beatmaps/{beatmap_id}/difficulty/{snapshot_number}:
-        get:
-            summary: Calculates and returns the difficulty values of the beatmap's specified snapshot
-            tags:
-                - Beatmaps
-            parameters:
-                -   $ref: "#/components/parameters/BeatmapId"
-                -   $ref: "#/components/parameters/SnapshotNumber"
-            responses:
-                200:
-                    description: Successfully retrieved beatmap difficulty values
-
     /beatmapsets:
         get:
             summary: Returns a list of beatmapsets
@@ -917,22 +894,6 @@ paths:
                 - Scores
             security:
                 - ApiKeyAuth: []
-            requestBody:
-                $ref: "#/components/requestBodies/Score"
-            responses:
-                201:
-                    description: Successfully added score
-
-    /scores/{beatmap_id}/snapshots/{snapshot_number}:
-        post:
-            summary: Adds a score to the specified beatmap snapshot's leaderboard
-            tags:
-                - Scores
-            security:
-                - ApiKeyAuth: []
-            parameters:
-                - $ref: "#/components/parameters/BeatmapId"
-                - $ref: "#/components/parameters/SnapshotNumber"
             requestBody:
                 $ref: "#/components/requestBodies/Score"
             responses:

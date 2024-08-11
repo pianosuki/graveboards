@@ -1,8 +1,18 @@
-from flask import send_file
+from werkzeug.wrappers import Response
 
-from app import bm
+from app.beatmap_manager import BeatmapManager
 
 
 def search(beatmapset_id: int, snapshot_number: int):
-    zip_file = bm.get_zip(beatmapset_id, snapshot_number)
-    return send_file(zip_file, as_attachment=True, download_name=f"{beatmapset_id}.zip"), 200
+    bm = BeatmapManager()
+
+    zip_file_io = bm.get_zip(beatmapset_id, snapshot_number)
+    zip_file_io.seek(0)
+
+    response = Response(
+        zip_file_io,
+        headers={"Content-Disposition": f"attachment; filename={beatmapset_id}.zip"},
+        mimetype="application/zip"
+    )
+
+    return response

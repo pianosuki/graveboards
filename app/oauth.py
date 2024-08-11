@@ -1,0 +1,25 @@
+from typing import Literal
+
+from authlib.integrations.httpx_client import OAuth2Client
+from authlib.oauth2.auth import OAuth2Token
+
+from .config import OAUTH_CONFIGURATION
+
+
+class OAuth(OAuth2Client):
+    def __init__(self):
+        super().__init__(
+            client_id=OAUTH_CONFIGURATION["client_id"],
+            client_secret=OAUTH_CONFIGURATION["client_secret"],
+            token_endpoint_auth_method=OAUTH_CONFIGURATION["token_endpoint_auth_method"],
+            redirect_uri=OAUTH_CONFIGURATION["redirect_uri"]
+        )
+
+        self.authorize_url = OAUTH_CONFIGURATION["authorize_url"]
+        self.token_endpoint = OAUTH_CONFIGURATION["token_endpoint"]
+
+    def create_authorization_url(self, *args, **kwargs) -> tuple[Literal[b""], str]:
+        return super().create_authorization_url(self.authorize_url, *args, **kwargs)
+
+    def fetch_token(self, *args, **kwargs) -> OAuth2Token:
+        return super().fetch_token(self.token_endpoint, *args, **kwargs)

@@ -1,8 +1,9 @@
 from sqlalchemy import select, func, desc
 from sqlalchemy.orm import aliased
+from sqlalchemy.orm.session import Session
 
-from app import db, cr
-from app.models import BeatmapsetSnapshot, Request, BeatmapsetListing
+from app import db
+from app.database.models import BeatmapsetSnapshot, Request, BeatmapsetListing
 
 
 class BeatmapFilter:
@@ -17,18 +18,18 @@ class BeatmapFilter:
         if request_filter is not None:
             self.request_filter = request_filter
 
-    def filter(self, **kwargs) -> list[BeatmapsetListing]:
+    def filter(self, session: Session = None, **kwargs) -> list[BeatmapsetListing]:
         # TODO: Come up with a good way to combine filters using CTEs, this is just a workaround for now
 
         if self.request_filter and "user_id" in self.request_filter:
-            return self.my_requests(self.request_filter["user_id"]["eq"])
+            return self.my_requests(self.request_filter["user_id"]["eq"], session=session)
 
         if self.request_filter is not None:
-            return self.all_requests()
+            return self.all_requests(session=session)
 
-        return cr.get_beatmapset_listings(**kwargs)
+        return db.get_beatmapset_listings(session=session, **kwargs)
 
-    def all_requests(self) -> list[BeatmapsetListing]:
+    def all_requests(self, session: Session = None) -> list[BeatmapsetListing]:
         subquery = select(Request.beatmapset_id, Request.id.label("request_id")).subquery()
 
         query = (
@@ -37,10 +38,15 @@ class BeatmapFilter:
             .order_by(desc(subquery.c.request_id))
         )
 
-        result = db.session.execute(query).scalars()
+        if session:
+            result = session.execute(query).scalars()
+        else:
+            with db.session_scope() as session:
+                result = session.execute(query).scalars()
+
         return result
 
-    def my_requests(self, user_id: int) -> list[BeatmapsetListing]:
+    def my_requests(self, user_id: int, session: Session = None) -> list[BeatmapsetListing]:
         subquery = (
             select(Request.beatmapset_id, Request.id.label("request_id"))
             .where(Request.user_id == user_id).subquery()
@@ -76,7 +82,12 @@ class BeatmapFilter:
             .order_by(desc(subquery.c.request_id))
         )
 
-        result = db.session.execute(query).scalars()
+        if session:
+            result = session.execute(query).scalars()
+        else:
+            with db.session_scope() as session:
+                result = session.execute(query).scalars()
+
         return result
 
     @property
