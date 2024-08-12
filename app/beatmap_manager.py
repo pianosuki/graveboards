@@ -53,12 +53,9 @@ class BeatmapManager:
             beatmap_id = beatmap_dict["id"]
             mapper_id = beatmap_dict["user_id"]
 
-            if mapper_id != 10627594:
-                try:
-                    self._ensure_mapper_populated(mapper_id)
-                except httpx.HTTPError:
-                    self._add_banned_mapper(mapper_id)
-            else:
+            try:
+                self._ensure_mapper_populated(mapper_id)
+            except httpx.HTTPError:
                 self._add_banned_mapper(mapper_id)
 
             if not db.get_beatmap(id=beatmap_id):
