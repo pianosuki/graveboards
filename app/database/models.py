@@ -84,9 +84,9 @@ class Mapper(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=aware_utcnow, onupdate=aware_utcnow)
 
     # osu! API datastructure
-    avatar_url: Mapped[str] = mapped_column(String, nullable=False)
-    username: Mapped[str] = mapped_column(String, nullable=False)
-    country_code: Mapped[str] = mapped_column(String(2), nullable=False)
+    avatar_url: Mapped[Optional[str]] = mapped_column(String)
+    username: Mapped[Optional[str]] = mapped_column(String)
+    country_code: Mapped[Optional[str]] = mapped_column(String(2))
     graveyard_beatmapset_count: Mapped[Optional[int]] = mapped_column(Integer)
     loved_beatmapset_count: Mapped[Optional[int]] = mapped_column(Integer)
     pending_beatmapset_count: Mapped[Optional[int]] = mapped_column(Integer)

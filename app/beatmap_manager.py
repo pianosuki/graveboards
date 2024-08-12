@@ -43,7 +43,7 @@ class BeatmapManager:
         try:
             self._ensure_mapper_populated(mapper_id)
         except httpx.HTTPError:
-            self._add_banned_mapper(beatmapset_dict["user"])
+            self._add_banned_mapper(mapper_id, user_dict=beatmapset_dict["user"])
 
         if not db.get_beatmapset(id=beatmapset_id):
             db.add_beatmapset(id=beatmapset_id, mapper_id=mapper_id)
@@ -53,7 +53,13 @@ class BeatmapManager:
             beatmap_id = beatmap_dict["id"]
             mapper_id = beatmap_dict["user_id"]
 
-            self._ensure_mapper_populated(mapper_id)
+            if mapper_id != 10627594:
+                try:
+                    self._ensure_mapper_populated(mapper_id)
+                except httpx.HTTPError:
+                    self._add_banned_mapper(mapper_id)
+            else:
+                self._add_banned_mapper(mapper_id)
 
             if not db.get_beatmap(id=beatmap_id):
                 db.add_beatmap(id=beatmap_id, beatmapset_id=beatmapset_id, mapper_id=mapper_id)
@@ -64,14 +70,12 @@ class BeatmapManager:
 
             api.mappers.post({"user_id": mapper_id})
 
-    def _add_banned_mapper(self, user_dict: dict):
-        db.add_mapper({
-            "id": user_dict["id"],
-            "avatar_url": user_dict["avatar_url"],
-            "username": user_dict["username"],
-            "country_code": user_dict["country_code"],
-            "is_restricted": True
-        })
+    def _add_banned_mapper(self, mapper_id: int, user_dict: dict = None):
+        db.add_mapper(id=mapper_id, is_restricted=True, **{
+            "avatar_url": user_dict["avatar_url"] if user_dict else None,
+            "username": user_dict["username"] if user_dict else None,
+            "country_code": user_dict["country_code"] if user_dict else None
+        } if user_dict else {})
 
     def _snapshot(self, beatmapset_dict: dict) -> list[int]:
         beatmap_snapshots = []
