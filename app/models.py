@@ -63,9 +63,9 @@ class Mapper(db.Model):
     updated_at = db.Column(db.DateTime, default=aware_utcnow)
 
     # osu! API datastructure
-    avatar_url = db.Column(db.String, nullable=False)
-    username = db.Column(db.String, nullable=False)
-    country_code = db.Column(db.String(2), nullable=False)
+    avatar_url = db.Column(db.String)
+    username = db.Column(db.String)
+    country_code = db.Column(db.String(2))
     graveyard_beatmapset_count = db.Column(db.Integer)
     loved_beatmapset_count = db.Column(db.Integer)
     pending_beatmapset_count = db.Column(db.Integer)

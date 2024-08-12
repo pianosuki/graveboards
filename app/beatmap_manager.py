@@ -75,7 +75,15 @@ class BeatmapManager(BeatmapManagerBase):
             beatmap_id = beatmap_dict["id"]
             beatmap_mapper_id = beatmap_dict["user_id"]
 
-            self._ensure_mapper_populated(beatmap_mapper_id)
+            try:
+                self._ensure_mapper_populated(mapper_id)
+            except httpx.HTTPError:
+                self._add_banned_mapper({
+                    "id": beatmap_mapper_id,
+                    "avatar_url": None,
+                    "username": None,
+                    "country_code": None
+                })
 
             if not self.crud.get_beatmap(id=beatmap_id):
                 self.crud.add_beatmap(beatmap_id, beatmapset_id, beatmap_mapper_id)
