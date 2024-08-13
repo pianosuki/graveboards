@@ -76,7 +76,7 @@ class BeatmapManager(BeatmapManagerBase):
             beatmap_mapper_id = beatmap_dict["user_id"]
 
             try:
-                self._ensure_mapper_populated(mapper_id)
+                self._ensure_mapper_populated(beatmap_mapper_id)
             except httpx.HTTPError:
                 self._add_banned_mapper({
                     "id": beatmap_mapper_id,
