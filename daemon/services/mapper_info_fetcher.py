@@ -6,6 +6,7 @@ from datetime import datetime, timedelta, timezone
 from app import db, arc
 from app.osu_api import OsuAPIClient
 from app.database.models import MapperInfoFetcherTask
+from app.database.schemas import MapperSchema
 from app.redis import ChannelName
 from app.utils import aware_utcnow
 from .enums import EventName, RuntimeTaskName
@@ -58,7 +59,7 @@ class MapperInfoFetcher(Service):
             if not message["type"] == "message" or not message["channel"].decode() == ChannelName.MAPPER_INFO_FETCHER_TASKS.value:
                 continue
 
-            await asyncio.sleep(1)  # Wait until it's safe to assume the MapperInfoFetcherTask was fully committed
+            await asyncio.sleep(5)  # Wait until it's safe to assume the MapperInfoFetcherTask was fully committed
 
             task_id = int(message["data"].decode())
             task = db.get_mapper_info_fetcher_task(id=task_id)
@@ -84,9 +85,14 @@ class MapperInfoFetcher(Service):
         heapq.heappush(self.tasks_heap, (execution_time, task.id))
 
     def fetch_mapper_info(self, task_id: int):
-        task = db.get_mapper_info_fetcher_task(id=task_id)
+        with db.session_scope() as session:
+            task = db.get_mapper_info_fetcher_task(id=task_id, session=session)
 
-        mapper_id = task.mapper_id
-        mapper_info = self.oac.get_user(mapper_id)
+            mapper_id = task.mapper_id
+            user_dict = self.oac.get_user(mapper_id)
 
-        db.update_mapper(mapper_id, **mapper_info)
+            mapper_schema = MapperSchema(session=session)
+            mapper = mapper_schema.load(user_dict)
+            mapper_info = mapper.to_dict()
+
+            db.update_mapper(mapper_id, **mapper_info)

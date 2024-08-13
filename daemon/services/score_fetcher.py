@@ -57,7 +57,7 @@ class ScoreFetcher(Service):
             if not message["type"] == "message" or not message["channel"].decode() == ChannelName.SCORE_FETCHER_TASKS.value:
                 continue
 
-            await asyncio.sleep(1)  # Wait until it's safe to assume the ScoreFetcherTask was fully committed
+            await asyncio.sleep(5)  # Wait until it's safe to assume the ScoreFetcherTask was fully committed
 
             task_id = int(message["data"].decode())
             task = db.get_score_fetcher_task(id=task_id)

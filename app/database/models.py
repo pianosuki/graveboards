@@ -1,6 +1,6 @@
 from datetime import datetime
 from enum import Enum
-from typing import Optional, TypeVar
+from typing import Optional, TypeVar, Any
 
 from sqlalchemy.sql.schema import Table, Column, ForeignKey, UniqueConstraint
 from sqlalchemy.sql.sqltypes import Integer, String, DateTime, Text, Boolean, Float
@@ -10,7 +10,7 @@ from sqlalchemy.orm.decl_api import DeclarativeBase
 from sqlalchemy.orm.base import Mapped
 from sqlalchemy.orm.mapper import Mapper as Mapper_
 
-from app.utils import generate_token, aware_utcnow
+from app.utils import aware_utcnow
 
 __all__ = [
     "BaseType",
@@ -36,7 +36,8 @@ __all__ = [
 
 
 class Base(DeclarativeBase):
-    ...
+    def to_dict(self) -> dict[str, Any]:
+        return {key: value for key, value in self.__dict__.items() if not key.startswith("_")}
 
 
 BaseType = TypeVar("BaseType", bound=Base)
@@ -102,7 +103,7 @@ class Mapper(Base):
 class ApiKey(Base):
     __tablename__ = "api_keys"
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    key: Mapped[str] = mapped_column(String(32), unique=True, default=lambda: generate_token(32))
+    key: Mapped[str] = mapped_column(String(32), unique=True)
     user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"), nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=aware_utcnow)
 
