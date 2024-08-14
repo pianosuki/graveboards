@@ -1,7 +1,7 @@
 from app.oauth import OAuth
 
 
-def search():
+def search():  # TODO: Protect against CSRF attacks
     oauth = OAuth()
 
     authorization_url, state = oauth.create_authorization_url()

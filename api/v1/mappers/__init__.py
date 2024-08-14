@@ -1,6 +1,8 @@
 from app import db
 from app.osu_api import OsuAPIClient
 from app.database.schemas import MapperSchema
+from app.security import authorization_required
+from app.enums import RoleName
 
 
 def search():
@@ -11,7 +13,8 @@ def search():
     return mappers_data, 200
 
 
-def post(body: dict):
+@authorization_required(RoleName.ADMIN)
+def post(body: dict, **kwargs):
     mapper_id = body["user_id"]
 
     if db.get_mapper(id=mapper_id):

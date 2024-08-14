@@ -95,7 +95,8 @@ Frontend: https://github.com/FlavioAngnes/graveboards-frontend
 4. Create the `.env` file:
     ```
     BASE_URL=<frontend-base-url>  # http://localhost:4200
-    API_KEY=<frontend-private-token>
+    JWT_SECRET_KEY=<private-encryption-key>
+    JWT_ALGORITHM=<symmetric-algorithm>  # HS256
     ADMIN_USER_IDS=<comma-delimmed-osu-user-ids>  # 2,124493,873961 ...
     
     OSU_CLIENT_ID=<osu-OAuth-client-id>

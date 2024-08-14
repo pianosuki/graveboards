@@ -4,9 +4,12 @@ from api import v1 as api
 from app import db
 from app.osu_api import OsuAPIClient
 from app.database.schemas import RequestSchema
+from app.security import authorization_required
+from app.enums import RoleName
+from app.config import PRIMARY_ADMIN_USER_ID
 
 
-def search(**kwargs):
+def search(**kwargs):  # TODO: Prevent users from having access to others' requests
     kwargs.pop("user")
     kwargs.pop("token_info")
 
@@ -15,9 +18,8 @@ def search(**kwargs):
     if "user_id" in request_filter:
         kwargs["user_id"] = request_filter["user_id"]["eq"]
 
-    with db.session_scope() as session:
-        requests = db.get_requests(**kwargs)
-        requests_data = RequestSchema(many=True).dump(requests)
+    requests = db.get_requests(**kwargs)
+    requests_data = RequestSchema(many=True).dump(requests)
 
     return requests_data, 200
 
@@ -40,14 +42,15 @@ def post(body: dict):
     if beatmapset["status"] in ("ranked", "approved", "qualified", "loved"):
         return {"error_type": "already_ranked", "message": f"The beatmapset is already {beatmapset['status']} on osu!"}, 400
 
-    api.beatmapsets.post({"beatmapset_id": beatmapset_id})
+    api.beatmapsets.post({"beatmapset_id": beatmapset_id}, user=PRIMARY_ADMIN_USER_ID)
 
     db.add_request(**body)
 
     return {"message": "Request submitted successfully!"}, 201
 
 
-def patch(request_id: int, body: dict):
+@authorization_required(RoleName.ADMIN)
+def patch(request_id: int, body: dict, **kwargs):
     db.update_request(request_id, **body)
 
     return {"message": "Request updated successfully!"}, 200

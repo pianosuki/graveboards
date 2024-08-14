@@ -4,11 +4,12 @@ from zipfile import ZipFile
 
 import httpx
 
+from api import v1 as api
 from app import db
 from app.osu_api import OsuAPIClient
 from app.database.schemas import BeatmapSnapshotSchema, BeatmapsetSnapshotSchema
 from .utils import combine_checksums
-from .config import INSTANCE_DIR
+from .config import INSTANCE_DIR, PRIMARY_ADMIN_USER_ID
 
 BEATMAPS_PATH = os.path.join(INSTANCE_DIR, "beatmaps")
 BEATMAPSETS_PATH = os.path.join(INSTANCE_DIR, "beatmapsets")
@@ -42,6 +43,7 @@ class BeatmapManager:
         # Beatmapset
         try:
             self._ensure_mapper_populated(mapper_id)
+
         except httpx.HTTPError:
             self._add_banned_mapper(mapper_id, user_dict=beatmapset_dict["user"])
 
@@ -55,6 +57,7 @@ class BeatmapManager:
 
             try:
                 self._ensure_mapper_populated(mapper_id)
+
             except httpx.HTTPError:
                 self._add_banned_mapper(mapper_id)
 
@@ -63,15 +66,13 @@ class BeatmapManager:
 
     def _ensure_mapper_populated(self, mapper_id: int):
         if not db.get_mapper(id=mapper_id):
-            from api import v1 as api
-
-            api.mappers.post({"user_id": mapper_id})
+            api.mappers.post({"user_id": mapper_id}, user=PRIMARY_ADMIN_USER_ID)
 
     def _add_banned_mapper(self, mapper_id: int, user_dict: dict = None):
         db.add_mapper(id=mapper_id, is_restricted=True, **{
-            "avatar_url": user_dict["avatar_url"] if user_dict else None,
-            "username": user_dict["username"] if user_dict else None,
-            "country_code": user_dict["country_code"] if user_dict else None
+            "avatar_url": user_dict["avatar_url"],
+            "username": user_dict["username"],
+            "country_code": user_dict["country_code"]
         } if user_dict else {})
 
     def _snapshot(self, beatmapset_dict: dict) -> list[int]:

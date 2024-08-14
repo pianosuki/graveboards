@@ -18,8 +18,10 @@ class DaemonThread(Thread):
 
         try:
             self._loop.run_until_complete(self._daemon_app.run())
+
         except Exception as e:
             print(f"[{self.__class__.__name__}] ERROR:", type(e).__name__, e)
             print_exc()
+
         finally:
             self._loop.close()

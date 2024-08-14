@@ -3,11 +3,12 @@ import httpx
 from app import db
 from app.beatmap_manager import BeatmapManager
 from app.database.schemas import BeatmapsetSchema
+from app.security import authorization_required
+from app.enums import RoleName
 from . import listings, snapshots
 
 
 def search(**kwargs):
-    # To-do: handle filtering
     with db.session_scope() as session:
         beatmapsets = db.get_beatmapsets(session=session)
         beatmapsets_data = BeatmapsetSchema(many=True).dump(beatmapsets)
@@ -15,7 +16,8 @@ def search(**kwargs):
     return beatmapsets_data, 200
 
 
-def post(body: dict):
+@authorization_required(RoleName.ADMIN)
+def post(body: dict, **kwargs):
     beatmapset_id = body["beatmapset_id"]
 
     try:
@@ -36,5 +38,6 @@ def post(body: dict):
             return response, 201
         else:
             return {"message": "The latest versions of all the beatmaps in the beatmapset have already been downloaded, no further action is needed"}, 200
+
     except httpx.HTTPStatusError as e:
         return e.response.json(), e.response.status_code

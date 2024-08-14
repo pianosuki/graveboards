@@ -1,5 +1,7 @@
 from app import db
 from app.database.schemas import LeaderboardSchema
+from app.security import authorization_required
+from app.enums import RoleName
 from . import snapshots
 
 
@@ -19,7 +21,8 @@ def get(beatmap_id: int):
     return leaderboard_data, 200
 
 
-def post(body: dict):
+@authorization_required(RoleName.ADMIN)
+def post(body: dict, **kwargs):
     beatmap_id = body["beatmap_id"]
 
     if not db.beatmap_exists(beatmap_id):

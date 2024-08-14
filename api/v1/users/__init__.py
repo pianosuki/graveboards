@@ -1,8 +1,11 @@
 from app import db
 from app.database.schemas import UserSchema, RoleSchema
+from app.enums import RoleName
+from app.security import authorization_required, matching_user_id_override
 
 
-def search():
+@authorization_required(RoleName.ADMIN)
+def search(**kwargs):
     with db.session_scope() as session:
         users = db.get_users(session=session)
         users_data = UserSchema(many=True).dump(users)
@@ -10,7 +13,8 @@ def search():
     return users_data, 200
 
 
-def get(user_id: int):
+@authorization_required(RoleName.ADMIN, override=matching_user_id_override)
+def get(user_id: int, **kwargs):
     with db.session_scope() as session:
         user = db.get_user(id=user_id, session=session)
         user_data = UserSchema().dump(user)
@@ -18,7 +22,8 @@ def get(user_id: int):
     return user_data, 200
 
 
-def post(body: dict):
+@authorization_required(RoleName.ADMIN)
+def post(body: dict, **kwargs):
     user_id = body["user_id"]
 
     if db.get_user(id=user_id):

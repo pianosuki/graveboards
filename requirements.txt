@@ -24,6 +24,7 @@ marshmallow-sqlalchemy==1.0.0
 packaging==24.1
 psycopg2==2.9.9
 pycparser==2.22
+PyJWT==2.9.0
 python-dotenv==1.0.1
 python-multipart==0.0.9
 PyYAML==6.0.2

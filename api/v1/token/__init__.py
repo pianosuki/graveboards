@@ -4,6 +4,8 @@ from api import v1 as api
 from app import db
 from app.oauth import OAuth
 from app.osu_api import OsuAPIClient
+from app.config import PRIMARY_ADMIN_USER_ID
+from app.security import generate_token
 
 
 def post(body: dict):
@@ -11,18 +13,17 @@ def post(body: dict):
         oauth = OAuth()
 
         token = oauth.fetch_token(grant_type="authorization_code", scope="public identify", code=body["code"])
-        access_token = token.get("access_token")
-        refresh_token = token.get("refresh_token")
-        expires_at = token.get("expires_at")
+        access_token = token["access_token"]
+        refresh_token = token["refresh_token"]
+        expires_at = token["expires_at"]
 
         oac = OsuAPIClient()
 
         user_data = oac.get_own_data(access_token)
-        user_id = user_data.get("id")
-        token["user_id"] = user_id
+        user_id = user_data["id"]
 
         if not db.get_user(id=user_id):
-            api.users.post({"user_id": user_id})
+            api.users.post({"user_id": user_id}, user=PRIMARY_ADMIN_USER_ID)
 
         oauth_tokens = db.get_oauth_tokens(user_id=user_id, is_revoked=False)
 
@@ -31,6 +32,9 @@ def post(body: dict):
 
         db.add_oauth_token(user_id=user_id, access_token=access_token, refresh_token=refresh_token, expires_at=expires_at)
 
-        return token, 201
+        jwt = generate_token(user_id)
+
+        return {"token": jwt, "user_id": user_id}, 201
+
     except OAuthError as e:
         return {"message": e.description}, 500

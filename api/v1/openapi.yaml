@@ -1,8 +1,8 @@
 openapi: 3.0.0
 
 info:
-    title: Test App
-    description: Test API
+    title: Graveboards API
+    description: A webapp backend for hosting leaderboards for graveyarded osu! beatmaps.
     version: 1.0.0
 
 servers:
@@ -15,6 +15,11 @@ components:
             in: header
             name: X-API-KEY
             x-apikeyInfoFunc: api.v1.auth.api_key_info
+
+        BearerAuth:
+            type: http
+            scheme: bearer
+            x-bearerInfoFunc: api.v1.auth.bearer_info
 
     schemas:
         AuthorizationCodeQuery:
@@ -454,6 +459,7 @@ components:
                 type: integer
                 minimum: 1
                 maximum: 100
+            example: 50
 
         Offset:
             name: offset
@@ -462,6 +468,7 @@ components:
             schema:
                 type: integer
                 minimum: 0
+            example: 0
 
         QueueId:
             name: queue_id
@@ -546,11 +553,23 @@ components:
 
     responses:
         UnauthorizedError:
-            description: X-API-KEY is missing in the header or invalid
+            description: X-API-KEY or Authorization is missing in the header or invalid
             headers:
                 WWW-Authenticate:
                     schema:
                         type: string
+
+        AuthenticationSuccess:
+            description: Successfully authenticated user
+            content:
+                application/json:
+                    schema:
+                        type: object
+                        properties:
+                            token:
+                                type: string
+                            user_id:
+                                type: integer
 
 paths:
     /login:
@@ -559,21 +578,19 @@ paths:
             tags:
                 - OAuth
             responses:
-                302:
-                    description: Redirecting back to frontend
+                200:
+                    description: Generated authorization URL
 
     /token:
         post:
-            summary: Uses the Authorization Code from the osu! OAuth flow to authenticate a user
+            summary: Uses the Authorization Code from the osu! OAuth flow to authenticate a user and issues a JWT
             tags:
                 - OAuth
-            security:
-                - ApiKeyAuth: []
             requestBody:
                 $ref: "#/components/requestBodies/AuthorizationCode"
             responses:
                 201:
-                    description: Successfully authenticated user
+                    $ref: "#/components/responses/AuthenticationSuccess"
 
     /users:
         get:
@@ -581,6 +598,7 @@ paths:
             tags:
                 - Users
             security:
+                - BearerAuth: []
                 - ApiKeyAuth: []
             parameters:
                 - $ref: "#/components/parameters/Limit"
@@ -596,6 +614,7 @@ paths:
             tags:
                 - Users
             security:
+                - BearerAuth: []
                 - ApiKeyAuth: []
             requestBody:
                 $ref: "#/components/requestBodies/User"
@@ -609,6 +628,7 @@ paths:
             tags:
                 - Users
             security:
+                - BearerAuth: []
                 - ApiKeyAuth: []
             parameters:
                 - $ref: "#/components/parameters/UserId"
@@ -622,6 +642,7 @@ paths:
             tags:
                 - Users
             security:
+                - BearerAuth: []
                 - ApiKeyAuth: []
             parameters:
                 - $ref: "#/components/parameters/UserId"
@@ -648,6 +669,7 @@ paths:
             tags:
                 - Mappers
             security:
+                - BearerAuth: []
                 - ApiKeyAuth: []
             requestBody:
                 $ref: "#/components/requestBodies/User"
@@ -734,7 +756,8 @@ paths:
             tags:
                 - Beatmapsets
             security:
-                -   ApiKeyAuth: []
+                - BearerAuth: []
+                - ApiKeyAuth: []
             requestBody:
                 $ref: "#/components/requestBodies/Beatmapset"
             responses:
@@ -777,8 +800,8 @@ paths:
             tags:
                 - Beatmapsets
             parameters:
-                -   $ref: "#/components/parameters/BeatmapsetId"
-                -   $ref: "#/components/parameters/SnapshotNumber"
+                - $ref: "#/components/parameters/BeatmapsetId"
+                - $ref: "#/components/parameters/SnapshotNumber"
             responses:
                 200:
                     description: Successfully retrieved beatmapset snapshot
@@ -789,8 +812,8 @@ paths:
             tags:
                 - Beatmapsets
             parameters:
-                -   $ref: "#/components/parameters/BeatmapsetId"
-                -   $ref: "#/components/parameters/SnapshotNumber"
+                - $ref: "#/components/parameters/BeatmapsetId"
+                - $ref: "#/components/parameters/SnapshotNumber"
             responses:
                 200:
                     description: Successfully retrieved zipped beatmap files
@@ -812,6 +835,7 @@ paths:
             tags:
                 - Leaderboards
             security:
+                - BearerAuth: []
                 - ApiKeyAuth: []
             requestBody:
                 $ref: "#/components/requestBodies/Leaderboard"
@@ -893,6 +917,7 @@ paths:
             tags:
                 - Scores
             security:
+                - BearerAuth: []
                 - ApiKeyAuth: []
             requestBody:
                 $ref: "#/components/requestBodies/Score"
@@ -905,11 +930,12 @@ paths:
             summary: Returns a list of queues
             tags:
                 - Queues
+            security:
+                - BearerAuth: []
+                - ApiKeyAuth: []
             parameters:
                 - $ref: "#/components/parameters/Limit"
                 - $ref: "#/components/parameters/Offset"
-            security:
-                - ApiKeyAuth: []
             responses:
                 200:
                     description: Successfully retrieved queues
@@ -919,6 +945,7 @@ paths:
             tags:
                 - Queues
             security:
+                - BearerAuth: []
                 - ApiKeyAuth: []
             requestBody:
                 $ref: "#/components/requestBodies/Queue"
@@ -931,10 +958,11 @@ paths:
             summary: Returns the specified queue
             tags:
                 - Queues
+            security:
+                - BearerAuth: []
+                - ApiKeyAuth: []
             parameters:
                 - $ref: "#/components/parameters/QueueId"
-            security:
-                - ApiKeyAuth: []
             responses:
                 200:
                     description: Successfully retrieved queue
@@ -949,6 +977,7 @@ paths:
                 - $ref: "#/components/parameters/Offset"
                 - $ref: "#/components/parameters/RequestFilter"
             security:
+                - BearerAuth: []
                 - ApiKeyAuth: []
             responses:
                 200:
@@ -959,6 +988,7 @@ paths:
             tags:
                 - Requests
             security:
+                - BearerAuth: []
                 - ApiKeyAuth: []
             requestBody:
                 $ref: "#/components/requestBodies/Request"
@@ -974,6 +1004,7 @@ paths:
             parameters:
                 - $ref: "#/components/parameters/RequestId"
             security:
+                - BearerAuth: []
                 - ApiKeyAuth: []
             requestBody:
                 $ref: "#/components/requestBodies/RequestPatch"

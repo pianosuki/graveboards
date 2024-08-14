@@ -1,6 +1,8 @@
 from app import db
 from app.database.schemas import ScoreSchema
 from app.utils import parse_iso8601
+from app.security import authorization_required
+from app.enums import RoleName
 
 
 def search(**kwargs):
@@ -12,7 +14,8 @@ def search(**kwargs):
     return scores_data, 200
 
 
-def post(body: dict):
+@authorization_required(RoleName.ADMIN)
+def post(body: dict, **kwargs):
     user_id = body["user_id"]
     beatmap_id = body["beatmap"]["id"]
     created_at = parse_iso8601(body["created_at"])
@@ -39,4 +42,3 @@ def post(body: dict):
     db.add_score(body)
 
     return {"message": "Score added successfully!"}, 201
-

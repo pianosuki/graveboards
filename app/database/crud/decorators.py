@@ -19,13 +19,17 @@ def session_manager(func: Callable):
 
         try:
             result = func(self, *args, **kwargs)
+
         except Exception as e:
             if ctx:
                 ctx.__exit__(type(e), e, e.__traceback__)
+
             raise e
+
         else:
             if ctx:
                 ctx.__exit__(None, None, None)
+
             return result
 
     return wrapper

@@ -1,5 +1,7 @@
 from app import db
 from app.database.schemas import QueueSchema
+from app.security import authorization_required
+from app.enums import RoleName
 
 
 def search(**kwargs):
@@ -18,8 +20,10 @@ def get(queue_id: int):
     return queue_data, 200
 
 
-def post(body: dict):
-    errors = QueueSchema().validate(body)
+@authorization_required(RoleName.ADMIN)
+def post(body: dict, **kwargs):  # TODO: Allow users to post queues for their user_id when we're ready for that feature
+    with db.session_scope() as session:
+        errors = QueueSchema(session=session).validate(body)
 
     if errors:
         return {"error_type": "validation_error", "message": "Invalid input data", "errors": errors}, 400

@@ -27,8 +27,10 @@ class PostgresqlDB(CRUD):
             try:
                 yield session_
                 session_.commit()
+
             except Exception as e:
                 session_.rollback()
                 raise e
+
             finally:
                 session_.close()

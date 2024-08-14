@@ -4,9 +4,12 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-FRONTEND_BASE_URL = os.getenv("BASE_URL")
 SPEC_DIR = os.path.abspath("api/v1")
 INSTANCE_DIR = os.path.abspath("instance")
+
+FRONTEND_BASE_URL = os.getenv("BASE_URL")
+JWT_SECRET_KEY = os.getenv("JWT_SECRET_KEY")
+JWT_ALGORITHM = os.getenv("JWT_ALGORITHM")
 
 POSTGRESQL_CONFIGURATION = {
     "drivername": "postgresql+psycopg2",
@@ -35,8 +38,7 @@ OAUTH_CONFIGURATION = {
     "token_endpoint_auth_method": "client_secret_basic"
 }
 
-ADMIN_ROLE_NAME = "admin"
-ADMIN_USER_IDS = [int(id_.strip()) for id_ in os.getenv("ADMIN_USER_IDS").split(",")]
-API_KEY = os.getenv("API_KEY")
+ADMIN_USER_IDS = [int(user_id.strip()) for user_id in os.getenv("ADMIN_USER_IDS").split(",")]
+PRIMARY_ADMIN_USER_ID = ADMIN_USER_IDS[0]
 MASTER_QUEUE_NAME = "Graveboards Queue"
 MASTER_QUEUE_DESCRIPTION = "Master queue for beatmaps to receive leaderboards"

@@ -8,6 +8,7 @@ from app.osu_api import OsuAPIClient, ScoreType
 from app.database.models import ScoreFetcherTask
 from app.redis import ChannelName
 from app.utils import aware_utcnow
+from app.config import PRIMARY_ADMIN_USER_ID
 from .enums import EventName, RuntimeTaskName
 from .service import Service
 
@@ -92,7 +93,7 @@ class ScoreFetcher(Service):
             if not self.score_is_submittable(score):
                 continue
 
-            api.scores.post(score)
+            api.scores.post(score, user=PRIMARY_ADMIN_USER_ID)
 
     @staticmethod
     def score_is_submittable(score: dict) -> bool:
