@@ -1,6 +1,5 @@
 import asyncio
 import heapq
-import queue
 from datetime import datetime, timedelta, timezone
 
 from app import db, arc
@@ -23,7 +22,6 @@ class ProfileFetcher(Service):
         self.runtime_tasks: dict[RuntimeTaskName, asyncio.Task] = {}
         self.tasks_heap: list[tuple[datetime, int]] = []
 
-        self.queues: dict[ChannelName, queue.Queue] = {queue_name: queue.Queue() for queue_name in ChannelName.__members__.values()}
         self.events: dict[EventName, asyncio.Event] = {event_name: asyncio.Event() for event_name in EventName.__members__.values()}
 
     async def run(self):
@@ -49,8 +47,8 @@ class ProfileFetcher(Service):
 
                 db.update_profile_fetcher_task(task_id, last_fetch=fetch_time)
             else:
-                await self.events[EventName.Profile_FETCHER_TASK_ADDED].wait()
-                self.events[EventName.Profile_FETCHER_TASK_ADDED].clear()
+                await self.events[EventName.PROFILE_FETCHER_TASK_ADDED].wait()
+                self.events[EventName.PROFILE_FETCHER_TASK_ADDED].clear()
 
     async def task_subscriber(self):
         await self.pubsub.subscribe(ChannelName.PROFILE_FETCHER_TASKS.value)
@@ -65,7 +63,7 @@ class ProfileFetcher(Service):
             task = db.get_profile_fetcher_task(id=task_id)
 
             self.load_task(task)
-            self.events[EventName.Profile_FETCHER_TASK_ADDED].set()
+            self.events[EventName.PROFILE_FETCHER_TASK_ADDED].set()
 
     def preload_tasks(self):
         tasks = db.get_profile_fetcher_tasks(enabled=True)

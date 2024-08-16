@@ -29,7 +29,8 @@ __all__ = [
     "LeaderboardSchema",
     "ScoreSchema",
     "QueueSchema",
-    "RequestSchema"
+    "RequestSchema",
+    "JSONTextSchema"
 ]
 
 

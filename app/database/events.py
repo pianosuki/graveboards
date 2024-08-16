@@ -6,9 +6,12 @@ from sqlalchemy.orm.mapper import Mapper
 from sqlalchemy.orm.attributes import AttributeEventToken
 
 from app import rc
+from app.osu_api import OsuAPIClient
 from app.redis import ChannelName
+from app.utils import aware_utcnow
 from app.config import POSTGRESQL_CONFIGURATION
 from .models import User, Profile, ScoreFetcherTask, ProfileFetcherTask, BeatmapsetSnapshot, BeatmapsetListing
+from .schemas import JSONTextSchema
 
 __all__ = [
     "user_after_insert",
@@ -25,32 +28,46 @@ def on_connect(dbapi_connection: Connection, connection_record: ConnectionPoolEn
 
 @event.listens_for(User, "after_insert")
 def user_after_insert(mapper: Mapper[User], connection: Connection, target: User):
+    oac = OsuAPIClient()
+    user_dict = oac.get_user(target.id)
+
+    print(user_dict)
+
     insert_profile_stmt = (
         insert(Profile)
-        .values(user_id=target.id)
+        .values(
+            user_id=target.id,
+            avatar_url=user_dict["avatar_url"],
+            username=user_dict["username"],
+            country_code=user_dict["country_code"],
+            graveyard_beatmapset_count=user_dict["graveyard_beatmapset_count"],
+            loved_beatmapset_count=user_dict["loved_beatmapset_count"],
+            pending_beatmapset_count=user_dict["pending_beatmapset_count"],
+            ranked_beatmapset_count=user_dict["ranked_beatmapset_count"],
+            kudosu=JSONTextSchema().load(user_dict["kudosu"])
+        )
     )
 
     insert_score_fetcher_stmt = (
         insert(ScoreFetcherTask)
         .values(user_id=target.id)
-        .returning(ScoreFetcherTask.id)
     )
 
     insert_profile_fetcher_stmt = (
         insert(ProfileFetcherTask)
-        .values(user_id=target.id)
+        .values(
+            user_id=target.id,
+            last_fetch=aware_utcnow()
+        )
         .returning(ProfileFetcherTask.id)
     )
 
     connection.execute(insert_profile_stmt)
-
-    result = connection.execute(insert_score_fetcher_stmt)
-    score_fetcher_task_id = result.scalar()
+    connection.execute(insert_score_fetcher_stmt)
 
     result = connection.execute(insert_profile_fetcher_stmt)
     profile_fetcher_task_id = result.scalar()
 
-    rc.publish(ChannelName.SCORE_FETCHER_TASKS.value, score_fetcher_task_id)
     rc.publish(ChannelName.PROFILE_FETCHER_TASKS.value, profile_fetcher_task_id)
 
 
