@@ -2,16 +2,16 @@ from sqlalchemy import event
 from sqlalchemy.engine.base import Connection, Engine
 from sqlalchemy.pool.base import ConnectionPoolEntry
 from sqlalchemy.sql import select, insert, update
-from sqlalchemy.orm.mapper import Mapper as Mapper_
+from sqlalchemy.orm.mapper import Mapper
+from sqlalchemy.orm.attributes import AttributeEventToken
 
 from app import rc
 from app.redis import ChannelName
 from app.config import POSTGRESQL_CONFIGURATION
-from .models import User, Mapper, ScoreFetcherTask, MapperInfoFetcherTask, BeatmapsetSnapshot, BeatmapsetListing
+from .models import User, Profile, ScoreFetcherTask, ProfileFetcherTask, BeatmapsetSnapshot, BeatmapsetListing
 
 __all__ = [
     "user_after_insert",
-    "mapper_after_insert",
     "beatmapset_snapshot_after_insert"
 ]
 
@@ -24,35 +24,44 @@ def on_connect(dbapi_connection: Connection, connection_record: ConnectionPoolEn
 
 
 @event.listens_for(User, "after_insert")
-def user_after_insert(mapper: Mapper_[User], connection: Connection, target: User):
-    insert_stmt = (
+def user_after_insert(mapper: Mapper[User], connection: Connection, target: User):
+    insert_profile_stmt = (
+        insert(Profile)
+        .values(user_id=target.id)
+    )
+
+    insert_score_fetcher_stmt = (
         insert(ScoreFetcherTask)
         .values(user_id=target.id)
         .returning(ScoreFetcherTask.id)
     )
 
-    result = connection.execute(insert_stmt)
-    task_id = result.scalar()
-
-    rc.publish(ChannelName.SCORE_FETCHER_TASKS.value, task_id)
-
-
-@event.listens_for(Mapper, "after_insert")
-def mapper_after_insert(mapper: Mapper_[Mapper], connection: Connection, target: Mapper):
-    insert_stmt = (
-        insert(MapperInfoFetcherTask)
-        .values(mapper_id=target.id)
-        .returning(MapperInfoFetcherTask.id)
+    insert_profile_fetcher_stmt = (
+        insert(ProfileFetcherTask)
+        .values(user_id=target.id)
+        .returning(ProfileFetcherTask.id)
     )
 
-    result = connection.execute(insert_stmt)
-    task_id = result.scalar()
+    connection.execute(insert_profile_stmt)
 
-    rc.publish(ChannelName.SCORE_FETCHER_TASKS.value, task_id)
+    result = connection.execute(insert_score_fetcher_stmt)
+    score_fetcher_task_id = result.scalar()
+
+    result = connection.execute(insert_profile_fetcher_stmt)
+    profile_fetcher_task_id = result.scalar()
+
+    rc.publish(ChannelName.SCORE_FETCHER_TASKS.value, score_fetcher_task_id)
+    rc.publish(ChannelName.PROFILE_FETCHER_TASKS.value, profile_fetcher_task_id)
+
+
+@event.listens_for(ScoreFetcherTask.enabled, "set")
+def score_fetcher_task_enabled_set(target: ScoreFetcherTask, value: bool, oldvalue: bool, initiator: AttributeEventToken):
+    if value:
+        rc.publish(ChannelName.SCORE_FETCHER_TASKS.value, target.id)
 
 
 @event.listens_for(BeatmapsetSnapshot, "after_insert")
-def beatmapset_snapshot_after_insert(mapper: Mapper_[BeatmapsetSnapshot], connection: Connection, target: BeatmapsetSnapshot):
+def beatmapset_snapshot_after_insert(mapper: Mapper[BeatmapsetSnapshot], connection: Connection, target: BeatmapsetSnapshot):
 
     select_stmt = (
         select(BeatmapsetListing)

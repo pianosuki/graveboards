@@ -35,8 +35,8 @@ class U(_U):
         return self._update_instance(ModelClass.ROLE, session, primary_key, **kwargs)
 
     @session_manager
-    def update_mapper(self, primary_key: int, session: Session = None, **kwargs) -> Mapper:
-        return self._update_instance(ModelClass.MAPPER, session, primary_key, **kwargs)
+    def update_profile(self, primary_key: int, session: Session = None, **kwargs) -> Profile:
+        return self._update_instance(ModelClass.PROFILE, session, primary_key, **kwargs)
 
     @session_manager
     def update_api_key(self, primary_key: int, session: Session = None, **kwargs) -> ApiKey:
@@ -51,8 +51,8 @@ class U(_U):
         return self._update_instance(ModelClass.SCORE_FETCHER_TASK, session, primary_key, **kwargs)
 
     @session_manager
-    def update_mapper_info_fetcher_task(self, primary_key: int, session: Session = None, **kwargs) -> MapperInfoFetcherTask:
-        return self._update_instance(ModelClass.MAPPER_INFO_FETCHER_TASK, session, primary_key, **kwargs)
+    def update_profile_fetcher_task(self, primary_key: int, session: Session = None, **kwargs) -> ProfileFetcherTask:
+        return self._update_instance(ModelClass.PROFILE_FETCHER_TASK, session, primary_key, **kwargs)
 
     @session_manager
     def update_beatmap(self, primary_key: int, session: Session = None, **kwargs) -> Beatmap:

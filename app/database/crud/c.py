@@ -28,8 +28,8 @@ class C(_C):
         return self._add_instance(ModelClass.ROLE, session, **kwargs)
 
     @session_manager
-    def add_mapper(self, session: Session = None, **kwargs) -> Mapper:
-        return self._add_instance(ModelClass.MAPPER, session, **kwargs)
+    def add_profile(self, session: Session = None, **kwargs) -> Profile:
+        return self._add_instance(ModelClass.PROFILE, session, **kwargs)
 
     @session_manager
     def add_api_key(self, session: Session = None, **kwargs) -> ApiKey:
@@ -44,8 +44,8 @@ class C(_C):
         return self._add_instance(ModelClass.SCORE_FETCHER_TASK, session, **kwargs)
 
     @session_manager
-    def add_mapper_info_fetcher_task(self, session: Session = None, **kwargs) -> MapperInfoFetcherTask:
-        return self._add_instance(ModelClass.MAPPER_INFO_FETCHER_TASK, session, **kwargs)
+    def add_profile_fetcher_task(self, session: Session = None, **kwargs) -> ProfileFetcherTask:
+        return self._add_instance(ModelClass.PROFILE_FETCHER_TASK, session, **kwargs)
 
     @session_manager
     def add_beatmap(self, session: Session = None, **kwargs) -> Beatmap:

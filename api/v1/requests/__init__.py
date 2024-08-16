@@ -18,8 +18,9 @@ def search(**kwargs):  # TODO: Prevent users from having access to others' reque
     if "user_id" in request_filter:
         kwargs["user_id"] = request_filter["user_id"]["eq"]
 
-    requests = db.get_requests(**kwargs)
-    requests_data = RequestSchema(many=True).dump(requests)
+    with db.session_scope() as session:
+        requests = db.get_requests(**kwargs, session=session)
+        requests_data = RequestSchema(many=True).dump(requests)
 
     return requests_data, 200
 

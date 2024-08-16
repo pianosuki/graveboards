@@ -50,12 +50,12 @@ class D(_D):
         return self._delete_instances(ModelClass.ROLE, session, **kwargs)
 
     @session_manager
-    def delete_mapper(self, session: Session = None, **kwargs) -> bool:
-        return self._delete_instance(ModelClass.MAPPER, session, **kwargs)
+    def delete_profile(self, session: Session = None, **kwargs) -> bool:
+        return self._delete_instance(ModelClass.PROFILE, session, **kwargs)
 
     @session_manager
-    def delete_mappers(self, session: Session = None, **kwargs) -> int:
-        return self._delete_instances(ModelClass.MAPPER, session, **kwargs)
+    def delete_profiles(self, session: Session = None, **kwargs) -> int:
+        return self._delete_instances(ModelClass.PROFILE, session, **kwargs)
 
     @session_manager
     def delete_api_key(self, session: Session = None, **kwargs) -> bool:
@@ -82,12 +82,12 @@ class D(_D):
         return self._delete_instances(ModelClass.SCORE_FETCHER_TASK, session, **kwargs)
 
     @session_manager
-    def delete_mapper_info_fetcher_task(self, session: Session = None, **kwargs) -> bool:
-        return self._delete_instance(ModelClass.MAPPER_INFO_FETCHER_TASK, session, **kwargs)
+    def delete_profile_fetcher_task(self, session: Session = None, **kwargs) -> bool:
+        return self._delete_instance(ModelClass.PROFILE_FETCHER_TASK, session, **kwargs)
 
     @session_manager
-    def delete_mapper_info_fetcher_tasks(self, session: Session = None, **kwargs) -> int:
-        return self._delete_instances(ModelClass.MAPPER_INFO_FETCHER_TASK, session, **kwargs)
+    def delete_profile_fetcher_tasks(self, session: Session = None, **kwargs) -> int:
+        return self._delete_instances(ModelClass.PROFILE_FETCHER_TASK, session, **kwargs)
 
     @session_manager
     def delete_beatmap(self, session: Session = None, **kwargs) -> bool:

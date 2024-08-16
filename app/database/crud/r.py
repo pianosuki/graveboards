@@ -60,12 +60,12 @@ class R(_R):
         return self._get_instances(ModelClass.ROLE, session, **kwargs)
 
     @session_manager
-    def get_mapper(self, session: Session = None, **kwargs) -> Mapper | None:
-        return self._get_instance(ModelClass.MAPPER, session, **kwargs)
+    def get_profile(self, session: Session = None, **kwargs) -> Profile | None:
+        return self._get_instance(ModelClass.PROFILE, session, **kwargs)
 
     @session_manager
-    def get_mappers(self, session: Session = None, **kwargs) -> list[Mapper]:
-        return self._get_instances(ModelClass.MAPPER, session, **kwargs)
+    def get_profiles(self, session: Session = None, **kwargs) -> list[Profile]:
+        return self._get_instances(ModelClass.PROFILE, session, **kwargs)
 
     @session_manager
     def get_api_key(self, session: Session = None, **kwargs) -> ApiKey | None:
@@ -92,12 +92,12 @@ class R(_R):
         return self._get_instances(ModelClass.SCORE_FETCHER_TASK, session, **kwargs)
 
     @session_manager
-    def get_mapper_info_fetcher_task(self, session: Session = None, **kwargs) -> MapperInfoFetcherTask | None:
-        return self._get_instance(ModelClass.MAPPER_INFO_FETCHER_TASK, session, **kwargs)
+    def get_profile_fetcher_task(self, session: Session = None, **kwargs) -> ProfileFetcherTask | None:
+        return self._get_instance(ModelClass.PROFILE_FETCHER_TASK, session, **kwargs)
 
     @session_manager
-    def get_mapper_info_fetcher_tasks(self, session: Session = None, **kwargs) -> list[MapperInfoFetcherTask]:
-        return self._get_instances(ModelClass.MAPPER_INFO_FETCHER_TASK, session, **kwargs)
+    def get_profile_fetcher_tasks(self, session: Session = None, **kwargs) -> list[ProfileFetcherTask]:
+        return self._get_instances(ModelClass.PROFILE_FETCHER_TASK, session, **kwargs)
 
     @session_manager
     def get_beatmap(self, session: Session = None, **kwargs) -> Beatmap | None:

@@ -636,38 +636,24 @@ paths:
                 200:
                     description: Successfully retrieved user
 
-    /users/{user_id}/profile:
+    /profiles:
         get:
-            summary: Returns the user osu profile
+            summary: Returns a list of profiles
             tags:
-                - Users
-            security:
-                - BearerAuth: []
-                - ApiKeyAuth: []
-            parameters:
-                - $ref: "#/components/parameters/UserId"
-            responses:
-                200:
-                    description: Successfully retrieved user osu profile
-
-    /mappers:
-        get:
-            summary: Returns a list of mappers
-            tags:
-                - Mappers
+                - Profiles
             parameters:
                 - $ref: "#/components/parameters/Limit"
                 - $ref: "#/components/parameters/Offset"
             responses:
                 200:
-                    description: Successfully retrieved all mappers
+                    description: Successfully retrieved all profiles
                 401:
                     $ref: "#/components/responses/UnauthorizedError"
 
         post:
-            summary: Adds a mapper
+            summary: Adds a profile
             tags:
-                - Mappers
+                - Profiles
             security:
                 - BearerAuth: []
                 - ApiKeyAuth: []
@@ -675,7 +661,18 @@ paths:
                 $ref: "#/components/requestBodies/User"
             responses:
                 201:
-                    description: Successfully added mapper
+                    description: Successfully added profile
+
+    /profiles/{user_id}:
+        get:
+            summary: Returns the profile for the specified user ID
+            tags:
+                - Profiles
+            parameters:
+                - $ref: "#/components/parameters/UserId"
+            responses:
+                200:
+                    description: Successfully retrieved user profile
 
     /beatmaps:
         get:

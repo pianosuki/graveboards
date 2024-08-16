@@ -38,42 +38,46 @@ class BeatmapManager:
 
     def _ensure_populated(self, beatmapset_dict: dict):
         beatmapset_id = beatmapset_dict["id"]
-        mapper_id = beatmapset_dict["user_id"]
+        user_id = beatmapset_dict["user_id"]
 
         # Beatmapset
         try:
-            self._ensure_mapper_populated(mapper_id)
+            self._ensure_user_populated(user_id)
 
         except httpx.HTTPError:
-            self._add_banned_mapper(mapper_id, user_dict=beatmapset_dict["user"])
+            self._add_banned_profile(user_id, user_dict=beatmapset_dict["user"])
 
         if not db.get_beatmapset(id=beatmapset_id):
-            db.add_beatmapset(id=beatmapset_id, mapper_id=mapper_id)
+            db.add_beatmapset(id=beatmapset_id, user_id=user_id)
 
         # Beatmap
         for beatmap_dict in beatmapset_dict["beatmaps"]:
             beatmap_id = beatmap_dict["id"]
-            mapper_id = beatmap_dict["user_id"]
+            user_id = beatmap_dict["user_id"]
 
             try:
-                self._ensure_mapper_populated(mapper_id)
+                self._ensure_user_populated(user_id)
 
             except httpx.HTTPError:
-                self._add_banned_mapper(mapper_id)
+                self._add_banned_profile(user_id)
 
             if not db.get_beatmap(id=beatmap_id):
-                db.add_beatmap(id=beatmap_id, beatmapset_id=beatmapset_id, mapper_id=mapper_id)
+                db.add_beatmap(id=beatmap_id, beatmapset_id=beatmapset_id, user_id=user_id)
 
-    def _ensure_mapper_populated(self, mapper_id: int):
-        if not db.get_mapper(id=mapper_id):
-            api.mappers.post({"user_id": mapper_id}, user=PRIMARY_ADMIN_USER_ID)
+    def _ensure_user_populated(self, user_id: int):
+        if not db.get_profile(id=user_id):
+            api.users.post({"user_id": user_id}, user=PRIMARY_ADMIN_USER_ID)
 
-    def _add_banned_mapper(self, mapper_id: int, user_dict: dict = None):
-        db.add_mapper(id=mapper_id, is_restricted=True, **{
-            "avatar_url": user_dict["avatar_url"],
-            "username": user_dict["username"],
-            "country_code": user_dict["country_code"]
-        } if user_dict else {})
+    def _add_banned_profile(self, user_id: int, user_dict: dict = None):
+        db.add_profile(
+            user_id=user_id,
+            is_restricted=True,
+            **{
+                "avatar_url": user_dict["avatar_url"],
+                "username": user_dict["username"],
+                "country_code": user_dict["country_code"]
+            } if user_dict else {}
+        )
 
     def _snapshot(self, beatmapset_dict: dict) -> list[int]:
         beatmap_snapshots = []

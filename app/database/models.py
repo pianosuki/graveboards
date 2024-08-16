@@ -8,7 +8,7 @@ from sqlalchemy.inspection import inspect
 from sqlalchemy.orm import relationship, mapped_column
 from sqlalchemy.orm.decl_api import DeclarativeBase
 from sqlalchemy.orm.base import Mapped
-from sqlalchemy.orm.mapper import Mapper as Mapper_
+from sqlalchemy.orm.mapper import Mapper
 
 from app.utils import aware_utcnow
 
@@ -18,11 +18,11 @@ __all__ = [
     "Base",
     "User",
     "Role",
-    "Mapper",
+    "Profile",
     "ApiKey",
     "OauthToken",
     "ScoreFetcherTask",
-    "MapperInfoFetcherTask",
+    "ProfileFetcherTask",
     "Beatmap",
     "BeatmapSnapshot",
     "Beatmapset",
@@ -66,11 +66,14 @@ class User(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=False)
 
     # Relationships
+    profile: Mapped["Profile"] = relationship("Profile", backref="user", uselist=False, lazy=True)
     roles: Mapped[list["Role"]] = relationship("Role", secondary=user_role_association, lazy=True)
     scores: Mapped[list["Score"]] = relationship("Score", lazy=True)
     tokens: Mapped[list["OauthToken"]] = relationship("OauthToken", lazy=True)
     queues: Mapped[list["Queue"]] = relationship("Queue", lazy=True)
     requests: Mapped[list["Request"]] = relationship("Request", lazy=True)
+    beatmaps: Mapped[list["Beatmap"]] = relationship("Beatmap", lazy=True)
+    beatmapsets: Mapped[list["Beatmapset"]] = relationship("Beatmapset", lazy=True)
 
 
 class Role(Base):
@@ -79,9 +82,10 @@ class Role(Base):
     name: Mapped[str] = mapped_column(String, unique=True, nullable=False)
 
 
-class Mapper(Base):
-    __tablename__ = "mappers"
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=False)
+class Profile(Base):
+    __tablename__ = "profiles"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"), unique=True, nullable=False)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=aware_utcnow, onupdate=aware_utcnow)
 
     # osu! API datastructure
@@ -94,10 +98,6 @@ class Mapper(Base):
     ranked_beatmapset_count: Mapped[Optional[int]] = mapped_column(Integer)
     kudosu: Mapped[Optional[str]] = mapped_column(Text)
     is_restricted: Mapped[bool] = mapped_column(Boolean, default=False)
-
-    # Relationships
-    beatmaps: Mapped[list["Beatmap"]] = relationship("Beatmap", lazy=True)
-    beatmapsets: Mapped[list["Beatmapset"]] = relationship("Beatmapset", lazy=True)
 
 
 class ApiKey(Base):
@@ -124,14 +124,14 @@ class ScoreFetcherTask(Base):
     __tablename__ = "score_fetcher_tasks"
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"), nullable=False)
-    enabled: Mapped[bool] = mapped_column(Boolean, default=True)
+    enabled: Mapped[bool] = mapped_column(Boolean, default=False)
     last_fetch: Mapped[Optional[datetime]] = mapped_column(DateTime)
 
 
-class MapperInfoFetcherTask(Base):
-    __tablename__ = "mapper_info_fetcher_tasks"
+class ProfileFetcherTask(Base):
+    __tablename__ = "profile_fetcher_tasks"
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    mapper_id: Mapped[int] = mapped_column(Integer, ForeignKey("mappers.id"), nullable=False)
+    user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"), nullable=False)
     enabled: Mapped[bool] = mapped_column(Boolean, default=True)
     last_fetch: Mapped[Optional[datetime]] = mapped_column(DateTime)
 
@@ -140,7 +140,7 @@ class Beatmap(Base):
     __tablename__ = "beatmaps"
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     beatmapset_id: Mapped[int] = mapped_column(Integer, ForeignKey("beatmapsets.id"), nullable=False)
-    mapper_id: Mapped[int] = mapped_column(Integer, ForeignKey("mappers.id"), nullable=False)
+    user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"), nullable=False)
 
     # Relationships
     leaderboards: Mapped[list["Leaderboard"]] = relationship("Leaderboard", lazy=True)
@@ -189,7 +189,7 @@ class BeatmapSnapshot(Base):
 class Beatmapset(Base):
     __tablename__ = "beatmapsets"
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    mapper_id: Mapped[int] = mapped_column(Integer, ForeignKey("mappers.id"), nullable=False)
+    user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"), nullable=False)
 
     # Relationships
     snapshots: Mapped[list["BeatmapsetSnapshot"]] = relationship("BeatmapsetSnapshot", lazy=True)
@@ -313,15 +313,18 @@ class Request(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=aware_utcnow, onupdate=aware_utcnow)
     status: Mapped[int] = mapped_column(Integer, default=0)
 
+    # Relationships
+    profile: Mapped["Profile"] = relationship("Profile", primaryjoin="Request.user_id == foreign(Profile.user_id)", lazy=True, viewonly=True, overlaps="profile,user")
+
 
 class ModelClass(Enum):
     USER = User
     ROLE = Role
-    MAPPER = Mapper
+    PROFILE = Profile
     API_KEY = ApiKey
     OAUTH_TOKEN = OauthToken
     SCORE_FETCHER_TASK = ScoreFetcherTask
-    MAPPER_INFO_FETCHER_TASK = MapperInfoFetcherTask
+    PROFILE_FETCHER_TASK = ProfileFetcherTask
     BEATMAP = Beatmap
     BEATMAP_SNAPSHOT = BeatmapSnapshot
     BEATMAPSET = Beatmapset
@@ -349,5 +352,5 @@ class ModelClass(Enum):
         return self._value_
 
     @property
-    def mapper(self) -> Mapper_[BaseType]:
+    def mapper(self) -> Mapper[BaseType]:
         return inspect(self.value)

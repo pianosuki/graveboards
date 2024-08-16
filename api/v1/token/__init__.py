@@ -25,6 +25,11 @@ def post(body: dict):
         if not db.get_user(id=user_id):
             api.users.post({"user_id": user_id}, user=PRIMARY_ADMIN_USER_ID)
 
+        score_fetcher_task = db.get_score_fetcher_task(user_id=user_id)
+
+        if not score_fetcher_task.enabled and score_fetcher_task.last_fetch is None:
+            db.update_score_fetcher_task(score_fetcher_task.id, enabled=True)
+
         oauth_tokens = db.get_oauth_tokens(user_id=user_id, is_revoked=False)
 
         for oauth_token in oauth_tokens:

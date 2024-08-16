@@ -17,10 +17,10 @@ from .schema_fields import *
 __all__ = [
     "UserSchema",
     "RoleSchema",
-    "MapperSchema",
+    "ProfileSchema",
     "OauthTokenSchema",
     "ScoreFetcherTaskSchema",
-    "MapperInfoFetcherTaskSchema",
+    "ProfileFetcherTaskSchema",
     "BeatmapSchema",
     "BeatmapSnapshotSchema",
     "BeatmapsetSchema",
@@ -39,6 +39,7 @@ class UserSchema(SQLAlchemyAutoSchema):
         load_instance = True
         include_relationships = True
 
+    profile = fields.Nested("ProfileSchema")
     roles = fields.Nested("RoleSchema", many=True)
 
 
@@ -61,14 +62,21 @@ class RoleSchema(SQLAlchemyAutoSchema):
         return data
 
 
-class MapperSchema(SQLAlchemyAutoSchema):
+class ProfileSchema(SQLAlchemyAutoSchema):
     class Meta:
-        model = Mapper
+        model = Profile
         load_instance = True
-        include_relationships = True
+        include_fk = True
         unknown = EXCLUDE
 
     kudosu = fields.Nested("KudosuSchema")
+
+    @pre_load
+    def pre_load(self, data, *args, **kwargs):
+        if not self.many:
+            data["user_id"] = data.pop("id")
+
+        return data
 
 
 class OauthTokenSchema(SQLAlchemyAutoSchema):
@@ -86,9 +94,9 @@ class ScoreFetcherTaskSchema(SQLAlchemyAutoSchema):
     last_fetch = CustomDateTime()
 
 
-class MapperInfoFetcherTaskSchema(SQLAlchemyAutoSchema):
+class ProfileFetcherTaskSchema(SQLAlchemyAutoSchema):
     class Meta:
-        model = MapperInfoFetcherTask
+        model = ProfileFetcherTask
         load_instance = True
 
     last_fetch = CustomDateTime()
@@ -117,7 +125,6 @@ class BeatmapSnapshotSchema(SQLAlchemyAutoSchema):
         unknown = EXCLUDE
 
     id = fields.Integer(dump_only=True)
-    beatmap_id = fields.Integer()
 
     @pre_load
     def pre_load(self, data, *args, **kwargs):
@@ -153,7 +160,6 @@ class BeatmapsetSnapshotSchema(SQLAlchemyAutoSchema):
         unknown = EXCLUDE
 
     id = fields.Integer(dump_only=True)
-    beatmapset_id = fields.Integer()
     covers = fields.Nested("CoversSchema")
     hype = fields.Nested("HypeSchema", allow_none=True)
     beatmap_snapshots = Nested("BeatmapSnapshotSchema", many=True, dump_only=True)
@@ -185,7 +191,7 @@ class BeatmapsetListingSchema(SQLAlchemyAutoSchema):
             "artist": beatmapset_snapshot["artist"],
             "thumbnail": beatmapset_snapshot["covers"]["cover@2x"],
             "mapper": beatmapset_snapshot["creator"],
-            "mapper_avatar": self.session.scalar(select(Mapper).filter_by(id=beatmapset_snapshot["user_id"])).avatar_url,  # TODO: Figure out how to avoid using session in dump() here
+            "mapper_avatar": self.session.scalar(select(Profile).filter_by(user_id=beatmapset_snapshot["user_id"])).avatar_url,  # TODO: Figure out how to avoid using session in dump() here
             "length": max(beatmapset_snapshot["beatmap_snapshots"], key=lambda beatmap_snapshot: beatmap_snapshot["total_length"])["total_length"],
             "difficulties": sorted([beatmap_snapshot["difficulty_rating"] for beatmap_snapshot in beatmapset_snapshot["beatmap_snapshots"]]),
         }
@@ -213,7 +219,6 @@ class LeaderboardSchema(SQLAlchemyAutoSchema):
         include_fk = True
 
     id = fields.Integer(load_only=True)
-    beatmap_id = fields.Integer()
     snapshot_number = fields.Integer(dump_only=True)
 
     @pre_dump
@@ -282,11 +287,10 @@ class RequestSchema(SQLAlchemyAutoSchema):
     class Meta:
         model = Request
         load_instance = True
+        include_relationships = True
         include_fk = True
 
-    user_id = fields.Integer()
-    beatmapset_id = fields.Integer()
-    queue_id = fields.Integer()
+    profile = fields.Nested("ProfileSchema")
 
 
 class JSONTextSchema(Schema):

@@ -5,7 +5,7 @@ from app.config import ADMIN_USER_IDS, MASTER_QUEUE_NAME, MASTER_QUEUE_DESCRIPTI
 
 
 def setup():
-    db.recreate_database()
+    db.create_database()
 
     if db.is_empty():
         with db.session_scope() as session:
@@ -17,8 +17,6 @@ def setup():
 
             db.add_queue(user_id=ADMIN_USER_IDS[0], name=MASTER_QUEUE_NAME, description=MASTER_QUEUE_DESCRIPTION, session=session)
             db.add_queue(user_id=5099768, name="Net0's BN Queue", description="Net0's BN modding queue", session=session)
-
-            db.add_mapper(id=16219092, session=session)
 
             print(f"[{__name__}] Fresh database set up successfully!")
 
