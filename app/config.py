@@ -25,8 +25,7 @@ REDIS_CONFIGURATION = {
     "port": os.getenv("REDIS_PORT"),
     "username": os.getenv("REDIS_USERNAME"),
     "password": os.getenv("REDIS_PASSWORD"),
-    "db": os.getenv("REDIS_DB"),
-    "ssl": os.getenv("REDIS_SSL")
+    "db": os.getenv("REDIS_DB")
 }
 
 OAUTH_CONFIGURATION = {

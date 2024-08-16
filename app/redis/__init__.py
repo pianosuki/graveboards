@@ -4,7 +4,7 @@ from redis.asyncio import Redis as AsyncRedis
 from app.config import REDIS_CONFIGURATION
 from .enums import ChannelName
 
-REDIS_BASE_URL = f"redis{"s" if REDIS_CONFIGURATION["ssl"] == "true" else ""}://{REDIS_CONFIGURATION["username"]}:***@{REDIS_CONFIGURATION["host"]}:{REDIS_CONFIGURATION["port"]}/{REDIS_CONFIGURATION["db"]}"
+REDIS_BASE_URL = f"redis://{REDIS_CONFIGURATION["username"]}:***@{REDIS_CONFIGURATION["host"]}:{REDIS_CONFIGURATION["port"]}/{REDIS_CONFIGURATION["db"]}"
 
 
 class RedisClientBase:
