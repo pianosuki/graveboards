@@ -1,70 +1,61 @@
 import json
 from typing import Any
 
-from marshmallow import fields, Schema, post_dump, pre_load, ValidationError
+from marshmallow import fields
+from marshmallow.schema import Schema
+from marshmallow.decorators import pre_dump, post_dump, pre_load
 from marshmallow.utils import EXCLUDE, RAISE
+from marshmallow.exceptions import ValidationError
+from marshmallow_sqlalchemy import SQLAlchemyAutoSchema
+from marshmallow_sqlalchemy.fields import Nested
 from sqlalchemy import select
 
-from app import db, ma
+from app.utils import combine_checksums
 from .models import *
 from .schema_fields import *
-from .utils import combine_checksums
 
 __all__ = [
-    "user_schema",
-    "users_schema",
-    "role_schema",
-    "roles_schema",
-    "mapper_schema",
-    "mappers_schema",
-    "oauth_token_schema",
-    "score_fetcher_task_schema",
-    "mapper_info_fetcher_task_schema",
-    "beatmap_schema",
-    "beatmaps_schema",
-    "beatmap_snapshot_schema",
-    "beatmap_snapshots_schema",
-    "beatmapset_schema",
-    "beatmapsets_schema",
-    "beatmapset_snapshot_schema",
-    "beatmapset_snapshots_schema",
-    "beatmapset_listing_schema",
-    "beatmapset_listings_schema",
-    "leaderboard_schema",
-    "leaderboards_schema",
-    "score_schema",
-    "scores_schema",
-    "queue_schema",
-    "queues_schema",
-    "request_schema",
-    "requests_schema"
+    "UserSchema",
+    "RoleSchema",
+    "ProfileSchema",
+    "OauthTokenSchema",
+    "ScoreFetcherTaskSchema",
+    "ProfileFetcherTaskSchema",
+    "BeatmapSchema",
+    "BeatmapSnapshotSchema",
+    "BeatmapsetSchema",
+    "BeatmapsetSnapshotSchema",
+    "BeatmapsetListingSchema",
+    "LeaderboardSchema",
+    "ScoreSchema",
+    "QueueSchema",
+    "RequestSchema",
+    "JSONTextSchema"
 ]
 
 
-class UserSchema(ma.SQLAlchemyAutoSchema):
+class UserSchema(SQLAlchemyAutoSchema):
     class Meta:
         model = User
         load_instance = True
-        sqla_session = db.session
         include_relationships = True
 
+    profile = fields.Nested("ProfileSchema")
     roles = fields.Nested("RoleSchema", many=True)
-    queues = fields.Nested("QueueSchema", many=True)
 
 
-class RoleSchema(ma.SQLAlchemyAutoSchema):
+class RoleSchema(SQLAlchemyAutoSchema):
     class Meta:
         model = Role
         load_instance = True
-        sqla_session = db.session
 
     @pre_load
-    def handle_role_identifier(self, data, **kwargs):
+    def handle_role_identifier(self, data, *args, **kwargs):
         if "id" in data:
-            role = db.session.get(Role, data["id"])
+            role = self.session.get(Role, data["id"])
             data["name"] = role.name
         elif "name" in data:
-            role = db.session.execute(select(Role).filter_by(name=data["name"])).scalar()
+            role = self.session.scalar(select(Role).filter_by(name=data["name"]))
             data["id"] = role.id
         else:
             raise ValidationError("Invalid input format")
@@ -72,48 +63,50 @@ class RoleSchema(ma.SQLAlchemyAutoSchema):
         return data
 
 
-class MapperSchema(ma.SQLAlchemyAutoSchema):
+class ProfileSchema(SQLAlchemyAutoSchema):
     class Meta:
-        model = Mapper
+        model = Profile
         load_instance = True
-        sqla_session = db.session
-        include_relationships = True
+        include_fk = True
         unknown = EXCLUDE
 
     kudosu = fields.Nested("KudosuSchema")
 
+    @pre_load
+    def pre_load(self, data, *args, **kwargs):
+        if not self.many:
+            data["user_id"] = data.pop("id")
 
-class OauthTokenSchema(ma.SQLAlchemyAutoSchema):
+        return data
+
+
+class OauthTokenSchema(SQLAlchemyAutoSchema):
     class Meta:
         model = User
         load_instance = True
-        sqla_session = db.session
         unknown = EXCLUDE
 
 
-class ScoreFetcherTaskSchema(ma.SQLAlchemyAutoSchema):
+class ScoreFetcherTaskSchema(SQLAlchemyAutoSchema):
     class Meta:
         model = ScoreFetcherTask
         load_instance = True
-        sqla_session = db.session
 
     last_fetch = CustomDateTime()
 
 
-class MapperInfoFetcherTaskSchema(ma.SQLAlchemyAutoSchema):
+class ProfileFetcherTaskSchema(SQLAlchemyAutoSchema):
     class Meta:
-        model = MapperInfoFetcherTask
+        model = ProfileFetcherTask
         load_instance = True
-        sqla_session = db.session
 
     last_fetch = CustomDateTime()
 
 
-class BeatmapSchema(ma.SQLAlchemyAutoSchema):
+class BeatmapSchema(SQLAlchemyAutoSchema):
     class Meta:
         model = Beatmap
         load_instance = True
-        sqla_session = db.session
         include_relationships = True
 
     snapshots = fields.Method("dump_snapshots", "load_snapshots")
@@ -122,34 +115,33 @@ class BeatmapSchema(ma.SQLAlchemyAutoSchema):
         return {value.snapshot_number: value.checksum for value in obj.snapshots}
 
     def load_snapshots(self, value) -> list[BeatmapSnapshot]:
-        return [BeatmapSnapshot.query.filter_by(snapshot_number=key, checksum=value) for key, value in sorted(value.items())]
+        return [self.session.scalar(select(BeatmapSnapshot).filter_by(snapshot_number=key, checksum=value)) for key, value in sorted(value.items())]
 
 
-class BeatmapSnapshotSchema(ma.SQLAlchemyAutoSchema):
+class BeatmapSnapshotSchema(SQLAlchemyAutoSchema):
     class Meta:
         model = BeatmapSnapshot
         load_instance = True
-        sqla_session = db.session
+        include_fk = True
         unknown = EXCLUDE
 
     id = fields.Integer(dump_only=True)
-    beatmap_id = fields.Integer()
 
-    def load(self, data, *args):
+    @pre_load
+    def pre_load(self, data, *args, **kwargs):
         if not self.many:
             data["beatmap_id"] = data["id"]
-            data["snapshot_number"] = len(Beatmap.query.get(data["beatmap_id"]).snapshots) + 1
+            data["snapshot_number"] = len(self.session.get(Beatmap, data["beatmap_id"]).snapshots) + 1
 
-        return super().load(data, *args)
+        return data
 
 
-class BeatmapsetSchema(ma.SQLAlchemyAutoSchema):
+class BeatmapsetSchema(SQLAlchemyAutoSchema):
     class Meta:
         model = Beatmapset
         load_instance = True
-        sqla_session = db.session
-        unknown = EXCLUDE
         include_relationships = True
+        unknown = EXCLUDE
 
     snapshots = fields.Method("dump_snapshots", "load_snapshots")
 
@@ -157,50 +149,50 @@ class BeatmapsetSchema(ma.SQLAlchemyAutoSchema):
         return {value.snapshot_number: value.checksum for value in obj.snapshots}
 
     def load_snapshots(self, value) -> list[BeatmapsetSnapshot]:
-        return [BeatmapsetSnapshot.query.filter_by(snapshot_number=key, checksum=value) for key, value in sorted(value.items())]
+        return [self.session.scalar(select(BeatmapsetSnapshot).filter_by(snapshot_number=key, checksum=value)) for key, value in sorted(value.items())]
 
 
-class BeatmapsetSnapshotSchema(ma.SQLAlchemyAutoSchema):
+class BeatmapsetSnapshotSchema(SQLAlchemyAutoSchema):
     class Meta:
         model = BeatmapsetSnapshot
         load_instance = True
-        sqla_session = db.session
+        include_fk = True
+        include_relationships = True
         unknown = EXCLUDE
 
     id = fields.Integer(dump_only=True)
-    beatmapset_id = fields.Integer()
     covers = fields.Nested("CoversSchema")
     hype = fields.Nested("HypeSchema", allow_none=True)
-    beatmap_snapshots = fields.Nested("BeatmapSnapshotSchema", many=True, dump_only=True)
+    beatmap_snapshots = Nested("BeatmapSnapshotSchema", many=True, dump_only=True)
 
-    def load(self, data, *args):
+    @pre_load
+    def pre_load(self, data, *args, **kwargs):
         if not self.many:
             data["beatmapset_id"] = data["id"]
-            data["snapshot_number"] = len(Beatmapset.query.get(data["beatmapset_id"]).snapshots) + 1
+            data["snapshot_number"] = len(self.session.get(Beatmapset, data["beatmapset_id"]).snapshots) + 1
             data["checksum"] = combine_checksums([beatmap["checksum"] for beatmap in data["beatmaps"]])
             data["beatmap_snapshots"] = data["beatmaps"]
 
-        return super().load(data, *args)
+        return data
 
 
-class BeatmapsetListingSchema(ma.SQLAlchemyAutoSchema):
+class BeatmapsetListingSchema(SQLAlchemyAutoSchema):
     class Meta:
         model = BeatmapsetListing
         load_instance = True
-        sqla_session = db.session
         include_relationships = True
 
     beatmapset_snapshot = fields.Nested("BeatmapsetSnapshotSchema")
 
     @post_dump
-    def add_display_data(self, data, many: bool, **kwargs):
+    def add_display_data(self, data, *args, **kwargs):
         beatmapset_snapshot = data["beatmapset_snapshot"]
         display_data = {
             "title": beatmapset_snapshot["title"],
             "artist": beatmapset_snapshot["artist"],
-            "thumbnail": beatmapset_snapshot["covers"]["cover"],
+            "thumbnail": beatmapset_snapshot["covers"]["cover@2x"],
             "mapper": beatmapset_snapshot["creator"],
-            "mapper_avatar": self.session.execute(select(Mapper).filter_by(id=beatmapset_snapshot["user_id"])).scalar().avatar_url,
+            "mapper_avatar": self.session.scalar(select(Profile).filter_by(user_id=beatmapset_snapshot["user_id"])).avatar_url,  # TODO: Figure out how to avoid using session in dump() here
             "length": max(beatmapset_snapshot["beatmap_snapshots"], key=lambda beatmap_snapshot: beatmap_snapshot["total_length"])["total_length"],
             "difficulties": sorted([beatmap_snapshot["difficulty_rating"] for beatmap_snapshot in beatmapset_snapshot["beatmap_snapshots"]]),
         }
@@ -220,32 +212,32 @@ class BeatmapsetListingDisplayDataSchema(Schema):
     verified = fields.Boolean()
 
 
-class LeaderboardSchema(ma.SQLAlchemyAutoSchema):
+class LeaderboardSchema(SQLAlchemyAutoSchema):
     class Meta:
         model = Leaderboard
         load_instance = True
-        sqla_session = db.session
         include_relationships = True
+        include_fk = True
 
     id = fields.Integer(load_only=True)
-    beatmap_id = fields.Integer()
     snapshot_number = fields.Integer(dump_only=True)
 
-    def dump(self, obj, *args):
+    @pre_dump
+    def pre_dump(self, obj, *args, **kwargs):
         if self.many is False:
-            obj.snapshot_number = BeatmapSnapshot.query.get(obj.beatmap_snapshot_id).snapshot_number
+            obj.snapshot_number = self.session.get(BeatmapSnapshot, obj.beatmap_snapshot_id).snapshot_number
         elif self.many is True:
             for leaderboard in obj:
-                leaderboard.snapshot_number = BeatmapSnapshot.query.get(leaderboard.beatmap_snapshot_id).snapshot_number
+                leaderboard.snapshot_number = self.session.get(BeatmapSnapshot, leaderboard.beatmap_snapshot_id).snapshot_number
 
-        return super().dump(obj, *args)
+        return obj
 
 
-class ScoreSchema(ma.SQLAlchemyAutoSchema):
+class ScoreSchema(SQLAlchemyAutoSchema):
     class Meta:
         model = Score
         load_instance = True
-        sqla_session = db.session
+        include_fk = True
         unknown = EXCLUDE
         exclude = ("id",)
 
@@ -256,20 +248,23 @@ class ScoreSchema(ma.SQLAlchemyAutoSchema):
     mods = fields.Method("dump_mods", "load_mods")
     statistics = fields.Nested("StatisticsSchema")
 
-    def load(self, data, *args):
+    @pre_load
+    def pre_load(self, data, *args, **kwargs):
         if not self.many:
             beatmap_data = data["beatmap"]
-            user = User.query.get(data["user_id"])
-            beatmap = Beatmap.query.get(beatmap_data["id"])
-            beatmapset = Beatmapset.query.get(beatmap_data["beatmapset_id"])
-            beatmap_snapshot = BeatmapSnapshot.query.filter_by(checksum=beatmap_data["checksum"]).one()
-            leaderboard = Leaderboard.query.filter_by(beatmap_snapshot_id=beatmap_snapshot.id).one()
+
+            user = self.session.get(User, data["user_id"])
+            beatmap = self.session.get(Beatmap, beatmap_data["id"])
+            beatmapset = self.session.get(Beatmapset, beatmap_data["beatmapset_id"])
+            beatmap_snapshot = self.session.scalar(select(BeatmapSnapshot).filter_by(checksum=beatmap_data["checksum"]))
+            leaderboard = self.session.scalar(select(Leaderboard).filter_by(beatmap_snapshot_id=beatmap_snapshot.id))
+
             data["user_id"] = user.id
             data["beatmap_id"] = beatmap.id
             data["beatmapset_id"] = beatmapset.id
             data["leaderboard_id"] = leaderboard.id
 
-        return super().load(data, *args)
+        return data
 
     def dump_mods(self, obj) -> list:
         return json.loads(obj.mods) if obj.mods else []
@@ -278,26 +273,25 @@ class ScoreSchema(ma.SQLAlchemyAutoSchema):
         return json.dumps(value) if value else "[]"
 
 
-class QueueSchema(ma.SQLAlchemyAutoSchema):
+class QueueSchema(SQLAlchemyAutoSchema):
     class Meta:
         model = Queue
         load_instance = True
-        sqla_session = db.session
         include_relationships = True
+        include_fk = True
 
     user_id = fields.Integer()
     requests = fields.Nested("RequestSchema", many=True)
 
 
-class RequestSchema(ma.SQLAlchemyAutoSchema):
+class RequestSchema(SQLAlchemyAutoSchema):
     class Meta:
         model = Request
         load_instance = True
-        sqla_session = db.session
+        include_relationships = True
+        include_fk = True
 
-    user_id = fields.Integer()
-    beatmapset_id = fields.Integer()
-    queue_id = fields.Integer()
+    profile = fields.Nested("ProfileSchema")
 
 
 class JSONTextSchema(Schema):
@@ -336,32 +330,3 @@ class StatisticsSchema(JSONTextSchema):
     count_geki = fields.Integer()
     count_katu = fields.Integer()
     count_miss = fields.Integer()
-
-
-user_schema = UserSchema()
-users_schema = UserSchema(many=True)
-role_schema = RoleSchema()
-roles_schema = RoleSchema(many=True)
-mapper_schema = MapperSchema()
-mappers_schema = MapperSchema(many=True)
-oauth_token_schema = OauthTokenSchema()
-score_fetcher_task_schema = ScoreFetcherTaskSchema()
-mapper_info_fetcher_task_schema = MapperInfoFetcherTaskSchema()
-beatmap_schema = BeatmapSchema()
-beatmaps_schema = BeatmapSchema(many=True)
-beatmap_snapshot_schema = BeatmapSnapshotSchema()
-beatmap_snapshots_schema = BeatmapSnapshotSchema(many=True)
-beatmapset_schema = BeatmapsetSchema()
-beatmapsets_schema = BeatmapsetSchema(many=True)
-beatmapset_snapshot_schema = BeatmapsetSnapshotSchema()
-beatmapset_snapshots_schema = BeatmapsetSnapshotSchema(many=True)
-beatmapset_listing_schema = BeatmapsetListingSchema()
-beatmapset_listings_schema = BeatmapsetListingSchema(many=True)
-leaderboard_schema = LeaderboardSchema()
-leaderboards_schema = LeaderboardSchema(many=True)
-score_schema = ScoreSchema()
-scores_schema = ScoreSchema(many=True)
-queue_schema = QueueSchema()
-queues_schema = QueueSchema(many=True)
-request_schema = RequestSchema()
-requests_schema = RequestSchema(many=True)

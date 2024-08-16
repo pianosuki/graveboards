@@ -1,16 +1,12 @@
-from urllib.parse import urlparse, parse_qs
-
-from flask import jsonify
-
-from app import oauth
+from app.oauth import OAuth
 
 
-def search():
-    response = oauth.osu_auth.authorize_redirect()
-    authorization_url = response.headers["Location"]
-    state = parse_qs(urlparse(authorization_url).query).get("state", [None])[0]
+def search():  # TODO: Protect against CSRF attacks
+    oauth = OAuth()
 
-    return jsonify({
-        "authorization_url": response.headers["Location"],
+    authorization_url, state = oauth.create_authorization_url()
+
+    return {
+        "authorization_url": authorization_url,
         "state": state
-    })
+    }, 200

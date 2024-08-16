@@ -1,25 +1,35 @@
-from flask import abort
-
-from app import cr
-from app.schemas import queues_schema, queue_schema
+from app import db
+from app.database.schemas import QueueSchema
+from app.security import authorization_required
+from app.enums import RoleName
 
 
 def search(**kwargs):
-    queues = cr.get_queues()
-    return queues_schema.dump(queues), 200
+    with db.session_scope() as session:
+        queues = db.get_queues(session=session)
+        queues_data = QueueSchema(many=True).dump(queues)
+
+    return queues_data, 200
 
 
 def get(queue_id: int):
-    queue = cr.get_queue(id=queue_id)
-    return queue_schema.dump(queue), 200
+    with db.session_scope() as session:
+        queue = db.get_queue(id=queue_id, session=session)
+        queue_data = QueueSchema().dump(queue)
+
+    return queue_data, 200
 
 
-def post(body: dict):
-    errors = queue_schema.validate(body)
+@authorization_required(RoleName.ADMIN)
+def post(body: dict, **kwargs):  # TODO: Allow users to post queues for their user_id when we're ready for that feature
+    with db.session_scope() as session:
+        errors = QueueSchema(session=session).validate(body)
 
     if errors:
-        abort(400, "Invalid input data")
+        return {"error_type": "validation_error", "message": "Invalid input data", "errors": errors}, 400
 
     user_id = body["user_id"]
 
-    cr.add_queue(user_id=user_id)
+    db.add_queue(user_id=user_id)
+
+    return {"message": "Queue added successfully!"}, 201

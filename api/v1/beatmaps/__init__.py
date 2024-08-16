@@ -1,13 +1,18 @@
-from app import cr
-from app.schemas import beatmaps_schema, beatmap_schema
-from . import snapshots, difficulty
+from app import db
+from app.database.schemas import BeatmapSchema
 
 
 def search():
-    beatmaps = cr.get_beatmaps()
-    return beatmaps_schema.dump(beatmaps), 200
+    with db.session_scope() as session:
+        beatmaps = db.get_beatmaps(session=session)
+        beatmaps_data = BeatmapSchema(many=True).dump(beatmaps)
+
+    return beatmaps_data, 200
 
 
 def get(beatmap_id: int):
-    beatmap = cr.get_beatmap(id=beatmap_id)
-    return beatmap_schema.dump(beatmap), 200
+    with db.session_scope() as session:
+        beatmap = db.get_beatmap(id=beatmap_id, session=session)
+        beatmap_data = BeatmapSchema().dump(beatmap)
+
+    return beatmap_data, 200

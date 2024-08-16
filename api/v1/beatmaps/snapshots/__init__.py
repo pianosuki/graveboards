@@ -1,13 +1,19 @@
-from app import cr
-from app.schemas import beatmap_snapshot_schema, beatmap_snapshots_schema
+from app import db
+from app.database.schemas import BeatmapSnapshotSchema
 from . import osu
 
 
 def search(beatmap_id: int):
-    beatmap_snapshots = cr.get_beatmap_snapshots(beatmap_id=beatmap_id)
-    return beatmap_snapshots_schema.dump(beatmap_snapshots), 200
+    with db.session_scope() as session:
+        beatmap_snapshots = db.get_beatmap_snapshots(beatmap_id=beatmap_id, session=session)
+        beatmap_snaopshots_data = BeatmapSnapshotSchema(many=True).dump(beatmap_snapshots)
+
+    return beatmap_snaopshots_data, 200
 
 
 def get(beatmap_id: int, snapshot_number: int):
-    beatmap_snapshot = cr.get_beatmap_snapshot(beatmap_id=beatmap_id, snapshot_number=snapshot_number)
-    return beatmap_snapshot_schema.dump(beatmap_snapshot), 200
+    with db.session_scope() as session:
+        beatmap_snapshot = db.get_beatmap_snapshot(beatmap_id=beatmap_id, snapshot_number=snapshot_number, session=session)
+        beatmap_snapshot_data = BeatmapSnapshotSchema().dump(beatmap_snapshot)
+
+    return beatmap_snapshot_data, 200

@@ -1,32 +1,37 @@
-from flask import abort, jsonify
-
-from app import cr, sync, oac
-from app.models import User
-from app.schemas import users_schema, roles_schema, user_schema
-from app.services import ServiceName, QueueName
+from app import db
+from app.database.schemas import UserSchema, RoleSchema
+from app.enums import RoleName
+from app.security import authorization_required, matching_user_id_override
 
 
-def search():
-    users = User.query.all()
-    return users_schema.dump(users), 200
+@authorization_required(RoleName.ADMIN)
+def search(**kwargs):
+    with db.session_scope() as session:
+        users = db.get_users(session=session)
+        users_data = UserSchema(many=True).dump(users)
+
+    return users_data, 200
 
 
-def get(user_id: int):
-    user = User.query.get(user_id)
-    return user_schema.dump(user), 200
+@authorization_required(RoleName.ADMIN, override=matching_user_id_override)
+def get(user_id: int, **kwargs):
+    with db.session_scope() as session:
+        user = db.get_user(id=user_id, session=session)
+        user_data = UserSchema().dump(user)
+
+    return user_data, 200
 
 
-def post(body: dict):
+@authorization_required(RoleName.ADMIN)
+def post(body: dict, **kwargs):
     user_id = body["user_id"]
-    roles = roles_schema.load(body["roles"]) if "roles" in body else []
 
-    if cr.user_exists(user_id):
-        abort(409, f"The user with ID '{user_id}' already exists")
-    else:
-        cr.add_user(user_id, roles=roles)
+    if db.get_user(id=user_id):
+        return {"message": f"The user with ID '{user_id}' already exists"}, 409
 
-    score_fetcher_task = cr.get_score_fetcher_task(user_id=user_id)
+    with db.session_scope() as session:
+        roles = RoleSchema(many=True, session=session).load(body["roles"]) if "roles" in body else []
 
-    if not score_fetcher_task:
-        task = cr.add_score_fetcher_task(user_id)
-        sync.daemon.services[ServiceName.SCORE_FETCHER].queues[QueueName.SCORE_FETCHER_TASKS].put(task.id)
+    db.add_user(id=user_id, roles=roles)
+
+    return {"message": "User added successfully!"}, 201

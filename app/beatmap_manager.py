@@ -1,56 +1,35 @@
-from __future__ import annotations
-
 import os
-import httpx
-from typing import TYPE_CHECKING
 from io import BytesIO
 from zipfile import ZipFile
 
-from flask import Flask
+import httpx
 
+from api import v1 as api
+from app import db
+from app.osu_api import OsuAPIClient
+from app.database.schemas import BeatmapSnapshotSchema, BeatmapsetSnapshotSchema
 from .utils import combine_checksums
+from .config import INSTANCE_DIR, PRIMARY_ADMIN_USER_ID
 
-if TYPE_CHECKING:
-    from .osu_api import OsuAPIClient
-    from .crud import Crud
-
-BEATMAPS_PATH = os.path.abspath("instance/beatmaps")
-BEATMAPSETS_PATH = os.path.abspath("instance/beatmapsets")
+BEATMAPS_PATH = os.path.join(INSTANCE_DIR, "beatmaps")
+BEATMAPSETS_PATH = os.path.join(INSTANCE_DIR, "beatmapsets")
 BEATMAP_DOWNLOAD_BASEURL = "https://osu.ppy.sh/osu/"
 BEATMAP_SNAPSHOT_FILE_PATH = os.path.join(BEATMAPS_PATH, "{beatmap_id}/{snapshot_number}.osu")
 
 
-class BeatmapManagerBase:
-    def __init__(self, app: Flask | None = None):
-        self.app = app
-        os.makedirs(BEATMAPS_PATH, exist_ok=True)
-        os.makedirs(BEATMAPSETS_PATH, exist_ok=True)
+class BeatmapManager:
+    def __init__(self):
+        self.oac = OsuAPIClient()
 
-        if app is not None:
-            self.init_app(app)
-
-    def init_app(self, app: Flask):
-        self.app = app
-        app.extensions["beatmap_manager"] = self
-
-    @property
-    def osu_api(self) -> OsuAPIClient | None:
-        return self.app.extensions.get("osu_api")
-
-    @property
-    def crud(self) -> Crud | None:
-        return self.app.extensions.get("crud")
-
-
-class BeatmapManager(BeatmapManagerBase):
     def archive(self, beatmapset_id: int) -> list[int]:
-        beatmapset_dict = self.osu_api.get_beatmapset(beatmapset_id)
+        beatmapset_dict = self.oac.get_beatmapset(beatmapset_id)
         checksum = combine_checksums([beatmap["checksum"] for beatmap in beatmapset_dict["beatmaps"]])
 
         self._ensure_populated(beatmapset_dict)
 
-        if not self.crud.get_beatmapset_snapshot(checksum=checksum):
+        if not db.get_beatmapset_snapshot(checksum=checksum):
             beatmap_ids = self._snapshot(beatmapset_dict)
+
             self._download(beatmap_ids)
 
             return beatmap_ids
@@ -59,49 +38,46 @@ class BeatmapManager(BeatmapManagerBase):
 
     def _ensure_populated(self, beatmapset_dict: dict):
         beatmapset_id = beatmapset_dict["id"]
-        beatmapset_mapper_id = beatmapset_dict["user_id"]
+        user_id = beatmapset_dict["user_id"]
 
         # Beatmapset
         try:
-            self._ensure_mapper_populated(beatmapset_mapper_id)
-        except httpx.HTTPError:
-            self._add_banned_mapper(beatmapset_dict["user"])
+            self._ensure_user_populated(user_id)
 
-        if not self.crud.get_beatmapset(id=beatmapset_id):
-            self.crud.add_beatmapset(beatmapset_id, beatmapset_mapper_id)
+        except httpx.HTTPError:
+            self._add_banned_profile(user_id, user_dict=beatmapset_dict["user"])
+
+        if not db.get_beatmapset(id=beatmapset_id):
+            db.add_beatmapset(id=beatmapset_id, user_id=user_id)
 
         # Beatmap
         for beatmap_dict in beatmapset_dict["beatmaps"]:
             beatmap_id = beatmap_dict["id"]
-            beatmap_mapper_id = beatmap_dict["user_id"]
+            user_id = beatmap_dict["user_id"]
 
             try:
-                self._ensure_mapper_populated(beatmap_mapper_id)
+                self._ensure_user_populated(user_id)
+
             except httpx.HTTPError:
-                self._add_banned_mapper({
-                    "id": beatmap_mapper_id,
-                    "avatar_url": None,
-                    "username": None,
-                    "country_code": None
-                })
+                self._add_banned_profile(user_id)
 
-            if not self.crud.get_beatmap(id=beatmap_id):
-                self.crud.add_beatmap(beatmap_id, beatmapset_id, beatmap_mapper_id)
+            if not db.get_beatmap(id=beatmap_id):
+                db.add_beatmap(id=beatmap_id, beatmapset_id=beatmapset_id, user_id=user_id)
 
-    def _ensure_mapper_populated(self, mapper_id: int):
-        if not self.crud.get_mapper(id=mapper_id):
-            from api import v1 as api
+    def _ensure_user_populated(self, user_id: int):
+        if not db.get_profile(id=user_id):
+            api.users.post({"user_id": user_id}, user=PRIMARY_ADMIN_USER_ID)
 
-            api.mappers.post({"user_id": mapper_id})
-
-    def _add_banned_mapper(self, user_dict: dict):
-        self.crud.add_mapper({
-            "id": user_dict["id"],
-            "avatar_url": user_dict["avatar_url"],
-            "username": user_dict["username"],
-            "country_code": user_dict["country_code"],
-            "is_restricted": True
-        })
+    def _add_banned_profile(self, user_id: int, user_dict: dict = None):
+        db.add_profile(
+            user_id=user_id,
+            is_restricted=True,
+            **{
+                "avatar_url": user_dict["avatar_url"],
+                "username": user_dict["username"],
+                "country_code": user_dict["country_code"]
+            } if user_dict else {}
+        )
 
     def _snapshot(self, beatmapset_dict: dict) -> list[int]:
         beatmap_snapshots = []
@@ -110,12 +86,19 @@ class BeatmapManager(BeatmapManagerBase):
         for beatmap_dict in beatmapset_dict["beatmaps"]:
             checksum = beatmap_dict["checksum"]
 
-            if not self.crud.get_beatmap_snapshot(checksum=checksum):
-                beatmap_snapshot = self.crud.add_beatmap_snapshot(beatmap_dict)
+            if not db.get_beatmap_snapshot(checksum=checksum):
+
+                with db.session_scope() as session:
+                    beatmap_snapshot = BeatmapSnapshotSchema(session=session).load(beatmap_dict)
+                    session.add(beatmap_snapshot)
+
                 beatmap_snapshots.append(beatmap_snapshot)
 
         # BeatmapsetSnapshot
-        self.crud.add_beatmapset_snapshot(beatmapset_dict, beatmap_snapshots)
+        with db.session_scope() as session:
+            beatmapset_snapshot = BeatmapsetSnapshotSchema(session=session).load(beatmapset_dict)
+            beatmapset_snapshot.beatmap_snapshots = beatmap_snapshots
+            session.add(beatmapset_snapshot)
 
         return [beatmap_snapshot.beatmap_id for beatmap_snapshot in beatmap_snapshots]
 
@@ -125,7 +108,7 @@ class BeatmapManager(BeatmapManagerBase):
 
             output_directory = os.path.join(BEATMAPS_PATH, str(beatmap_id))
             os.makedirs(output_directory, exist_ok=True)
-            snapshot_number = self.crud.get_latest_beatmap_snapshot(beatmap_id).snapshot_number
+            snapshot_number = db.get_beatmap_snapshot(beatmap_id=beatmap_id, _reversed=True).snapshot_number
             output_path = os.path.join(output_directory, f"{snapshot_number}.osu")
 
             with httpx.stream("GET", url) as response:
@@ -150,7 +133,7 @@ class BeatmapManager(BeatmapManagerBase):
         zip_buffer = BytesIO()
 
         with ZipFile(zip_buffer, "w") as zip_file:
-            beatmapset_snapshot = self.crud.get_beatmapset_snapshot(beatmapset_id=beatmapset_id, snapshot_number=snapshot_number)
+            beatmapset_snapshot = db.get_beatmapset_snapshot(beatmapset_id=beatmapset_id, snapshot_number=snapshot_number)
 
             for beatmap_snapshot in beatmapset_snapshot.beatmap_snapshots:
                 beatmap_path = self.get_path(beatmap_snapshot.beatmap_id, beatmap_snapshot.snapshot_number)

@@ -1,29 +1,28 @@
 import asyncio
 import heapq
-import queue
 from datetime import datetime, timedelta, timezone
 
-from flask import Flask
-
 from api import v1 as api
-from app import flask_app, cr, oac
-from app.osu_api import ScoreType
+from app import db, arc
+from app.osu_api import OsuAPIClient, ScoreType
+from app.database.models import ScoreFetcherTask
+from app.redis import ChannelName
 from app.utils import aware_utcnow
-from app.models import ScoreFetcherTask
-from .enums import QueueName, EventName, RuntimeTaskName
+from app.config import PRIMARY_ADMIN_USER_ID
+from .enums import EventName, RuntimeTaskName
 from .service import Service
 
 SCORE_FETCHER_INTERVAL_HOURS = 24
 
 
 class ScoreFetcher(Service):
-    def __init__(self, app: Flask):
-        super().__init__(app)
+    def __init__(self):
+        self.pubsub = arc.pubsub()
+        self.oac = OsuAPIClient()
 
         self.runtime_tasks: dict[RuntimeTaskName, asyncio.Task] = {}
         self.tasks_heap: list[tuple[datetime, int]] = []
 
-        self.queues: dict[QueueName, queue.Queue] = {queue_name: queue.Queue() for queue_name in QueueName.__members__.values()}
         self.events: dict[EventName, asyncio.Event] = {event_name: asyncio.Event() for event_name in EventName.__members__.values()}
 
     async def run(self):
@@ -47,28 +46,28 @@ class ScoreFetcher(Service):
                 next_execution_time = fetch_time + timedelta(hours=SCORE_FETCHER_INTERVAL_HOURS)
                 heapq.heappush(self.tasks_heap, (next_execution_time, task_id))
 
-                with flask_app.app_context():
-                    cr.update_score_fetcher_task(task_id, last_fetch=fetch_time)
+                db.update_score_fetcher_task(task_id, last_fetch=fetch_time)
             else:
                 await self.events[EventName.SCORE_FETCHER_TASK_ADDED].wait()
                 self.events[EventName.SCORE_FETCHER_TASK_ADDED].clear()
 
     async def task_subscriber(self):
-        while True:
-            if self.queues[QueueName.SCORE_FETCHER_TASKS].qsize() > 0:
-                task_id = self.queues[QueueName.SCORE_FETCHER_TASKS].get_nowait()
+        await self.pubsub.subscribe(ChannelName.SCORE_FETCHER_TASKS.value)
 
-                with flask_app.app_context():
-                    task = cr.get_score_fetcher_task(id=task_id)
+        async for message in self.pubsub.listen():
+            if not message["type"] == "message" or not message["channel"].decode() == ChannelName.SCORE_FETCHER_TASKS.value:
+                continue
 
-                self.load_task(task)
-                self.events[EventName.SCORE_FETCHER_TASK_ADDED].set()
+            await asyncio.sleep(5)  # Wait until it's safe to assume the ScoreFetcherTask was fully committed
 
-            await asyncio.sleep(5)
+            task_id = int(message["data"].decode())
+            task = db.get_score_fetcher_task(id=task_id)
+
+            self.load_task(task)
+            self.events[EventName.SCORE_FETCHER_TASK_ADDED].set()
 
     def preload_tasks(self):
-        with flask_app.app_context():
-            tasks = cr.get_score_fetcher_tasks(limit=-1)
+        tasks = db.get_score_fetcher_tasks(enabled=True)
 
         for task in tasks:
             self.load_task(task)
@@ -85,24 +84,19 @@ class ScoreFetcher(Service):
         heapq.heappush(self.tasks_heap, (execution_time, task.id))
 
     def fetch_scores(self, task_id: int):
-        with flask_app.app_context():
-            task = cr.get_score_fetcher_task(id=task_id)
+        task = db.get_score_fetcher_task(id=task_id)
 
         user_id = task.user_id
-        scores = oac.get_user_scores(user_id, ScoreType.RECENT)
+        scores = self.oac.get_user_scores(user_id, ScoreType.RECENT)
 
         for score in scores:
             if not self.score_is_submittable(score):
                 continue
 
-            with flask_app.app_context():
-                api.scores.post(score)
+            api.scores.post(score, user=PRIMARY_ADMIN_USER_ID)
 
     @staticmethod
     def score_is_submittable(score: dict) -> bool:
         beatmap_id = score["beatmap"]["id"]
 
-        with flask_app.app_context():
-            leaderboards = cr.get_leaderboards(beatmap_id=beatmap_id)
-
-        return bool(leaderboards)
+        return bool(db.get_leaderboard(beatmap_id=beatmap_id))

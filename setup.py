@@ -1,35 +1,24 @@
-from api import v1 as api
-from app import flask_app, db, cr
-from app.config import API_KEY, OSU_USER_ID, MASTER_QUEUE_NAME, MASTER_QUEUE_DESCRIPTION, ADMIN_ROLE_NAME, ADMIN_OSU_USER_IDS
+from app import db
+from app.security.api_key import generate_api_key
+from app.enums import RoleName
+from app.config import ADMIN_USER_IDS, MASTER_QUEUE_NAME, MASTER_QUEUE_DESCRIPTION
 
 
 def setup():
-    with flask_app.app_context():
-        db.create_all()
+    db.create_database()
 
-        if not cr.user_exists(OSU_USER_ID):
-            cr.add_role(ADMIN_ROLE_NAME)
-            print(f"Added role: '{ADMIN_ROLE_NAME}'")
+    if db.is_empty():
+        with db.session_scope() as session:
+            admin_role = db.add_role(name=RoleName.ADMIN.value, session=session)
 
-            api.users.post({"user_id": OSU_USER_ID, "roles": [{"name": ADMIN_ROLE_NAME}]})
-            print(f"Added primary admin: {OSU_USER_ID}")
+            for user_id in ADMIN_USER_IDS:
+                db.add_user(id=user_id, roles=[admin_role], session=session)
+                db.add_api_key(key=generate_api_key(), user_id=user_id, session=session)
 
-            admin_user_ids = [user_id for user_id in ADMIN_OSU_USER_IDS if user_id != OSU_USER_ID]
+            db.add_queue(user_id=ADMIN_USER_IDS[0], name=MASTER_QUEUE_NAME, description=MASTER_QUEUE_DESCRIPTION, session=session)
+            db.add_queue(user_id=5099768, name="Net0's BN Queue", description="Net0's BN modding queue", session=session)
 
-            for user_id in admin_user_ids:
-                api.users.post({"user_id": user_id, "roles": [{"name": ADMIN_ROLE_NAME}]})
-
-            print(f"Added admins: {admin_user_ids}")
-
-            cr.add_api_key(API_KEY, OSU_USER_ID)
-            print(f"Added API key")
-
-            cr.add_queue(OSU_USER_ID, MASTER_QUEUE_NAME, description=MASTER_QUEUE_DESCRIPTION)
-            print(f"Added master queue")
-
-            # Add Net0's queue for now until we have an admin panel to do this manually
-            cr.add_queue(5099768, "Net0's Queue", description="Net0's BN modding queue")
-            print(f"Added Net0's queue")
+            print(f"[{__name__}] Fresh database set up successfully!")
 
 
 if __name__ == "__main__":

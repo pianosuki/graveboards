@@ -4,51 +4,41 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-BASE_URL = os.getenv("BASE_URL")
-
-FLASK_SERVER_ARGS = {
-    "static_url_path": ""
-}
-
-OAUTH_AUTHORIZATION_CODE = {
-    "name": "osu_auth",
-    "client_id": os.getenv("CLIENT_ID"),
-    "client_secret": os.getenv("CLIENT_SECRET"),
-    "authorize_url": "https://osu.ppy.sh/oauth/authorize",
-    "authorize_params": None,
-    "access_token_url": "https://osu.ppy.sh/oauth/token",
-    "access_token_params": None,
-    "refresh_token_url": None,
-    "redirect_uri": BASE_URL + "/callback",
-    "client_kwargs": {"scope": "public identify"}
-}
-
-OAUTH_CLIENT_CREDENTIALS = {
-    "name": "osu_client",
-    "client_id": os.getenv("CLIENT_ID"),
-    "client_secret": os.getenv("CLIENT_SECRET"),
-    "access_token_url": "https://osu.ppy.sh/oauth/token",
-    "access_token_params": None,
-    "refresh_token_url": None,
-    "client_kwargs": {"scope": "public", "grant_type": "client_credentials"}
-}
-
 SPEC_DIR = os.path.abspath("api/v1")
+INSTANCE_DIR = os.path.abspath("instance")
 
-OSU_USER_ID = int(os.getenv("OSU_USER_ID"))
+FRONTEND_BASE_URL = os.getenv("BASE_URL")
+JWT_SECRET_KEY = os.getenv("JWT_SECRET_KEY")
+JWT_ALGORITHM = os.getenv("JWT_ALGORITHM")
 
-ADMIN_OSU_USER_IDS = [int(id_.strip()) for id_ in os.getenv("ADMIN_OSU_USER_IDS").split(",")]
+POSTGRESQL_CONFIGURATION = {
+    "drivername": "postgresql+psycopg2",
+    "host": os.getenv("POSTGRESQL_HOST"),
+    "port": os.getenv("POSTGRESQL_PORT"),
+    "username": os.getenv("POSTGRESQL_USERNAME"),
+    "password": os.getenv("POSTGRESQL_PASSWORD"),
+    "database": os.getenv("POSTGRESQL_DATABASE")
+}
 
-ADMIN_ROLE_NAME = "admin"
+REDIS_CONFIGURATION = {
+    "host": os.getenv("REDIS_HOST"),
+    "port": os.getenv("REDIS_PORT"),
+    "username": os.getenv("REDIS_USERNAME"),
+    "password": os.getenv("REDIS_PASSWORD"),
+    "db": os.getenv("REDIS_DB"),
+    "ssl": os.getenv("REDIS_SSL")
+}
 
-API_KEY = os.getenv("API_KEY")
+OAUTH_CONFIGURATION = {
+    "client_id": os.getenv("OSU_CLIENT_ID"),
+    "client_secret": os.getenv("OSU_CLIENT_SECRET"),
+    "redirect_uri": FRONTEND_BASE_URL + "/callback",
+    "authorize_url": "https://osu.ppy.sh/oauth/authorize",
+    "token_endpoint": "https://osu.ppy.sh/oauth/token",
+    "token_endpoint_auth_method": "client_secret_basic"
+}
 
+ADMIN_USER_IDS = [int(user_id.strip()) for user_id in os.getenv("ADMIN_USER_IDS").split(",")]
+PRIMARY_ADMIN_USER_ID = ADMIN_USER_IDS[0]
 MASTER_QUEUE_NAME = "Graveboards Queue"
-
 MASTER_QUEUE_DESCRIPTION = "Master queue for beatmaps to receive leaderboards"
-
-
-class FlaskConfig:
-    SECRET_KEY = os.getenv("SECRET_KEY")
-    SQLALCHEMY_DATABASE_URI = "sqlite:///app.db"
-    SQLALCHEMY_TRACK_MODIFICATIONS = False

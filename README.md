@@ -94,15 +94,26 @@ Frontend: https://github.com/FlavioAngnes/graveboards-frontend
 
 4. Create the `.env` file:
     ```
-    SECRET_KEY=<Some secret key>
-   
-    CLIENT_ID=<osu! API client ID>
-    CLIENT_SECRET=<osu! API client secret>
-    OSU_USER_ID=<Your osu! user ID>
-    ADMIN_OSU_USER_IDS=<Comma-separated list of osu! user IDs>
-   
-    API_KEY=<Graveboards API key for the frontend to use>
-    BASE_URL=http://localhost:4200
+    BASE_URL=<frontend-base-url>  # http://localhost:4200
+    JWT_SECRET_KEY=<private-encryption-key>
+    JWT_ALGORITHM=<symmetric-algorithm>  # HS256
+    ADMIN_USER_IDS=<comma-delimmed-osu-user-ids>  # 2,124493,873961 ...
+    
+    OSU_CLIENT_ID=<osu-OAuth-client-id>
+    OSU_CLIENT_SECRET=<osu-OAuth-client-secret>
+    
+    POSTGRESQL_HOST=<db-host>  # localhost
+    POSTGRESQL_PORT=<db-port>  # 5432
+    POSTGRESQL_USERNAME=<db-username>  # postgres
+    POSTGRESQL_PASSWORD=<db-password>
+    POSTGRESQL_DATABASE=<db-dbname>  # postgres
+    
+    REDIS_HOST=<redis-host>  # localhost
+    REDIS_PORT=<redis-port>  # 6379
+    REDIS_USERNAME=<redis-acl-username>  # default
+    REDIS_PASSWORD=<redis-acl-password>
+    REDIS_DB=<redis-db-number>  # 0
+    REDIS_SSL=<boolean>  # false
     ```
 
 5. Run the application:
