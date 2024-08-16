@@ -31,8 +31,6 @@ def user_after_insert(mapper: Mapper[User], connection: Connection, target: User
     oac = OsuAPIClient()
     user_dict = oac.get_user(target.id)
 
-    print(user_dict)
-
     insert_profile_stmt = (
         insert(Profile)
         .values(
