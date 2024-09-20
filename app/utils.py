@@ -1,6 +1,7 @@
 import uuid
 import hashlib
 from datetime import datetime, timezone
+from io import BytesIO
 
 
 def generate_uuid() -> str:
@@ -27,3 +28,10 @@ def combine_checksums(checksums: list[str]) -> str:
         combined_hash.update(checksum.encode())
 
     return combined_hash.hexdigest()
+
+
+async def stream_file(file: BytesIO, chunk_size: int = 1024):
+    file.seek(0)
+
+    while chunk := file.read(chunk_size):
+        yield chunk

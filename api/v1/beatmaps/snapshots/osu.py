@@ -1,6 +1,6 @@
 from io import BytesIO
 
-from werkzeug.wrappers import Response
+from starlette.responses import PlainTextResponse
 
 from app import db
 from app.beatmap_manager import BeatmapManager
@@ -18,10 +18,9 @@ def search(beatmap_id: int, snapshot_number: int):
 
     dotosu_file_io.seek(0)
 
-    response = Response(
-        dotosu_file_io,
-        headers={"Content-Disposition": f"attachment; filename={beatmap_id}.osu"},
-        mimetype="text/plain"
+    response = PlainTextResponse(
+        content=dotosu_file_io.read().decode(),
+        headers={"Content-Disposition": f"attachment; filename={beatmap_id}.osu"}
     )
 
     return response

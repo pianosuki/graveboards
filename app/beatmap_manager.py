@@ -133,11 +133,12 @@ class BeatmapManager:
         zip_buffer = BytesIO()
 
         with ZipFile(zip_buffer, "w") as zip_file:
-            beatmapset_snapshot = db.get_beatmapset_snapshot(beatmapset_id=beatmapset_id, snapshot_number=snapshot_number)
+            with db.session_scope() as session:
+                beatmapset_snapshot = db.get_beatmapset_snapshot(beatmapset_id=beatmapset_id, snapshot_number=snapshot_number, session=session)
 
-            for beatmap_snapshot in beatmapset_snapshot.beatmap_snapshots:
-                beatmap_path = self.get_path(beatmap_snapshot.beatmap_id, beatmap_snapshot.snapshot_number)
-                zip_file.write(beatmap_path, f"{beatmap_snapshot.beatmap_id}.osu")
+                for beatmap_snapshot in beatmapset_snapshot.beatmap_snapshots:
+                    beatmap_path = self.get_path(beatmap_snapshot.beatmap_id, beatmap_snapshot.snapshot_number)
+                    zip_file.write(beatmap_path, f"{beatmap_snapshot.beatmap_id}.osu")
 
         zip_buffer.seek(0)
 
