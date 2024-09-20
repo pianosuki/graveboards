@@ -19,8 +19,7 @@ def search(beatmap_id: int, snapshot_number: int):
     dotosu_file_io.seek(0)
 
     response = PlainTextResponse(
-        content=dotosu_file_io.read().decode(),
-        headers={"Content-Disposition": f"attachment; filename={beatmap_id}.osu"}
+        content=dotosu_file_io.read().decode()
     )
 
     return response
