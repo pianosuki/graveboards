@@ -1,7 +1,7 @@
 from app import db
 from app.security.api_key import generate_api_key
 from app.enums import RoleName
-from app.config import ADMIN_USER_IDS, MASTER_QUEUE_NAME, MASTER_QUEUE_DESCRIPTION
+from app.config import ADMIN_USER_IDS, MASTER_QUEUE_NAME, MASTER_QUEUE_DESCRIPTION, DEBUG
 
 
 def setup():
@@ -18,7 +18,11 @@ def setup():
             db.add_queue(user_id=ADMIN_USER_IDS[0], name=MASTER_QUEUE_NAME, description=MASTER_QUEUE_DESCRIPTION, session=session)
             db.add_queue(user_id=5099768, name="Net0's BN Queue", description="Net0's BN modding queue", session=session)
 
+        if DEBUG:
             print(f"[{__name__}] Fresh database set up successfully!")
+
+    if DEBUG:
+        print(f"[{__name__}] Primary API key: {db.get_api_key(user_id=ADMIN_USER_IDS[0]).key}")
 
 
 if __name__ == "__main__":

@@ -4,6 +4,8 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+DEBUG = os.getenv("DEBUG", "false").lower() in ("true", "1", "yes")
+
 SPEC_DIR = os.path.abspath("api/v1")
 INSTANCE_DIR = os.path.abspath("instance")
 
