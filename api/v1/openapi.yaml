@@ -14,12 +14,12 @@ components:
             type: apiKey
             in: header
             name: X-API-KEY
-            x-apikeyInfoFunc: api.v1.auth.api_key_info
+            x-apikeyInfoFunc: api.auth.api_key_info
 
         BearerAuth:
             type: http
             scheme: bearer
-            x-bearerInfoFunc: api.v1.auth.bearer_info
+            x-bearerInfoFunc: api.auth.bearer_info
 
     schemas:
         AuthorizationCodeQuery:
@@ -693,8 +693,6 @@ paths:
                 - Beatmaps
             parameters:
                 - $ref: "#/components/parameters/BeatmapId"
-                - $ref: "#/components/parameters/Limit"
-                - $ref: "#/components/parameters/Offset"
             responses:
                 200:
                     description: Successfully retrieved beatmap metadata
