@@ -1,3 +1,4 @@
+from api.utils import prime_query_kwargs
 from app import db
 from app.database.schemas import QueueSchema
 from app.security import authorization_required
@@ -5,8 +6,10 @@ from app.enums import RoleName
 
 
 def search(**kwargs):
+    prime_query_kwargs(kwargs)
+
     with db.session_scope() as session:
-        queues = db.get_queues(session=session)
+        queues = db.get_queues(session=session, **kwargs)
         queues_data = QueueSchema(many=True).dump(queues)
 
     return queues_data, 200

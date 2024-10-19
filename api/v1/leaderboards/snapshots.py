@@ -1,10 +1,13 @@
+from api.utils import prime_query_kwargs
 from app import db
 from app.database.schemas import LeaderboardSchema
 
 
-def search(beatmap_id: int):
+def search(beatmap_id: int, **kwargs):
+    prime_query_kwargs(kwargs)
+
     with db.session_scope() as session:
-        leaderboards = db.get_leaderboards(beatmap_id=beatmap_id, session=session)
+        leaderboards = db.get_leaderboards(beatmap_id=beatmap_id, session=session, **kwargs)
         leaderboards_data = LeaderboardSchema(many=True).dump(leaderboards)
 
     return leaderboards_data, 200

@@ -1,3 +1,4 @@
+from api.utils import prime_query_kwargs
 from app import db
 from app.database.schemas import UserSchema, RoleSchema
 from app.enums import RoleName
@@ -6,8 +7,10 @@ from app.security import authorization_required, matching_user_id_override
 
 @authorization_required(RoleName.ADMIN)
 def search(**kwargs):
+    prime_query_kwargs(kwargs)
+
     with db.session_scope() as session:
-        users = db.get_users(session=session)
+        users = db.get_users(session=session, **kwargs)
         users_data = UserSchema(many=True).dump(users)
 
     return users_data, 200

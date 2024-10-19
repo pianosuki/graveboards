@@ -1,3 +1,4 @@
+from api.utils import prime_query_kwargs
 from app import db
 from app.osu_api import OsuAPIClient
 from app.database.schemas import ProfileSchema
@@ -5,9 +6,11 @@ from app.security import authorization_required
 from app.enums import RoleName
 
 
-def search():
+def search(**kwargs):
+    prime_query_kwargs(kwargs)
+
     with db.session_scope() as session:
-        profiles = db.get_profiles(session=session)
+        profiles = db.get_profiles(session=session, **kwargs)
         profiles_data = ProfileSchema(many=True).dump(profiles)
 
     return profiles_data, 200

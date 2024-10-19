@@ -1,6 +1,7 @@
 import json
 
 from api import v1 as api
+from api.utils import prime_query_kwargs
 from app import db
 from app.osu_api import OsuAPIClient
 from app.database.schemas import RequestSchema
@@ -10,8 +11,7 @@ from app.config import PRIMARY_ADMIN_USER_ID
 
 
 def search(**kwargs):  # TODO: Prevent users from having access to others' requests
-    kwargs.pop("user")
-    kwargs.pop("token_info")
+    prime_query_kwargs(kwargs)
 
     request_filter = json.loads(kwargs.pop("request_filter")) if "request_filter" in kwargs else {}
 
@@ -19,13 +19,13 @@ def search(**kwargs):  # TODO: Prevent users from having access to others' reque
         kwargs["user_id"] = request_filter["user_id"]["eq"]
 
     with db.session_scope() as session:
-        requests = db.get_requests(**kwargs, session=session)
+        requests = db.get_requests(session=session, **kwargs)
         requests_data = RequestSchema(many=True).dump(requests)
 
     return requests_data, 200
 
 
-def post(body: dict):
+def post(body: dict, **kwargs):
     with db.session_scope() as session:
         errors = RequestSchema(session=session).validate(body)
 

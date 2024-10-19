@@ -1,5 +1,6 @@
 import httpx
 
+from api.utils import prime_query_kwargs
 from app import db
 from app.beatmap_manager import BeatmapManager
 from app.database.schemas import BeatmapsetSchema
@@ -9,8 +10,10 @@ from . import listings, snapshots
 
 
 def search(**kwargs):
+    prime_query_kwargs(kwargs)
+
     with db.session_scope() as session:
-        beatmapsets = db.get_beatmapsets(session=session)
+        beatmapsets = db.get_beatmapsets(session=session, **kwargs)
         beatmapsets_data = BeatmapsetSchema(many=True).dump(beatmapsets)
 
     return beatmapsets_data, 200

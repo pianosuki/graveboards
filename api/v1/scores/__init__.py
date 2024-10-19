@@ -1,3 +1,4 @@
+from api.utils import prime_query_kwargs
 from app import db
 from app.database.schemas import ScoreSchema
 from app.utils import parse_iso8601
@@ -7,8 +8,11 @@ from app.enums import RoleName
 
 def search(**kwargs):
     # TODO: handle filtering
+
+    prime_query_kwargs(kwargs)
+
     with db.session_scope() as session:
-        scores = db.get_scores(session=session)
+        scores = db.get_scores(session=session, **kwargs)
         scores_data = ScoreSchema(many=True).dump(scores)
 
     return scores_data, 200

@@ -22,31 +22,34 @@ class BeatmapFilter:
         # TODO: Come up with a good way to combine filters using CTEs, this is just a workaround for now
 
         if self.request_filter and "user_id" in self.request_filter:
-            return self.my_requests(self.request_filter["user_id"]["eq"], session=session)
+            return self.my_requests(self.request_filter["user_id"]["eq"], session=session, **kwargs)
 
         if self.request_filter is not None:
-            return self.all_requests(session=session)
+            return self.all_requests(session=session, **kwargs)
 
-        return db.get_beatmapset_listings(session=session, **kwargs)
+        return db.get_beatmapset_listings(**kwargs, session=session)
 
-    def all_requests(self, session: Session = None) -> list[BeatmapsetListing]:
+    def all_requests(self, session: Session = None, _limit: int = None, _offset: int = 0, **kwargs) -> list[BeatmapsetListing]:
         subquery = select(Request.beatmapset_id, Request.id.label("request_id")).subquery()
 
         query = (
             select(BeatmapsetListing)
             .join(subquery, BeatmapsetListing.beatmapset_id == subquery.c.beatmapset_id)
             .order_by(desc(subquery.c.request_id))
+            .limit(_limit)
+            .offset(_offset)
         )
 
+        def execute(session_: Session):
+            return list(session.execute(query).scalars())
+
         if session:
-            result = session.execute(query).scalars()
+            return execute(session)
         else:
             with db.session_scope() as session:
-                result = session.execute(query).scalars()
+                return execute(session)
 
-        return result
-
-    def my_requests(self, user_id: int, session: Session = None) -> list[BeatmapsetListing]:
+    def my_requests(self, user_id: int, session: Session = None, _limit: int = None, _offset: int = 0, **kwargs) -> list[BeatmapsetListing]:
         subquery = (
             select(Request.beatmapset_id, Request.id.label("request_id"))
             .where(Request.user_id == user_id).subquery()
@@ -80,15 +83,18 @@ class BeatmapFilter:
                 latest_snapshot.beatmapset_id == subquery.c.beatmapset_id
             )
             .order_by(desc(subquery.c.request_id))
+            .limit(_limit)
+            .offset(_offset)
         )
 
+        def execute(session_: Session):
+            return list(session.execute(query).scalars())
+
         if session:
-            result = session.execute(query).scalars()
+            return execute(session)
         else:
             with db.session_scope() as session:
-                result = session.execute(query).scalars()
-
-        return result
+                return execute(session)
 
     @property
     def mapper_filter(self) -> dict | None:

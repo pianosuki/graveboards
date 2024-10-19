@@ -1,10 +1,13 @@
+from api.utils import prime_query_kwargs
 from app import db
 from app.database.schemas import BeatmapSchema
 
 
-def search():
+def search(**kwargs):
+    prime_query_kwargs(kwargs)
+
     with db.session_scope() as session:
-        beatmaps = db.get_beatmaps(session=session)
+        beatmaps = db.get_beatmaps(session=session, **kwargs)
         beatmaps_data = BeatmapSchema(many=True).dump(beatmaps)
 
     return beatmaps_data, 200

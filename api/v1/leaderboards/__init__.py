@@ -1,3 +1,4 @@
+from api.utils import prime_query_kwargs
 from app import db
 from app.database.schemas import LeaderboardSchema
 from app.security import authorization_required
@@ -5,9 +6,11 @@ from app.enums import RoleName
 from . import snapshots
 
 
-def search():
+def search(**kwargs):
+    prime_query_kwargs(kwargs)
+
     with db.session_scope() as session:
-        leaderboards = db.get_leaderboards(session=session)
+        leaderboards = db.get_leaderboards(session=session, **kwargs)
         leaderboards_data = LeaderboardSchema(many=True).dump(leaderboards)
 
     return leaderboards_data, 200
