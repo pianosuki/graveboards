@@ -1,23 +1,21 @@
-import json
-
-from api.utils import prime_query_kwargs
 from app import db
 from app.database.schemas import BeatmapsetListingSchema
-from app.beatmap_filter import BeatmapFilter
+from app.search import SearchEngine
 
 
 def search(**kwargs):
-    prime_query_kwargs(kwargs)
-
-    mapper_filter = json.loads(kwargs.pop("mapper_filter")) if "mapper_filter" in kwargs else None
-    beatmapset_filter = json.loads(kwargs.pop("beatmapset_filter")) if "beatmapset_filter" in kwargs else None
-    request_filter = json.loads(kwargs.pop("request_filter")) if "request_filter" in kwargs else None
-
     with db.session_scope() as session:
-        bf = BeatmapFilter()
-        bf.add_filters(mapper_filter=mapper_filter, beatmapset_filter=beatmapset_filter, request_filter=request_filter)
-        beatmap_listings = bf.filter(session=session, **kwargs)
+        se = SearchEngine()
 
-        beatmap_listings_data = BeatmapsetListingSchema(many=True, session=session).dump(beatmap_listings)
+        results = se.search(**kwargs)
 
-    return beatmap_listings_data, 200
+        next(results)
+
+        try:
+            page = results.send(session)
+        except StopIteration:
+            return [], 200
+
+        page_data = BeatmapsetListingSchema(many=True, session=session).dump(page)
+
+    return page_data, 200

@@ -427,30 +427,6 @@ components:
             schema:
                 type: string
 
-        MapperFilter:
-            name: mapper_filter
-            description: Json string of filters to apply to the query. Supports relational operators (eq, gt, lt, gte, lte, and neq)
-            in: query
-            schema:
-                type: string
-            example: '{"ranked_maps": {"eq": 1}, "kudosu": {"gt": 10}, "total_maps": {"gte": 10}, "total_maps": {"lte": 100}}'
-
-        BeatmapsetFilter:
-            name: beatmapset_filter
-            description: Json string of filters to apply to the query. Supports relational operators (eq, gt, lt, gte, lte, and neq)
-            in: query
-            schema:
-                type: string
-            example: '{"difficulties": {"lt": 7}, "sr_gap": {"gt": 0.5, "lt": 1.5}, "total_drain_time": {"lt": 720.5}}'
-
-        RequestFilter:
-            name: request_filter
-            description: Json string of filters to apply to the query. Supports relational operators (eq, gt, lt, gte, lte, and neq)
-            in: query
-            schema:
-                type: string
-            example: '{"user_id": {"eq": 1047883}}'
-
         Limit:
             name: limit
             description: Number of items to limit in the response for pagination
@@ -485,6 +461,69 @@ components:
             required: true
             schema:
                 type: integer
+
+        SearchQuery:
+            name: search_query
+            description: Search terms to apply to the query
+            in: query
+            schema:
+                type: string
+
+        SortBy:
+            name: sort_by
+            description: Field to sort the search results by
+            in: query
+            schema:
+                type: string
+
+        SortOrder:
+            name: sort_order
+            description: How to order the sorting of the search results by
+            in: query
+            schema:
+                type: string
+                enum:
+                    - asc
+                    - desc
+
+        MapperFilter:
+            name: mapper_filter
+            description: Json string of filters to apply to the query. Supports relational operators (eq, gt, lt, gte, lte, and neq)
+            in: query
+            schema:
+                type: string
+            example: '{"ranked_maps": {"eq": 1}, "kudosu": {"gt": 10}, "total_maps": {"gte": 10}, "total_maps": {"lte": 100}}'
+
+        BeatmapFilter:
+            name: beatmap_filter
+            description: Json string of filters to apply to the query. Supports relational operators (eq, gt, lt, gte, lte, and neq)
+            in: query
+            schema:
+                type: string
+            example: '{"bpm": {"lte": 200} "ar": {"gt": 8, "lt": 10}, "cs": {"eq": 4}}'
+
+        BeatmapsetFilter:
+            name: beatmapset_filter
+            description: Json string of filters to apply to the query. Supports relational operators (eq, gt, lt, gte, lte, and neq)
+            in: query
+            schema:
+                type: string
+            example: '{"difficulties": {"lt": 7}, "sr_gap": {"gt": 0.5, "lt": 1.5}, "total_drain_time": {"lt": 720.5}}'
+
+        RequestFilter:
+            name: request_filter
+            description: Json string of filters to apply to the query. Supports relational operators (eq, gt, lt, gte, lte, and neq)
+            in: query
+            schema:
+                type: string
+            example: '{"user_id": {"eq": 1047883}}'
+
+        SearchQueueId:
+            name: queue_id
+            description: Only include maps requested in the specified queue
+            in: query
+            schema:
+                type: string
 
     requestBodies:
         AuthorizationCode:
@@ -767,11 +806,16 @@ paths:
             tags:
                 - Beatmapsets
             parameters:
-                - $ref: "#/components/parameters/Limit"
-                - $ref: "#/components/parameters/Offset"
+                - $ref: "#/components/parameters/SearchQuery"
+                - $ref: "#/components/parameters/SortBy"
+                - $ref: "#/components/parameters/SortOrder"
                 - $ref: "#/components/parameters/MapperFilter"
+                - $ref: "#/components/parameters/BeatmapFilter"
                 - $ref: "#/components/parameters/BeatmapsetFilter"
                 - $ref: "#/components/parameters/RequestFilter"
+                - $ref: "#/components/parameters/SearchQueueId"
+                - $ref: "#/components/parameters/Limit"
+                - $ref: "#/components/parameters/Offset"
             responses:
                 200:
                     description: Successfully retrieved beatmapset listings
