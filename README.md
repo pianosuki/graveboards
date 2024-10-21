@@ -94,6 +94,7 @@ Frontend: https://github.com/FlavioAngnes/graveboards-frontend
 
 4. Create the `.env` file:
     ```
+    DEBUG=true
     BASE_URL=<frontend-base-url>  # http://localhost:4200
     JWT_SECRET_KEY=<private-encryption-key>
     JWT_ALGORITHM=<symmetric-algorithm>  # HS256

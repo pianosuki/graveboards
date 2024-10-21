@@ -523,7 +523,7 @@ components:
             description: Only include maps requested in the specified queue
             in: query
             schema:
-                type: string
+                type: integer
 
     requestBodies:
         AuthorizationCode:

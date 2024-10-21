@@ -51,7 +51,7 @@ class SearchEngine:
         if request_filter:
             self.request_filter = request_filter
         if queue_id:
-            self._queue_id = queue_id
+            self.queue_id = queue_id
         if limit:
             self._limit = limit
         if offset:
@@ -240,12 +240,12 @@ class SearchEngine:
         self._filters[FilterName.REQUEST] = self._load_filter(request_filter_json)
 
     @property
-    def queue_name(self) -> str:
-        return self._queue_name
+    def queue_id(self) -> int:
+        return self._queue_id
 
-    @queue_name.setter
-    def queue_name(self, queue_name_: str):
-        if not isinstance(queue_name_, str):
-            raise TypeError(f"Invalid queue_name type: {type(queue_name_)}. Must be str")
+    @queue_id.setter
+    def queue_id(self, queue_id_: int):
+        if not isinstance(queue_id_, int):
+            raise TypeError(f"Invalid queue_id type: {type(queue_id_)}. Must be int")
 
-        self._queue_name = queue_name_
+        self._queue_id = queue_id_
