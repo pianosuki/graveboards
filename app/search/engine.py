@@ -7,6 +7,8 @@ from sqlalchemy.orm.session import Session
 from sqlalchemy.orm.strategy_options import joinedload
 
 from app.database.models import User, Profile, Beatmap, BeatmapSnapshot, Beatmapset, BeatmapsetSnapshot, BeatmapsetListing, Queue, Request, ModelClass
+from app.database.utils import validate_column_value
+from app.exceptions import TypeValidationError
 from .enums import FilterName, SortOrder, FilterOperator
 
 PaginatedResultsGenerator = Generator[list[BeatmapsetListing], Session, None]
@@ -129,26 +131,36 @@ class SearchEngine:
         except json.JSONDecodeError as e:
             raise ValueError(f"Invalid JSON format for filter: {e}")
 
-        if not isinstance(filter_, dict):
-            raise ValueError(f"Invalid filter format: {filter_}. Must be a dict of fields and conditions")
-
         return filter_
 
     @staticmethod
     def _apply_filter(query: Select, filter_: FilterDict, model_class: ModelClass) -> Select:
         conditions = []
 
+        if not isinstance(filter_, dict):
+            raise ValueError(f"Invalid filter format: {filter_}. Must be a dict of fields and conditions")
+
         for field, conditions_dict in filter_.items():
+            column = getattr(model_class.value, field, None)
+
+            if column is None:
+                raise ValueError(f"Field '{field}' not found in model '{model_class.value.__name__}'")
+
+            if not isinstance(conditions_dict, dict):
+                raise ValueError(f"Invalid conditions format for field '{field}': {conditions_dict}. Must be a dict of operators and values")
+
             for operator_str, value in conditions_dict.items():
                 try:
                     operator = FilterOperator[operator_str.upper()]
                 except KeyError:
-                    raise ValueError(f"Invalid operator '{operator_str}' for field '{field}'")
+                    raise ValueError(f"Invalid operator '{operator_str}' for field '{field}' in condition {dict({operator_str: value})}")
 
-                column = getattr(model_class.value, field, None)
-
-                if column is None:
-                    raise ValueError(f"Field '{field}' not found in model '{model_class}'")
+                try:
+                    validate_column_value(column, value)
+                except TypeValidationError as e:
+                    raise TypeError(f"Invalid value type for field '{field}' in condition {dict({operator_str: value})}: Expected {e.expected_types}, got {e.value_type.__name__}")
+                except ValueError as e:
+                    raise e
 
                 conditions.append(operator.value(column, value))
 
@@ -164,7 +176,7 @@ class SearchEngine:
     @search_query.setter
     def search_query(self, search_query_: str):
         if not isinstance(search_query_, str):
-            raise TypeError(f"Invalid search_query type: {type(search_query_)}. Must be str")
+            raise TypeError(f"Invalid search_query type: {type(search_query_).__name__}. Must be str")
 
         self._search_query = search_query_
 
@@ -175,7 +187,7 @@ class SearchEngine:
     @sort_by.setter
     def sort_by(self, sort_by_: str):
         if not isinstance(sort_by_, str):
-            raise TypeError(f"Invalid sort_by type: {type(sort_by_)}. Must be str")
+            raise TypeError(f"Invalid sort_by type: {type(sort_by_).__name__}. Must be str")
 
         self._sort_by = sort_by_
 
@@ -193,7 +205,7 @@ class SearchEngine:
             else:
                 raise ValueError(f"Invalid sort_order value as str: {sort_order_}. Must be '{SortOrder.ASCENDING.value}' or '{SortOrder.DESCENDING.value}'")
         else:
-            raise TypeError(f"Invalid sort_order type: {type(sort_order_)}. Must be str or SortOrder")
+            raise TypeError(f"Invalid sort_order type: {type(sort_order_).__name__}. Must be str or SortOrder")
 
     @property
     def mapper_filter(self) -> dict:
@@ -202,7 +214,7 @@ class SearchEngine:
     @mapper_filter.setter
     def mapper_filter(self, mapper_filter_json: str):
         if not isinstance(mapper_filter_json, str):
-            raise TypeError(f"Invalid mapper_filter type: {type(mapper_filter_json)}. Must be str")
+            raise TypeError(f"Invalid mapper_filter type: {type(mapper_filter_json).__name__}. Must be str")
 
         self._filters[FilterName.MAPPER] = self._load_filter(mapper_filter_json)
 
@@ -213,7 +225,7 @@ class SearchEngine:
     @beatmap_filter.setter
     def beatmap_filter(self, beatmap_filter_json: str):
         if not isinstance(beatmap_filter_json, str):
-            raise TypeError(f"Invalid beatmap_filter type: {type(beatmap_filter_json)}. Must be str")
+            raise TypeError(f"Invalid beatmap_filter type: {type(beatmap_filter_json).__name__}. Must be str")
 
         self._filters[FilterName.BEATMAP] = self._load_filter(beatmap_filter_json)
 
@@ -224,7 +236,7 @@ class SearchEngine:
     @beatmapset_filter.setter
     def beatmapset_filter(self, beatmapset_filter_json: str):
         if not isinstance(beatmapset_filter_json, str):
-            raise TypeError(f"Invalid beatmapset_filter type: {type(beatmapset_filter_json)}. Must be str")
+            raise TypeError(f"Invalid beatmapset_filter type: {type(beatmapset_filter_json).__name__}. Must be str")
 
         self._filters[FilterName.BEATMAPSET] = self._load_filter(beatmapset_filter_json)
 
@@ -235,7 +247,7 @@ class SearchEngine:
     @request_filter.setter
     def request_filter(self, request_filter_json: str):
         if not isinstance(request_filter_json, str):
-            raise TypeError(f"Invalid request_filter type: {type(request_filter_json)}. Must be str")
+            raise TypeError(f"Invalid request_filter type: {type(request_filter_json).__name__}. Must be str")
 
         self._filters[FilterName.REQUEST] = self._load_filter(request_filter_json)
 
@@ -246,6 +258,6 @@ class SearchEngine:
     @queue_id.setter
     def queue_id(self, queue_id_: int):
         if not isinstance(queue_id_, int):
-            raise TypeError(f"Invalid queue_id type: {type(queue_id_)}. Must be int")
+            raise TypeError(f"Invalid queue_id type: {type(queue_id_).__name__}. Must be int")
 
         self._queue_id = queue_id_

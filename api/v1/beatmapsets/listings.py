@@ -4,14 +4,16 @@ from app.search import SearchEngine
 
 
 def search(**kwargs):
-    with db.session_scope() as session:
-        se = SearchEngine()
+    se = SearchEngine()
 
+    try:
         results = se.search(**kwargs)
+    except (ValueError, TypeError) as e:
+        return {"message": str(e)}, 400
 
-        next(results)
-
+    with db.session_scope() as session:
         try:
+            next(results)
             page = results.send(session)
         except StopIteration:
             return [], 200
