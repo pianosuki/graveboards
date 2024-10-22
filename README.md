@@ -29,7 +29,7 @@ Have you ever wanted to see your score saved on a cool graveyard map that you li
 - **Technology Stack:** Javascript, Angular Material, Python, Connexion.
 - **Architecture:**
 
-![](https://cdn.discordapp.com/attachments/1190425313197428856/1260070975014309959/Graveboards_v1-1.drawio.png?ex=66aba5cb&is=66aa544b&hm=5b433c53c1f380d82087d2d712c676eb376a7ab984601b7a88eace3682f4f06a&])
+![](http://a.pianosuki.com/u/Graveboards_v1-1.drawio.png)
 
 ## Collaboration Plan
 - **Roles and Responsibilities:**
