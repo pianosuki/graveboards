@@ -7,9 +7,8 @@ from sqlalchemy.sql.elements import ColumnClause, BinaryExpression
 from sqlalchemy.sql.expression import CTE
 from sqlalchemy.orm.attributes import InstrumentedAttribute
 from sqlalchemy.orm.session import Session
-from sqlalchemy.orm.strategy_options import joinedload
 
-from app.database.models import User, Profile, Beatmap, BeatmapSnapshot, Beatmapset, BeatmapsetSnapshot, BeatmapsetListing, Queue, Request, ModelClass
+from app.database.models import User, Profile, BeatmapSnapshot, BeatmapsetSnapshot, BeatmapsetListing, Queue, Request, ModelClass, beatmap_snapshot_beatmapset_snapshot_association
 from app.database.utils import validate_column_value
 from app.exceptions import TypeValidationError
 from .enums import FilterName, SortOrder, FilterOperator, AdvancedFilterField
@@ -62,11 +61,11 @@ class SearchEngine:
         if offset:
             self._offset = offset
 
-        query = self._compile_query()
+        query = self.compose_query()
 
-        return self._results_generator(query)
+        return self.results_generator(query)
 
-    def _results_generator(self, query: Select) -> PaginatedResultsGenerator:
+    def results_generator(self, query: Select) -> PaginatedResultsGenerator:
         while True:
             page_query = query.limit(self._limit).offset(self._offset)
 
@@ -80,17 +79,19 @@ class SearchEngine:
 
             self._offset += self._limit
 
-    def _compile_query(self) -> Select:
+    def compose_query(self) -> Select:
         query = (
             select(BeatmapsetListing)
+            .join(BeatmapsetSnapshot, BeatmapsetSnapshot.id == BeatmapsetListing.beatmapset_snapshot_id)
+            .join(
+                beatmap_snapshot_beatmapset_snapshot_association,
+                beatmap_snapshot_beatmapset_snapshot_association.c.beatmapset_snapshot_id == BeatmapsetSnapshot.id
+            )
+            .join(
+                BeatmapSnapshot,
+                BeatmapSnapshot.id == beatmap_snapshot_beatmapset_snapshot_association.c.beatmap_snapshot_id
+            )
             .distinct(BeatmapsetListing.id)
-            .join(Beatmapset, BeatmapsetListing.beatmapset_id == Beatmapset.id)
-            .join(BeatmapsetSnapshot, BeatmapsetSnapshot.beatmapset_id == Beatmapset.id)
-            .join(Beatmap, Beatmap.beatmapset_id == Beatmapset.id)
-            .join(BeatmapSnapshot, BeatmapSnapshot.beatmap_id == Beatmap.id)
-            .join(User, User.id == Beatmapset.user_id)
-            .join(Profile, Profile.user_id == User.id)
-            .join(Request, Request.beatmapset_id == Beatmapset.id)
         )
 
         if self._queue_id:
@@ -101,7 +102,11 @@ class SearchEngine:
                 .cte("request_cte")
             )
 
-            query = query.join(request_cte, Beatmapset.id == request_cte.c.beatmapset_id)
+            query = (
+                query
+                .join(Request, Request.beatmapset_id == BeatmapsetSnapshot.beatmapset_id)
+                .join(request_cte, request_cte.c.beatmapset_id == BeatmapsetSnapshot.beatmapset_id)
+            )
 
         if self._search_query:
             search_filter = or_(
@@ -118,13 +123,18 @@ class SearchEngine:
 
         for filter_name in FilterName:
             if self._filters[filter_name]:
+                if filter_name is FilterName.MAPPER:
+                    query = (
+                        query
+                        .join(User, User.id == BeatmapsetSnapshot.user_id)
+                        .join(Profile, Profile.user_id == User.id)
+                    )
+
                 query = self._apply_filter(query, self._filters[filter_name], filter_name.value)
 
         if self._sort_by:  # TODO: Sorting isn't currently working as intended, because the main selected entity is BeatmapsetListing so it can only work on fields of that instead of fields of models like BeatmapsetSnapshot
             sort_fn = asc if self._sort_order == SortOrder.ASCENDING else desc
             query = query.order_by(sort_fn(getattr(BeatmapsetSnapshot, self._sort_by)))
-
-        query = query.options(joinedload(BeatmapsetListing.beatmapset_snapshot))
 
         return query
 
