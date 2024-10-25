@@ -4,6 +4,7 @@ from sqlalchemy.pool.base import ConnectionPoolEntry
 from sqlalchemy.sql import select, insert, update
 from sqlalchemy.orm.mapper import Mapper
 from sqlalchemy.orm.attributes import AttributeEventToken
+from httpx import HTTPError
 
 from app import rc
 from app.osu_api import OsuAPIClient
@@ -29,7 +30,11 @@ def on_connect(dbapi_connection: Connection, connection_record: ConnectionPoolEn
 @event.listens_for(User, "after_insert")
 def user_after_insert(mapper: Mapper[User], connection: Connection, target: User):
     oac = OsuAPIClient()
-    user_dict = oac.get_user(target.id)
+
+    try:
+        user_dict = oac.get_user(target.id)
+    except HTTPError:
+        return
 
     insert_profile_stmt = (
         insert(Profile)

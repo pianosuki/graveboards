@@ -9,6 +9,7 @@ from app import db
 from app.osu_api import OsuAPIClient
 from app.database.schemas import BeatmapSnapshotSchema, BeatmapsetSnapshotSchema
 from .utils import combine_checksums
+from .exceptions import RestrictedUserError
 from .config import INSTANCE_DIR, PRIMARY_ADMIN_USER_ID
 
 BEATMAPS_PATH = os.path.join(INSTANCE_DIR, "beatmaps")
@@ -43,9 +44,13 @@ class BeatmapManager:
         # Beatmapset
         try:
             self._ensure_user_populated(user_id)
+        except RestrictedUserError:
+            user_dict = beatmapset_dict["user"]
 
-        except httpx.HTTPError:
-            self._add_banned_profile(user_id, user_dict=beatmapset_dict["user"])
+            if user_dict.get("is_deleted", False):
+                user_dict["username"] = beatmapset_dict.get("creator")
+
+            self._add_restricted_profile(user_id, user_dict)
 
         if not db.get_beatmapset(id=beatmapset_id):
             db.add_beatmapset(id=beatmapset_id, user_id=user_id)
@@ -57,29 +62,34 @@ class BeatmapManager:
 
             try:
                 self._ensure_user_populated(user_id)
-
-            except httpx.HTTPError:
-                self._add_banned_profile(user_id)
+            except RestrictedUserError:
+                self._add_restricted_profile(user_id)
 
             if not db.get_beatmap(id=beatmap_id):
                 db.add_beatmap(id=beatmap_id, beatmapset_id=beatmapset_id, user_id=user_id)
 
-    def _ensure_user_populated(self, user_id: int):
-        if not db.get_profile(id=user_id):
+    @staticmethod
+    def _ensure_user_populated(user_id: int):
+        if not db.get_user(id=user_id):
             api.users.post({"user_id": user_id}, user=PRIMARY_ADMIN_USER_ID)
 
-    def _add_banned_profile(self, user_id: int, user_dict: dict = None):
+        if not db.get_profile(user_id=user_id):
+            raise RestrictedUserError(user_id)
+
+    @staticmethod
+    def _add_restricted_profile(user_id: int, user_dict: dict = None):
         db.add_profile(
             user_id=user_id,
             is_restricted=True,
             **{
-                "avatar_url": user_dict["avatar_url"],
-                "username": user_dict["username"],
-                "country_code": user_dict["country_code"]
+                "avatar_url": user_dict.get("avatar_url"),
+                "username": user_dict.get("username"),
+                "country_code": user_dict.get("country_code")
             } if user_dict else {}
         )
 
-    def _snapshot(self, beatmapset_dict: dict) -> list[int]:
+    @staticmethod
+    def _snapshot(beatmapset_dict: dict) -> list[int]:
         beatmap_snapshots = []
 
         # BeatmapSnapshot
@@ -102,7 +112,8 @@ class BeatmapManager:
 
         return [beatmap_snapshot.beatmap_id for beatmap_snapshot in beatmap_snapshots]
 
-    def _download(self, beatmap_ids: list[int]):
+    @staticmethod
+    def _download(beatmap_ids: list[int]):
         for beatmap_id in beatmap_ids:
             url = os.path.join(BEATMAP_DOWNLOAD_BASEURL, str(beatmap_id))
 

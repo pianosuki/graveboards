@@ -9,3 +9,9 @@ class TypeValidationError(TypeError):
     @property
     def expected_types(self) -> str:
         return ", ".join(t.__name__ for t in self.target_types)
+
+
+class RestrictedUserError(ValueError):
+    def __init__(self, user_id: int, message: str = None):
+        self.user_id = user_id
+        self.message = message if message is not None else f"User {self.user_id} is either restricted, deleted, or otherwise inaccessible"
