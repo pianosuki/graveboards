@@ -1,14 +1,20 @@
+import json
 from datetime import datetime
 from enum import Enum
 from typing import Optional, TypeVar, Any
 
+from sqlalchemy.sql import select
 from sqlalchemy.sql.schema import Table, Column, ForeignKey, UniqueConstraint
 from sqlalchemy.sql.sqltypes import Integer, String, DateTime, Text, Boolean, Float
+from sqlalchemy.sql.functions import func
+from sqlalchemy.sql.expression import cast
 from sqlalchemy.inspection import inspect
 from sqlalchemy.orm import relationship, mapped_column
 from sqlalchemy.orm.decl_api import DeclarativeBase
 from sqlalchemy.orm.base import Mapped
 from sqlalchemy.orm.mapper import Mapper
+from sqlalchemy.ext.hybrid import hybrid_property
+from sqlalchemy.dialects.postgresql.json import JSONB
 
 from app.utils import aware_utcnow
 
@@ -31,7 +37,10 @@ __all__ = [
     "Leaderboard",
     "Score",
     "Queue",
-    "Request"
+    "Request",
+    "user_role_association",
+    "beatmap_snapshot_beatmapset_snapshot_association",
+    "queue_manager_association"
 ]
 
 
@@ -98,6 +107,36 @@ class Profile(Base):
     ranked_beatmapset_count: Mapped[Optional[int]] = mapped_column(Integer)
     kudosu: Mapped[Optional[str]] = mapped_column(Text)
     is_restricted: Mapped[bool] = mapped_column(Boolean, default=False)
+
+    # Hybrid annotations
+    total_maps: Mapped[int]
+    total_kudosu: Mapped[int]
+
+    @hybrid_property
+    def total_maps(self) -> int:
+        return (
+            (self.graveyard_beatmapset_count or 0) +
+            (self.loved_beatmapset_count or 0) +
+            (self.pending_beatmapset_count or 0) +
+            (self.ranked_beatmapset_count or 0)
+        )
+
+    @total_maps.expression
+    def total_maps(cls):
+        return (
+            func.coalesce(cls.graveyard_beatmapset_count, 0) +
+            func.coalesce(cls.loved_beatmapset_count, 0) +
+            func.coalesce(cls.pending_beatmapset_count, 0) +
+            func.coalesce(cls.ranked_beatmapset_count, 0)
+        )
+
+    @hybrid_property
+    def total_kudosu(self) -> int:
+        return json.loads(self.kudosu)["total"] if self.kudosu else 0
+
+    @total_kudosu.expression
+    def total_kudosu(cls):
+        return func.coalesce(cast(func.jsonb_extract_path_text(cast(cls.kudosu, JSONB), "total"), Integer), 0)
 
 
 class ApiKey(Base):
@@ -226,6 +265,44 @@ class BeatmapsetSnapshot(Base):
 
     # Relationships
     beatmap_snapshots: Mapped[list["BeatmapSnapshot"]] = relationship("BeatmapSnapshot", secondary=beatmap_snapshot_beatmapset_snapshot_association, back_populates="beatmapset_snapshots", lazy=True)
+
+    # Hybrid annotations
+    sr_gaps: Mapped[list[float]]
+    num_difficulties: Mapped[int]
+
+    @hybrid_property
+    def num_difficulties(self) -> int:
+        return len(self.beatmap_snapshots)
+
+    @num_difficulties.expression
+    def num_difficulties(cls):
+        from app.database.ctes.num_difficulties import num_difficulties_cte
+
+        return (
+            select(num_difficulties_cte.c.target)
+            .where(num_difficulties_cte.c.beatmapset_snapshot_id == cls.id)
+            .scalar_subquery()
+        )
+
+    @hybrid_property
+    def sr_gaps(self) -> list[float]:
+        if not self.beatmap_snapshots:
+            raise AttributeError(f"There are no beatmap_snapshots in BeatmapsetSnapshot {self.id}")
+
+        ratings = sorted([snapshot.difficulty_rating for snapshot in self.beatmap_snapshots])
+        diffs = [round(abs(ratings[i] - ratings[i + 1]), 2) for i in range(len(ratings) - 1)]
+
+        return diffs if len(ratings) > 1 else []
+
+    @sr_gaps.expression
+    def sr_gaps(cls):
+        from app.database.ctes.sr_gap import sr_gap_agg_cte
+
+        return (
+            select(sr_gap_agg_cte.c.sr_gap_agg)
+            .where(sr_gap_agg_cte.c.beatmapset_snapshot_id == cls.id)
+            .scalar_subquery()
+        )
 
 
 class BeatmapsetListing(Base):

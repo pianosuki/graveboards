@@ -492,7 +492,7 @@ components:
             in: query
             schema:
                 type: string
-            example: '{"ranked_maps": {"eq": 1}, "kudosu": {"gt": 10}, "total_maps": {"gte": 10}, "total_maps": {"lte": 100}}'
+            example: '{"ranked_beatmapset_count": {"eq": 1}, "total_kudosu": {"gt": 10}, "total_maps": {"gte": 10, "lte": 100}}'
 
         BeatmapFilter:
             name: beatmap_filter
@@ -500,7 +500,7 @@ components:
             in: query
             schema:
                 type: string
-            example: '{"bpm": {"lte": 200} "ar": {"gt": 8, "lt": 10}, "cs": {"eq": 4}}'
+            example: '{"bpm": {"lte": 200}, "ar": {"gt": 8, "lt": 10}, "cs": {"eq": 4}}'
 
         BeatmapsetFilter:
             name: beatmapset_filter
@@ -508,7 +508,7 @@ components:
             in: query
             schema:
                 type: string
-            example: '{"difficulties": {"lt": 7}, "sr_gap": {"gt": 0.5, "lt": 1.5}, "total_drain_time": {"lt": 720.5}}'
+            example: '{"num_difficulties": {"lt": 7}, "sr_gaps": {"min": {"gt": 0.5, "lt": 1.5}}, "play_count": {"gt": 100}}'
 
         RequestFilter:
             name: request_filter
@@ -516,7 +516,7 @@ components:
             in: query
             schema:
                 type: string
-            example: '{"user_id": {"eq": 1047883}}'
+            example: '{"user_id": {"eq": 1047883}, "status": {"eq": 0}}'
 
         SearchQueueId:
             name: queue_id

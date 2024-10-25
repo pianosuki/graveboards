@@ -3,13 +3,16 @@ from typing import Literal, Generator
 
 from sqlalchemy.sql import select, and_, or_, asc, desc
 from sqlalchemy.sql.selectable import Select
+from sqlalchemy.sql.elements import ColumnClause, BinaryExpression
+from sqlalchemy.sql.expression import CTE
+from sqlalchemy.orm.attributes import InstrumentedAttribute
 from sqlalchemy.orm.session import Session
 from sqlalchemy.orm.strategy_options import joinedload
 
 from app.database.models import User, Profile, Beatmap, BeatmapSnapshot, Beatmapset, BeatmapsetSnapshot, BeatmapsetListing, Queue, Request, ModelClass
 from app.database.utils import validate_column_value
 from app.exceptions import TypeValidationError
-from .enums import FilterName, SortOrder, FilterOperator
+from .enums import FilterName, SortOrder, FilterOperator, AdvancedFilterField
 
 PaginatedResultsGenerator = Generator[list[BeatmapsetListing], Session, None]
 FilterDict = dict[str, dict]
@@ -80,8 +83,9 @@ class SearchEngine:
     def _compile_query(self) -> Select:
         query = (
             select(BeatmapsetListing)
-            .join(Beatmapset)
-            .join(BeatmapsetSnapshot, BeatmapsetSnapshot.beatmapset_id == Beatmapset.id )
+            .distinct(BeatmapsetListing.id)
+            .join(Beatmapset, BeatmapsetListing.beatmapset_id == Beatmapset.id)
+            .join(BeatmapsetSnapshot, BeatmapsetSnapshot.beatmapset_id == Beatmapset.id)
             .join(Beatmap, Beatmap.beatmapset_id == Beatmapset.id)
             .join(BeatmapSnapshot, BeatmapSnapshot.beatmap_id == Beatmap.id)
             .join(User, User.id == Beatmapset.user_id)
@@ -131,38 +135,76 @@ class SearchEngine:
         except json.JSONDecodeError as e:
             raise ValueError(f"Invalid JSON format for filter: {e}")
 
+        if not isinstance(filter_, dict):
+            raise ValueError(f"Invalid filter format: {filter_}. Must be a dict of fields and conditions")
+
         return filter_
 
     @staticmethod
     def _apply_filter(query: Select, filter_: FilterDict, model_class: ModelClass) -> Select:
-        conditions = []
-
-        if not isinstance(filter_, dict):
-            raise ValueError(f"Invalid filter format: {filter_}. Must be a dict of fields and conditions")
-
-        for field, conditions_dict in filter_.items():
-            column = getattr(model_class.value, field, None)
-
-            if column is None:
-                raise ValueError(f"Field '{field}' not found in model '{model_class.value.__name__}'")
-
+        def apply_conditions(target: InstrumentedAttribute | ColumnClause, conditions_dict: dict):
             if not isinstance(conditions_dict, dict):
                 raise ValueError(f"Invalid conditions format for field '{field}': {conditions_dict}. Must be a dict of operators and values")
 
             for operator_str, value in conditions_dict.items():
+                operator_str = operator_str.lower()
+
                 try:
                     operator = FilterOperator[operator_str.upper()]
                 except KeyError:
                     raise ValueError(f"Invalid operator '{operator_str}' for field '{field}' in condition {dict({operator_str: value})}")
 
-                try:
-                    validate_column_value(column, value)
-                except TypeValidationError as e:
-                    raise TypeError(f"Invalid value type for field '{field}' in condition {dict({operator_str: value})}: Expected {e.expected_types}, got {e.value_type.__name__}")
-                except ValueError as e:
-                    raise e
+                if column_is_column:
+                    try:
+                        validate_column_value(target, value)
+                    except TypeValidationError as e:
+                        raise TypeError(f"Invalid value type for field '{field}' in condition {dict({operator_str: value})}: Expected {e.expected_types}, got {e.value_type.__name__}")
+                    except ValueError as e:
+                        raise e
 
-                conditions.append(operator.value(column, value))
+                conditions.append(operator.value(target, value))
+
+        def apply_cte(cte: CTE, conditions_dict: dict) -> Select:
+            cte_target = cte.columns["target"]
+            apply_conditions(cte_target, conditions_dict)
+
+            return query.join(cte, BeatmapsetSnapshot.id == cte.c.beatmapset_snapshot_id)
+
+        def apply_advanced_filter(field_value_: dict) -> Select:
+            if isinstance(advanced_filter_field.value, dict):
+                for func_str, conditions_dict in field_value_.items():
+                    func_str = func_str.lower()
+
+                    try:
+                        cte = advanced_filter_field.value[func_str]
+                    except KeyError:
+                        raise ValueError(f"Unsupported function '{func_str}' for field '{field}'. Must be one of: {", ".join(advanced_filter_field.value.keys())}")
+
+                    return apply_cte(cte, conditions_dict)
+            elif isinstance(advanced_filter_field.value, CTE):
+                cte = advanced_filter_field.value
+                return apply_cte(cte, field_value_)
+            else:
+                raise ValueError(f"Unknown error occurred while processing field '{field}'. Please let a developer know")
+
+        conditions: list[BinaryExpression] = []
+
+        for field, field_value in filter_.items():
+            field = field.lower()
+            column = getattr(model_class.value, field, None)
+
+            column_is_column = isinstance(column, InstrumentedAttribute)
+            column_is_hybrid = column is not None and field in model_class.value.__annotations__.keys() and field not in model_class.value.__mapper__.c.keys()
+            needs_advanced_filtering = column_is_hybrid and field.upper() in AdvancedFilterField.__members__.keys()
+
+            if not column_is_column and not column_is_hybrid:
+                raise ValueError(f"Field '{field}' not applicable to '{model_class.value.__name__}'")
+
+            if not needs_advanced_filtering:
+                apply_conditions(column, field_value)
+            else:
+                advanced_filter_field = AdvancedFilterField[field.upper()]
+                query = apply_advanced_filter(field_value)
 
         if conditions:
             query = query.where(and_(*conditions))
@@ -192,8 +234,8 @@ class SearchEngine:
         self._sort_by = sort_by_
 
     @property
-    def sort_order(self) -> str:
-        return self._sort_by
+    def sort_order(self) -> SortOrder:
+        return self._sort_order
 
     @sort_order.setter
     def sort_order(self, sort_order_: SortOrder | Literal["asc", "desc"]):
