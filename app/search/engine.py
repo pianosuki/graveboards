@@ -1,17 +1,25 @@
 import json
 from typing import Literal, Generator
 
-from sqlalchemy.sql import select, and_, or_, asc, desc
+from sqlalchemy.sql import select, and_
 from sqlalchemy.sql.selectable import Select
 from sqlalchemy.sql.elements import ColumnClause, BinaryExpression
 from sqlalchemy.sql.expression import CTE
 from sqlalchemy.orm.attributes import InstrumentedAttribute
 from sqlalchemy.orm.session import Session
+from sqlalchemy.dialects import postgresql
 
-from app.database.models import User, Profile, BeatmapSnapshot, BeatmapsetSnapshot, BeatmapsetListing, Queue, Request, ModelClass, beatmap_snapshot_beatmapset_snapshot_association
-from app.database.utils import validate_column_value
+from app.database.models import Profile, BeatmapSnapshot, BeatmapsetSnapshot, BeatmapsetListing, Queue, Request, ModelClass
+from app.database.utils import validate_column_value, get_filter_condition
+from app.database.ctes.bm_ss_sorting import bm_ss_sorting_cte_factory
+from app.database.ctes.search_filter import search_filter_cte_factory
+from app.database.ctes.bm_ss_filtering import bm_ss_filtering_cte_factory
+from app.database.ctes.profile_sorting import profile_sorting_cte_factory
+from app.database.ctes.profile_filtering import profile_filtering_cte_factory
+from app.database.ctes.request_sorting import request_sorting_cte_factory
+from app.database.ctes.request_filtering import request_filtering_cte_factory
 from app.exceptions import TypeValidationError
-from .enums import FilterName, SortOrder, FilterOperator, AdvancedFilterField
+from .enums import FilterName, SortOrder, FilterOperator, AdvancedFilterField, SortingField
 
 PaginatedResultsGenerator = Generator[list[BeatmapsetListing], Session, None]
 FilterDict = dict[str, dict]
@@ -20,18 +28,20 @@ FilterDict = dict[str, dict]
 class SearchEngine:
     def __init__(self):
         self._search_query: str = ""
-        self._sort_by: str = ""
-        self._sort_order: SortOrder = SortOrder.ASCENDING
+        self._sorting: list[SortingField] = []
+        self._sort_orders: list[SortOrder] = []
         self._filters: dict[FilterName, FilterDict] = {filter_name: {} for filter_name in FilterName}
         self._queue_id: int | None = None
         self._limit: int = 50
         self._offset: int = 0
 
+        self.query: Select | None = None
+
     def search(
         self,
         search_query: str = None,
-        sort_by: str = None,
-        sort_order: str = None,
+        sorting: list[str] = None,
+        sort_orders: list[str] = None,
         mapper_filter: str = None,
         beatmap_filter: str = None,
         beatmapset_filter: str = None,
@@ -42,10 +52,10 @@ class SearchEngine:
     ) -> PaginatedResultsGenerator:
         if search_query:
             self.search_query = search_query
-        if sort_by:
-            self.sort_by = sort_by
-        if sort_order:
-            self.sort_order = sort_order
+        if sorting:
+            self.sorting = sorting
+        if sort_orders:
+            self.sort_orders = sort_orders
         if mapper_filter:
             self.mapper_filter = mapper_filter
         if beatmap_filter:
@@ -61,13 +71,13 @@ class SearchEngine:
         if offset:
             self._offset = offset
 
-        query = self.compose_query()
+        self.compose_query()
 
-        return self.results_generator(query)
+        return self.results_generator()
 
-    def results_generator(self, query: Select) -> PaginatedResultsGenerator:
+    def results_generator(self) -> PaginatedResultsGenerator:
         while True:
-            page_query = query.limit(self._limit).offset(self._offset)
+            page_query = self.query.limit(self._limit).offset(self._offset)
 
             session: Session = yield
             results = session.execute(page_query).scalars().all()
@@ -79,64 +89,85 @@ class SearchEngine:
 
             self._offset += self._limit
 
-    def compose_query(self) -> Select:
-        query = (
+    def compose_query(self):
+        self.query = (
             select(BeatmapsetListing)
-            .join(BeatmapsetSnapshot, BeatmapsetSnapshot.id == BeatmapsetListing.beatmapset_snapshot_id)
             .join(
-                beatmap_snapshot_beatmapset_snapshot_association,
-                beatmap_snapshot_beatmapset_snapshot_association.c.beatmapset_snapshot_id == BeatmapsetSnapshot.id
+                BeatmapsetSnapshot,
+                BeatmapsetSnapshot.id == BeatmapsetListing.beatmapset_snapshot_id
             )
-            .join(
-                BeatmapSnapshot,
-                BeatmapSnapshot.id == beatmap_snapshot_beatmapset_snapshot_association.c.beatmap_snapshot_id
-            )
-            .distinct(BeatmapsetListing.id)
         )
 
-        if self._queue_id:
+        for idx, sorting_field in enumerate(self.sorting):
+            try:
+                sort_order = self.sort_orders[idx]
+            except IndexError:
+                sort_order = SortOrder.ASCENDING
+
+            self._apply_sorting(sorting_field, sort_order)
+
+        if self.queue_id:
             request_cte = (
                 select(Request.beatmapset_id)
-                .join(Queue)
-                .where(Queue.id == self._queue_id)
+                .join(Queue, Queue.id == Request.queue_id)
+                .where(Queue.id == self.queue_id)
                 .cte("request_cte")
             )
 
-            query = (
-                query
-                .join(Request, Request.beatmapset_id == BeatmapsetSnapshot.beatmapset_id)
-                .join(request_cte, request_cte.c.beatmapset_id == BeatmapsetSnapshot.beatmapset_id)
+            self.query = self.query.join(request_cte, request_cte.c.beatmapset_id == BeatmapsetSnapshot.beatmapset_id)
+
+        if self.search_query:
+            cte = search_filter_cte_factory(self.search_query)
+
+            self.query = self.query.join(cte, cte.c.beatmapset_snapshot_id == BeatmapsetSnapshot.id)
+
+        for filter_name, filter_ in self._filters.items():
+            if not filter_:
+                continue
+
+            self._apply_filter(self._filters[filter_name], filter_name.value)
+
+    @staticmethod
+    def _load_sorting(sorting: list[str]) -> list[SortingField]:
+        sorting_ = []
+
+        for sorting_target in sorting:
+            try:
+                sorting_field = SortingField[sorting_target.replace(".", "__").upper()]
+                sorting_.append(sorting_field)
+            except KeyError:
+                raise ValueError(f"Invalid sorting field: '{sorting_target}'")
+
+        return sorting_
+
+    def _apply_sorting(self, sorting_field: SortingField, sort_order: SortOrder):
+        def apply_cte(rows_ranked: bool = True):
+            self.query = (
+                self.query
+                .join(cte, cte.c.beatmapset_snapshot_id == BeatmapsetSnapshot.id)
+                .order_by(sort_order.sort_func(cte.c.target))
             )
 
-        if self._search_query:
-            search_filter = or_(
-                BeatmapSnapshot.version.ilike(f"%{self._search_query}%"),
-                BeatmapsetSnapshot.artist.ilike(f"%{self._search_query}%"),
-                BeatmapsetSnapshot.artist_unicode.ilike(f"%{self._search_query}%"),
-                BeatmapsetSnapshot.title.ilike(f"%{self._search_query}%"),
-                BeatmapsetSnapshot.title_unicode.ilike(f"%{self._search_query}%"),
-                BeatmapsetSnapshot.creator.ilike(f"%{self._search_query}%"),
-                BeatmapsetSnapshot.source.ilike(f"%{self._search_query}%")
-            )
+            if rows_ranked:
+                self.query = self.query.where(cte.c.rank == 1)
 
-            query = query.where(search_filter)
-
-        for filter_name in FilterName:
-            if self._filters[filter_name]:
-                if filter_name is FilterName.MAPPER:
-                    query = (
-                        query
-                        .join(User, User.id == BeatmapsetSnapshot.user_id)
-                        .join(Profile, Profile.user_id == User.id)
-                    )
-
-                query = self._apply_filter(query, self._filters[filter_name], filter_name.value)
-
-        if self._sort_by:  # TODO: Sorting isn't currently working as intended, because the main selected entity is BeatmapsetListing so it can only work on fields of that instead of fields of models like BeatmapsetSnapshot
-            sort_fn = asc if self._sort_order == SortOrder.ASCENDING else desc
-            query = query.order_by(sort_fn(getattr(BeatmapsetSnapshot, self._sort_by)))
-
-        return query
+        match sorting_field.model_class:
+            case ModelClass.PROFILE:
+                cte = profile_sorting_cte_factory(sorting_field.value, sort_order)
+                apply_cte()
+            case ModelClass.BEATMAP_SNAPSHOT:
+                cte = bm_ss_sorting_cte_factory(sorting_field.value, sort_order)
+                apply_cte()
+            case ModelClass.BEATMAPSET_SNAPSHOT:
+                if isinstance(sorting_field.value, InstrumentedAttribute):
+                    self.query = self.query.order_by(sort_order.sort_func(sorting_field.value))
+                elif isinstance(sorting_field.value, CTE):
+                    cte = sorting_field.value
+                    cte = cte.alias("sorting_" + cte.name)
+                    apply_cte(rows_ranked=False)
+            case ModelClass.REQUEST:
+                cte = request_sorting_cte_factory(sorting_field.value, sort_order)
+                apply_cte()
 
     @staticmethod
     def _load_filter(filter_json: str) -> FilterDict:
@@ -150,9 +181,8 @@ class SearchEngine:
 
         return filter_
 
-    @staticmethod
-    def _apply_filter(query: Select, filter_: FilterDict, model_class: ModelClass) -> Select:
-        def apply_conditions(target: InstrumentedAttribute | ColumnClause, conditions_dict: dict):
+    def _apply_filter(self, filter_: FilterDict, model_class: ModelClass):
+        def condition_generator(conditions_dict: dict, target: InstrumentedAttribute | ColumnClause, is_aggregated: bool = False) -> Generator[BinaryExpression, None, None]:
             if not isinstance(conditions_dict, dict):
                 raise ValueError(f"Invalid conditions format for field '{field}': {conditions_dict}. Must be a dict of operators and values")
 
@@ -160,40 +190,63 @@ class SearchEngine:
                 operator_str = operator_str.lower()
 
                 try:
-                    operator = FilterOperator[operator_str.upper()]
+                    filter_operator = FilterOperator[operator_str.upper()]
                 except KeyError:
                     raise ValueError(f"Invalid operator '{operator_str}' for field '{field}' in condition {dict({operator_str: value})}")
 
-                if column_is_column:
+                if column_is_column:  # TODO: Validate against hybrid too
                     try:
-                        validate_column_value(target, value)
+                        validate_column_value(column, value)
                     except TypeValidationError as e:
                         raise TypeError(f"Invalid value type for field '{field}' in condition {dict({operator_str: value})}: Expected {e.expected_types}, got {e.value_type.__name__}")
                     except ValueError as e:
                         raise e
 
-                conditions.append(operator.value(target, value))
+                yield get_filter_condition(filter_operator, target, value, is_aggregated=is_aggregated)
 
-        def apply_cte(cte: CTE, conditions_dict: dict) -> Select:
-            cte_target = cte.columns["target"]
-            apply_conditions(cte_target, conditions_dict)
+        def apply_conditions(target: InstrumentedAttribute | ColumnClause, conditions_dict: dict):
+            for condition in condition_generator(conditions_dict, target):
+                conditions.append(condition)
 
-            return query.join(cte, BeatmapsetSnapshot.id == cte.c.beatmapset_snapshot_id)
+        def apply_cte(cte: CTE, conditions_dict: dict):
+            target = cte.columns["target"]
+            apply_conditions(target, conditions_dict)
 
-        def apply_advanced_filter(field_value_: dict) -> Select:
+            self.query = self.query.join(cte, BeatmapsetSnapshot.id == cte.c.beatmapset_snapshot_id)
+
+        def apply_simple_filter():
+            if column.class_ is Profile:
+                cte = profile_filtering_cte_factory(column)
+                self.query = self.query.join(cte, cte.c.beatmapset_snapshot_id == BeatmapsetSnapshot.id)
+                apply_conditions(cte.c.target, field_value)
+            elif column.class_ is BeatmapSnapshot:
+                aggregated_conditions = condition_generator(field_value, column, is_aggregated=True)
+                cte = bm_ss_filtering_cte_factory(column, aggregated_conditions)
+                self.query = self.query.join(cte, cte.c.beatmapset_snapshot_id == BeatmapsetSnapshot.id)
+            elif column.class_ is Request:
+                cte = request_filtering_cte_factory(column)
+                self.query = self.query.join(cte, cte.c.beatmapset_snapshot_id == BeatmapsetSnapshot.id)
+                apply_conditions(cte.c.target, field_value)
+            else:
+                apply_conditions(column, field_value)
+
+        def apply_advanced_filter():
+            advanced_filter_field = AdvancedFilterField[field.upper()]
+
             if isinstance(advanced_filter_field.value, dict):
-                for func_str, conditions_dict in field_value_.items():
+                for func_str, conditions_dict in field_value.items():
                     func_str = func_str.lower()
 
                     try:
                         cte = advanced_filter_field.value[func_str]
+                        cte = cte.alias("filtering_" + cte.name)
                     except KeyError:
                         raise ValueError(f"Unsupported function '{func_str}' for field '{field}'. Must be one of: {", ".join(advanced_filter_field.value.keys())}")
 
                     return apply_cte(cte, conditions_dict)
             elif isinstance(advanced_filter_field.value, CTE):
                 cte = advanced_filter_field.value
-                return apply_cte(cte, field_value_)
+                return apply_cte(cte, field_value)
             else:
                 raise ValueError(f"Unknown error occurred while processing field '{field}'. Please let a developer know")
 
@@ -211,15 +264,12 @@ class SearchEngine:
                 raise ValueError(f"Field '{field}' not applicable to '{model_class.value.__name__}'")
 
             if not needs_advanced_filtering:
-                apply_conditions(column, field_value)
+                apply_simple_filter()
             else:
-                advanced_filter_field = AdvancedFilterField[field.upper()]
-                query = apply_advanced_filter(field_value)
+                apply_advanced_filter()
 
         if conditions:
-            query = query.where(and_(*conditions))
-
-        return query
+            self.query = self.query.where(and_(*conditions))
 
     @property
     def search_query(self) -> str:
@@ -233,31 +283,31 @@ class SearchEngine:
         self._search_query = search_query_
 
     @property
-    def sort_by(self) -> str:
-        return self._sort_by
+    def sorting(self) -> list[SortingField]:
+        return self._sorting
 
-    @sort_by.setter
-    def sort_by(self, sort_by_: str):
-        if not isinstance(sort_by_, str):
-            raise TypeError(f"Invalid sort_by type: {type(sort_by_).__name__}. Must be str")
+    @sorting.setter
+    def sorting(self, sorting_: list[str]):
+        if not isinstance(sorting_, list) or (isinstance(sorting_, list) and not all(isinstance(sorting_target, str) for sorting_target in sorting_)):
+            raise TypeError(f"Invalid sorting type: {type(sorting_).__name__}. Must be a list of strings")
 
-        self._sort_by = sort_by_
+        self._sorting = self._load_sorting(sorting_)
 
     @property
-    def sort_order(self) -> SortOrder:
-        return self._sort_order
+    def sort_orders(self) -> list[SortOrder]:
+        return self._sort_orders
 
-    @sort_order.setter
-    def sort_order(self, sort_order_: SortOrder | Literal["asc", "desc"]):
-        if isinstance(sort_order_, SortOrder):
-            self._sort_order = sort_order_
-        elif isinstance(sort_order_, str):
-            if sort_order_ in (SortOrder.ASCENDING.value, SortOrder.DESCENDING.value):
-                self._sort_order = SortOrder(sort_order_)
-            else:
-                raise ValueError(f"Invalid sort_order value as str: {sort_order_}. Must be '{SortOrder.ASCENDING.value}' or '{SortOrder.DESCENDING.value}'")
+    @sort_orders.setter
+    def sort_orders(self, sort_orders_: list[SortOrder] | list[Literal["asc", "desc"]]):
+        if all(isinstance(sort_order_, SortOrder) for sort_order_ in sort_orders_):
+            self._sort_orders = sort_orders_
+        elif all(isinstance(sort_order_, str) for sort_order_ in sort_orders_):
+            if not all(sort_order_ in (SortOrder.ASCENDING.value, SortOrder.DESCENDING.value) for sort_order_ in sort_orders_):
+                raise ValueError(f"sort_orders as str must only contain '{SortOrder.ASCENDING.value}' or '{SortOrder.DESCENDING.value}'")
+
+            self._sort_orders = [SortOrder(sort_order_) for sort_order_ in sort_orders_]
         else:
-            raise TypeError(f"Invalid sort_order type: {type(sort_order_).__name__}. Must be str or SortOrder")
+            raise TypeError("sort_orders must either only contain SortOrder or only contain str")
 
     @property
     def mapper_filter(self) -> dict:
@@ -313,3 +363,10 @@ class SearchEngine:
             raise TypeError(f"Invalid queue_id type: {type(queue_id_).__name__}. Must be int")
 
         self._queue_id = queue_id_
+
+    @property
+    def compiled_query(self) -> str:
+        if not self.query:
+            raise ValueError("The query is empty")
+
+        return str(self.query.compile(dialect=postgresql.dialect()))

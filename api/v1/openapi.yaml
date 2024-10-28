@@ -243,6 +243,68 @@ components:
                         - 0 # Undetermined
                         - 1 # Accepted
 
+        Sorting:
+            description: Array of enums of models and their fields to sort search results by
+            type: array
+            items:
+                type: string
+                enum:
+                    - Profile.country_code
+                    - Profile.graveyard_beatmapset_count
+                    - Profile.loved_beatmapset_count
+                    - Profile.pending_beatmapset_count
+                    - Profile.ranked_beatmapset_count
+                    - Profile.total_maps
+                    - Profile.total_kudosu
+                    - BeatmapSnapshot.beatmap_id
+                    - BeatmapSnapshot.user_id
+                    - BeatmapSnapshot.difficulty_rating
+                    - BeatmapSnapshot.mode
+                    - BeatmapSnapshot.total_length
+                    - BeatmapSnapshot.version
+                    - BeatmapSnapshot.accuracy
+                    - BeatmapSnapshot.ar
+                    - BeatmapSnapshot.bpm
+                    - BeatmapSnapshot.count_circles
+                    - BeatmapSnapshot.count_sliders
+                    - BeatmapSnapshot.count_spinners
+                    - BeatmapSnapshot.cs
+                    - BeatmapSnapshot.drain
+                    - BeatmapSnapshot.last_updated
+                    - BeatmapSnapshot.passcount
+                    - BeatmapSnapshot.playcount
+                    - BeatmapsetSnapshot.beatmapset_id
+                    - BeatmapsetSnapshot.user_id
+                    - BeatmapsetSnapshot.artist
+                    - BeatmapsetSnapshot.artist_unicode
+                    - BeatmapsetSnapshot.creator
+                    - BeatmapsetSnapshot.favourite_count
+                    - BeatmapsetSnapshot.offset
+                    - BeatmapsetSnapshot.play_count
+                    - BeatmapsetSnapshot.source
+                    - BeatmapsetSnapshot.status
+                    - BeatmapsetSnapshot.title
+                    - BeatmapsetSnapshot.title_unicode
+                    - BeatmapsetSnapshot.track_id
+                    - BeatmapsetSnapshot.num_difficulties
+                    - BeatmapsetSnapshot.sr_gaps.min
+                    - BeatmapsetSnapshot.sr_gaps.max
+                    - BeatmapsetSnapshot.sr_gaps.avg
+                    - Request.comment
+                    - Request.mv_checked
+                    - Request.created_at
+                    - Request.updated_at
+                    - Request.status
+
+        SortOrder:
+            description: Array of sort order enums to map respectively to the Sorting array if supplied
+            type: array
+            items:
+                type: string
+                enum:
+                    - asc
+                    - desc
+
     parameters:
         UserId:
             name: user_id
@@ -469,22 +531,19 @@ components:
             schema:
                 type: string
 
-        SortBy:
-            name: sort_by
-            description: Field to sort the search results by
+        Sorting:
+            name: sorting
+            description: Fields to sort the search results by
             in: query
             schema:
-                type: string
+                $ref: "#/components/schemas/Sorting"
 
         SortOrder:
-            name: sort_order
+            name: sort_orders
             description: How to order the sorting of the search results by
             in: query
             schema:
-                type: string
-                enum:
-                    - asc
-                    - desc
+                $ref: "#/components/schemas/SortOrder"
 
         MapperFilter:
             name: mapper_filter
@@ -807,7 +866,7 @@ paths:
                 - Beatmapsets
             parameters:
                 - $ref: "#/components/parameters/SearchQuery"
-                - $ref: "#/components/parameters/SortBy"
+                - $ref: "#/components/parameters/Sorting"
                 - $ref: "#/components/parameters/SortOrder"
                 - $ref: "#/components/parameters/MapperFilter"
                 - $ref: "#/components/parameters/BeatmapFilter"

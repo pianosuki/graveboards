@@ -73,7 +73,7 @@ max_sr_gap_cte = (
         func.max(sr_gap_cte.c.sr_gap).label("target")
     )
     .group_by(sr_gap_cte.c.beatmapset_snapshot_id)
-    .cte("min_sr_gap_cte")
+    .cte("max_sr_gap_cte")
 )
 
 avg_sr_gap_cte = (
