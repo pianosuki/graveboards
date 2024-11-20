@@ -89,3 +89,7 @@ class U(_U):
     @session_manager
     def update_request(self, primary_key: int, session: Session = None, **kwargs) -> Request:
         return self._update_instance(ModelClass.REQUEST, session, primary_key, **kwargs)
+
+    @session_manager
+    def update_tag(self, primary_key: int, session: Session = None, **kwargs) -> Tag:
+        return self._update_instance(ModelClass.TAG, session, primary_key, **kwargs)

@@ -40,6 +40,7 @@ class BeatmapManager:
     def _ensure_populated(self, beatmapset_dict: dict):
         beatmapset_id = beatmapset_dict["id"]
         user_id = beatmapset_dict["user_id"]
+        tags_str = beatmapset_dict["tags"]
 
         # Beatmapset
         try:
@@ -51,6 +52,8 @@ class BeatmapManager:
                 user_dict["username"] = beatmapset_dict.get("creator")
 
             self._add_restricted_profile(user_id, user_dict)
+
+        self._ensure_tags_populated(tags_str)
 
         if not db.get_beatmapset(id=beatmapset_id):
             db.add_beatmapset(id=beatmapset_id, user_id=user_id)
@@ -89,6 +92,15 @@ class BeatmapManager:
         )
 
     @staticmethod
+    def _ensure_tags_populated(tags_str: str):
+        if not tags_str.strip():
+            return
+
+        for tag_str in tags_str.strip().split(" "):
+            if tag_str and not db.get_tag(name=tag_str):
+                db.add_tag(name=tag_str)
+
+    @staticmethod
     def _snapshot(beatmapset_dict: dict) -> list[int]:
         beatmap_snapshots = []
 
@@ -108,6 +120,7 @@ class BeatmapManager:
         with db.session_scope() as session:
             beatmapset_snapshot = BeatmapsetSnapshotSchema(session=session).load(beatmapset_dict)
             beatmapset_snapshot.beatmap_snapshots = beatmap_snapshots
+            beatmapset_snapshot.tags = [db.get_tag(name=tag_str, session=session) for tag_str in beatmapset_dict["tags"].strip().split(" ")] if beatmapset_dict["tags"].strip() else []
             session.add(beatmapset_snapshot)
 
         return [beatmap_snapshot.beatmap_id for beatmap_snapshot in beatmap_snapshots]

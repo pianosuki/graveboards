@@ -170,3 +170,11 @@ class R(_R):
     @session_manager
     def get_requests(self, session: Session = None, **kwargs) -> list[Request]:
         return self._get_instances(ModelClass.REQUEST, session, **kwargs)
+
+    @session_manager
+    def get_tag(self, session: Session = None, **kwargs) -> Tag | None:
+        return self._get_instance(ModelClass.TAG, session, **kwargs)
+
+    @session_manager
+    def get_tags(self, session: Session = None, **kwargs) -> list[Tag]:
+        return self._get_instances(ModelClass.TAG, session, **kwargs)

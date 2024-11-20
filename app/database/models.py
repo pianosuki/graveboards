@@ -38,6 +38,7 @@ __all__ = [
     "Score",
     "Queue",
     "Request",
+    "Tag",
     "user_role_association",
     "beatmap_snapshot_beatmapset_snapshot_association",
     "queue_manager_association"
@@ -67,6 +68,12 @@ queue_manager_association = Table(
     "queue_manager_association", Base.metadata,
     Column("queue_id", Integer, ForeignKey("queues.id"), primary_key=True),
     Column("user_id", Integer, ForeignKey("users.id"), primary_key=True)
+)
+
+tag_beatmapset_snapshot_association = Table(
+    "tag_beatmapset_snapshot_association", Base.metadata,
+    Column("tag_id", Integer, ForeignKey("tags.id"), primary_key=True),
+    Column("beatmapset_snapshot_id", Integer, ForeignKey("beatmapset_snapshots.id"), primary_key=True)
 )
 
 
@@ -265,6 +272,7 @@ class BeatmapsetSnapshot(Base):
 
     # Relationships
     beatmap_snapshots: Mapped[list["BeatmapSnapshot"]] = relationship("BeatmapSnapshot", secondary=beatmap_snapshot_beatmapset_snapshot_association, back_populates="beatmapset_snapshots", lazy=True)
+    tags: Mapped[list["Tag"]] = relationship("Tag", secondary=tag_beatmapset_snapshot_association, lazy=True)
 
     # Hybrid annotations
     sr_gaps: Mapped[list[float]]
@@ -368,9 +376,10 @@ class Queue(Base):
     name: Mapped[str] = mapped_column(String, nullable=False)
     description: Mapped[str] = mapped_column(Text)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=aware_utcnow, onupdate=aware_utcnow)
+    is_open: Mapped[bool] = mapped_column(Boolean, default=True)
 
     # Relationships
-    requests: Mapped[list["Request"]] = relationship("Request", lazy=False)
+    requests: Mapped[list["Request"]] = relationship("Request", lazy=True)
     managers: Mapped[list["User"]] = relationship("User", secondary=queue_manager_association, backref="managed_queues")
 
     __table_args__ = (
@@ -394,6 +403,12 @@ class Request(Base):
     profile: Mapped["Profile"] = relationship("Profile", primaryjoin="Request.user_id == foreign(Profile.user_id)", lazy=True, viewonly=True, overlaps="profile,user")
 
 
+class Tag(Base):
+    __tablename__ = "tags"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    name: Mapped[str] = mapped_column(String, nullable=False, unique=True)
+
+
 class ModelClass(Enum):
     USER = User
     ROLE = Role
@@ -411,6 +426,7 @@ class ModelClass(Enum):
     SCORE = Score
     QUEUE = Queue
     REQUEST = Request
+    TAG = Tag
 
     def get_required_columns(self) -> list[str]:
         required_columns = []

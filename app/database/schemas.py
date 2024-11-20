@@ -30,6 +30,7 @@ __all__ = [
     "ScoreSchema",
     "QueueSchema",
     "RequestSchema",
+    "TagSchema",
     "JSONTextSchema"
 ]
 
@@ -164,6 +165,7 @@ class BeatmapsetSnapshotSchema(SQLAlchemyAutoSchema):
     covers = fields.Nested("CoversSchema")
     hype = fields.Nested("HypeSchema", allow_none=True)
     beatmap_snapshots = Nested("BeatmapSnapshotSchema", many=True, dump_only=True)
+    tags = Nested("TagSchema", many=True, dump_only=True)
 
     @pre_load
     def pre_load(self, data, *args, **kwargs):
@@ -292,6 +294,16 @@ class RequestSchema(SQLAlchemyAutoSchema):
         include_fk = True
 
     profile = fields.Nested("ProfileSchema")
+
+
+class TagSchema(SQLAlchemyAutoSchema):
+    class Meta:
+        model = Tag
+        load_instance = True
+
+    @post_dump
+    def post_dump(self, data, *args, **kwargs):
+        return data["name"]
 
 
 class JSONTextSchema(Schema):

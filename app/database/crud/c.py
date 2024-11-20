@@ -82,3 +82,7 @@ class C(_C):
     @session_manager
     def add_request(self, session: Session = None, **kwargs) -> Request:
         return self._add_instance(ModelClass.REQUEST, session, **kwargs)
+
+    @session_manager
+    def add_tag(self, session: Session = None, **kwargs) -> Tag:
+        return self._add_instance(ModelClass.TAG, session, **kwargs)

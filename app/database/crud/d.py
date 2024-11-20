@@ -160,3 +160,11 @@ class D(_D):
     @session_manager
     def delete_requests(self, session: Session = None, **kwargs) -> int:
         return self._delete_instances(ModelClass.REQUEST, session, **kwargs)
+
+    @session_manager
+    def delete_tag(self, session: Session = None, **kwargs) -> bool:
+        return self._delete_instance(ModelClass.TAG, session, **kwargs)
+
+    @session_manager
+    def delete_tags(self, session: Session = None, **kwargs) -> int:
+        return self._delete_instances(ModelClass.TAG, session, **kwargs)
