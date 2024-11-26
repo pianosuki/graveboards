@@ -40,6 +40,10 @@ class C(_C):
         return self._add_instance(ModelClass.OAUTH_TOKEN, session, **kwargs)
 
     @session_manager
+    def add_jwt(self, session: Session = None, **kwargs) -> JWT:
+        return self._add_instance(ModelClass.JWT, session, **kwargs)
+
+    @session_manager
     def add_score_fetcher_task(self, session: Session = None, **kwargs) -> ScoreFetcherTask:
         return self._add_instance(ModelClass.SCORE_FETCHER_TASK, session, **kwargs)
 

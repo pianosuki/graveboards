@@ -19,6 +19,7 @@ __all__ = [
     "RoleSchema",
     "ProfileSchema",
     "OauthTokenSchema",
+    "JWTSchema",
     "ScoreFetcherTaskSchema",
     "ProfileFetcherTaskSchema",
     "BeatmapSchema",
@@ -83,9 +84,18 @@ class ProfileSchema(SQLAlchemyAutoSchema):
 
 class OauthTokenSchema(SQLAlchemyAutoSchema):
     class Meta:
-        model = User
+        model = OauthToken
         load_instance = True
         unknown = EXCLUDE
+
+
+class JWTSchema(SQLAlchemyAutoSchema):
+    class Meta:
+        model = JWT
+        load_instance = True
+        include_fk = True
+        unknown = EXCLUDE
+        exclude = ("id",)
 
 
 class ScoreFetcherTaskSchema(SQLAlchemyAutoSchema):

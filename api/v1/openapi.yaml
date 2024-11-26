@@ -584,6 +584,14 @@ components:
             schema:
                 type: integer
 
+        JWT:
+            name: token
+            description: JWT issued to a user
+            in: query
+            schema:
+                type: string
+
+
     requestBodies:
         AuthorizationCode:
             description: Authorization Code received from the osu! OAuth flow to authenticate with
@@ -680,6 +688,21 @@ paths:
                     description: Generated authorization URL
 
     /token:
+        get:
+            summary: Retrieve info for a JWT
+            tags:
+                - OAuth
+            parameters:
+                - $ref: "#/components/parameters/JWT"
+                  required: true
+            responses:
+                200:
+                    description: Retrieved token info
+                400:
+                    description: Must provide token in the query parameters
+                404:
+                    description: Token not found
+
         post:
             summary: Uses the Authorization Code from the osu! OAuth flow to authenticate a user and issues a JWT
             tags:

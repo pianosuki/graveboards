@@ -5,7 +5,20 @@ from app import db
 from app.oauth import OAuth
 from app.osu_api import OsuAPIClient
 from app.config import PRIMARY_ADMIN_USER_ID
-from app.security import generate_token
+from app.security.jwt import create_payload, encode_token
+from app.database.schemas import JWTSchema
+
+
+def search(token: str):
+    with db.session_scope() as session:
+        jwt = db.get_jwt(token=token, session=session)
+
+        if not jwt:
+            return {"message": f"The JWT provided does not exist"}, 404
+
+        jwt_data = JWTSchema(session=session).dump(jwt)
+
+    return jwt_data, 200
 
 
 def post(body: dict):
@@ -37,9 +50,11 @@ def post(body: dict):
 
         db.add_oauth_token(user_id=user_id, access_token=access_token, refresh_token=refresh_token, expires_at=expires_at)
 
-        jwt = generate_token(user_id)
+        payload = create_payload(user_id)
+        jwt_str = encode_token(payload)
+        db.add_jwt(user_id=user_id, token=jwt_str, issued_at=payload["iat"], expires_at=payload["exp"])
 
-        return {"token": jwt, "user_id": user_id}, 201
+        return {"token": jwt_str, "user_id": user_id}, 201
 
     except OAuthError as e:
         return {"message": e.description}, 500

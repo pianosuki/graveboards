@@ -27,6 +27,7 @@ __all__ = [
     "Profile",
     "ApiKey",
     "OauthToken",
+    "JWT",
     "ScoreFetcherTask",
     "ProfileFetcherTask",
     "Beatmap",
@@ -163,6 +164,17 @@ class OauthToken(Base):
     expires_at: Mapped[int] = mapped_column(Integer, nullable=False)
     is_revoked: Mapped[bool] = mapped_column(Boolean, default=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=aware_utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=aware_utcnow, onupdate=aware_utcnow)
+
+
+class JWT(Base):
+    __tablename__ = "jwts"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"), nullable=False)
+    token: Mapped[str] = mapped_column(String, nullable=False)
+    issued_at: Mapped[int] = mapped_column(Integer, nullable=False)
+    expires_at: Mapped[int] = mapped_column(Integer, nullable=False)
+    is_revoked: Mapped[bool] = mapped_column(Boolean, default=False)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=aware_utcnow, onupdate=aware_utcnow)
 
 
@@ -415,6 +427,7 @@ class ModelClass(Enum):
     PROFILE = Profile
     API_KEY = ApiKey
     OAUTH_TOKEN = OauthToken
+    JWT = JWT
     SCORE_FETCHER_TASK = ScoreFetcherTask
     PROFILE_FETCHER_TASK = ProfileFetcherTask
     BEATMAP = Beatmap

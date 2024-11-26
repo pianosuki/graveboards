@@ -47,6 +47,10 @@ class U(_U):
         return self._update_instance(ModelClass.OAUTH_TOKEN, session, primary_key, **kwargs)
 
     @session_manager
+    def update_jwt(self, primary_key: int, session: Session = None, **kwargs) -> JWT:
+        return self._update_instance(ModelClass.JWT, session, primary_key, **kwargs)
+
+    @session_manager
     def update_score_fetcher_task(self, primary_key: int, session: Session = None, **kwargs) -> ScoreFetcherTask:
         return self._update_instance(ModelClass.SCORE_FETCHER_TASK, session, primary_key, **kwargs)
 

@@ -9,15 +9,17 @@ from app.config import FRONTEND_BASE_URL, JWT_SECRET_KEY, JWT_ALGORITHM
 JWT_LIFETIME_DAYS = 30
 
 
-def generate_token(user_id):
-    payload = {
+def generate_token(user_id) -> str:
+    return encode_token(create_payload(user_id))
+
+
+def create_payload(user_id) -> dict[str, Any]:
+    return {
         "sub": user_id,
         "iss": FRONTEND_BASE_URL,
-        "iat": aware_utcnow(),
-        "exp": aware_utcnow() + timedelta(days=JWT_LIFETIME_DAYS)
+        "iat": int(aware_utcnow().timestamp()),
+        "exp": int((aware_utcnow() + timedelta(days=JWT_LIFETIME_DAYS)).timestamp())
     }
-
-    return encode_token(payload)
 
 
 def encode_token(payload: dict[str, Any]) -> str:

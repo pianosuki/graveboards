@@ -74,6 +74,14 @@ class D(_D):
         return self._delete_instances(ModelClass.OAUTH_TOKEN, session, **kwargs)
 
     @session_manager
+    def delete_jwt(self, session: Session = None, **kwargs) -> bool:
+        return self._delete_instance(ModelClass.JWT, session, **kwargs)
+
+    @session_manager
+    def delete_jwts(self, session: Session = None, **kwargs) -> int:
+        return self._delete_instances(ModelClass.JWT, session, **kwargs)
+
+    @session_manager
     def delete_score_fetcher_task(self, session: Session = None, **kwargs) -> bool:
         return self._delete_instance(ModelClass.SCORE_FETCHER_TASK, session, **kwargs)
 

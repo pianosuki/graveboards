@@ -84,6 +84,14 @@ class R(_R):
         return self._get_instances(ModelClass.OAUTH_TOKEN, session, **kwargs)
 
     @session_manager
+    def get_jwt(self, session: Session = None, **kwargs) -> JWT | None:
+        return self._get_instance(ModelClass.JWT, session, **kwargs)
+
+    @session_manager
+    def get_jwts(self, session: Session = None, **kwargs) -> list[JWT]:
+        return self._get_instances(ModelClass.JWT, session, **kwargs)
+
+    @session_manager
     def get_score_fetcher_task(self, session: Session = None, **kwargs) -> ScoreFetcherTask | None:
         return self._get_instance(ModelClass.SCORE_FETCHER_TASK, session, **kwargs)
 
