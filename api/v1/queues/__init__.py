@@ -10,7 +10,7 @@ def search(**kwargs):
 
     with db.session_scope() as session:
         queues = db.get_queues(session=session, **kwargs)
-        queues_data = QueueSchema(many=True).dump(queues)
+        queues_data = QueueSchema(many=True, session=session).dump(queues)
 
     return queues_data, 200
 
@@ -18,7 +18,7 @@ def search(**kwargs):
 def get(queue_id: int):
     with db.session_scope() as session:
         queue = db.get_queue(id=queue_id, session=session)
-        queue_data = QueueSchema().dump(queue)
+        queue_data = QueueSchema(session=session).dump(queue)
 
     return queue_data, 200
 

@@ -387,12 +387,13 @@ class Queue(Base):
     user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"), nullable=False)
     name: Mapped[str] = mapped_column(String, nullable=False)
     description: Mapped[str] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=aware_utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=aware_utcnow, onupdate=aware_utcnow)
     is_open: Mapped[bool] = mapped_column(Boolean, default=True)
 
     # Relationships
     requests: Mapped[list["Request"]] = relationship("Request", lazy=True)
-    managers: Mapped[list["User"]] = relationship("User", secondary=queue_manager_association, backref="managed_queues")
+    managers: Mapped[list["User"]] = relationship("User", secondary=queue_manager_association, backref="managed_queues", lazy=True)
 
     __table_args__ = (
         UniqueConstraint("user_id", "name", name="_user_and_name_uc"),
@@ -412,7 +413,7 @@ class Request(Base):
     status: Mapped[int] = mapped_column(Integer, default=0)
 
     # Relationships
-    profile: Mapped["Profile"] = relationship("Profile", primaryjoin="Request.user_id == foreign(Profile.user_id)", lazy=True, viewonly=True, overlaps="profile,user")
+    profile: Mapped["Profile"] = relationship("Profile", primaryjoin="Request.user_id == foreign(Profile.user_id)", lazy=True, viewonly=True, overlaps="profile,user")  # TODO: Consider removing in favor of adding display_data in post
 
 
 class Tag(Base):

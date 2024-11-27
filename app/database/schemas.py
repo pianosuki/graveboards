@@ -198,6 +198,9 @@ class BeatmapsetListingSchema(SQLAlchemyAutoSchema):
 
     @post_dump
     def add_display_data(self, data, *args, **kwargs):
+        if self.session is None:
+            raise AttributeError(f"No session provided for {__class__.__name__}")
+
         beatmapset_snapshot = data["beatmapset_snapshot"]
         display_data = {
             "title": beatmapset_snapshot["title"],
@@ -289,11 +292,43 @@ class QueueSchema(SQLAlchemyAutoSchema):
     class Meta:
         model = Queue
         load_instance = True
-        include_relationships = True
         include_fk = True
 
-    user_id = fields.Integer()
-    requests = fields.Nested("RequestSchema", many=True)
+    @post_dump
+    def add_display_data(self, data, *args, **kwargs):
+        if self.session is None:
+            raise AttributeError(f"No session provided for {__class__.__name__}")
+
+        manager_profiles_query = (
+            select(Profile)
+            .join(queue_manager_association, queue_manager_association.c.user_id == Profile.user_id)
+            .join(Queue, Queue.id == queue_manager_association.c.queue_id)
+            .where(Queue.id == data["id"])
+        )
+
+        owner_profile = self.session.scalar(select(Profile).filter_by(user_id=data["user_id"]))
+        manager_profiles = self.session.scalars(manager_profiles_query).all()
+
+        display_data = {
+            "owner_profile": {
+                "username": owner_profile.username,
+                "avatar_url": owner_profile.avatar_url
+            },
+            "manager_profiles": [
+                {
+                    "username": manager.username,
+                    "avatar_url": manager.avatar_url
+                } for manager in manager_profiles
+            ]
+        }
+
+        data["display_data"] = QueueDisplayDataSchema().dump(display_data)
+        return data
+
+
+class QueueDisplayDataSchema(Schema):
+    owner_profile = fields.Nested("ProfileSchema")
+    manager_profiles = fields.Nested("ProfileSchema", many=True)
 
 
 class RequestSchema(SQLAlchemyAutoSchema):
