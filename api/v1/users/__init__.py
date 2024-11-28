@@ -2,10 +2,10 @@ from api.utils import prime_query_kwargs
 from app import db
 from app.database.schemas import UserSchema, RoleSchema
 from app.enums import RoleName
-from app.security import authorization_required, matching_user_id_override
+from app.security import role_authorization, matching_user_id_override
 
 
-@authorization_required(RoleName.ADMIN)
+@role_authorization(RoleName.ADMIN)
 def search(**kwargs):
     prime_query_kwargs(kwargs)
 
@@ -16,7 +16,7 @@ def search(**kwargs):
     return users_data, 200
 
 
-@authorization_required(RoleName.ADMIN, override=matching_user_id_override)
+@role_authorization(RoleName.ADMIN, override=matching_user_id_override)
 def get(user_id: int, **kwargs):
     with db.session_scope() as session:
         user = db.get_user(id=user_id, session=session)
@@ -25,7 +25,7 @@ def get(user_id: int, **kwargs):
     return user_data, 200
 
 
-@authorization_required(RoleName.ADMIN)
+@role_authorization(RoleName.ADMIN)
 def post(body: dict, **kwargs):
     user_id = body["user_id"]
 

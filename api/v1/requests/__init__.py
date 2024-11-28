@@ -5,18 +5,23 @@ from api.utils import prime_query_kwargs
 from app import db
 from app.osu_api import OsuAPIClient
 from app.database.schemas import RequestSchema
-from app.security import authorization_required
+from app.security import role_authorization
 from app.enums import RoleName
 from app.config import PRIMARY_ADMIN_USER_ID
 
 
-def search(**kwargs):  # TODO: Prevent users from having access to others' requests
+def search(**kwargs):
+    requester_user_id = kwargs["user"]
     prime_query_kwargs(kwargs)
-
     request_filter = json.loads(kwargs.pop("request_filter")) if "request_filter" in kwargs else {}
 
     if "user_id" in request_filter:
-        kwargs["user_id"] = request_filter["user_id"]["eq"]
+        requested_user_id = request_filter["user_id"]["eq"]
+
+        if not requester_user_id == requested_user_id:
+            return {"message": f"You are not authorized to access this resource"}, 403
+
+        kwargs["user_id"] = requested_user_id
 
     with db.session_scope() as session:
         requests = db.get_requests(session=session, **kwargs)
@@ -58,7 +63,7 @@ def post(body: dict, **kwargs):
     return {"message": "Request submitted successfully!"}, 201
 
 
-@authorization_required(RoleName.ADMIN)
+@role_authorization(RoleName.ADMIN)
 def patch(request_id: int, body: dict, **kwargs):
     db.update_request(request_id, **body)
 

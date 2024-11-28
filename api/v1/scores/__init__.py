@@ -2,7 +2,7 @@ from api.utils import prime_query_kwargs
 from app import db
 from app.database.schemas import ScoreSchema
 from app.utils import parse_iso8601
-from app.security import authorization_required
+from app.security import role_authorization
 from app.enums import RoleName
 
 
@@ -18,7 +18,7 @@ def search(**kwargs):
     return scores_data, 200
 
 
-@authorization_required(RoleName.ADMIN)
+@role_authorization(RoleName.ADMIN)
 def post(body: dict, **kwargs):
     user_id = body["user_id"]
     beatmap_id = body["beatmap"]["id"]

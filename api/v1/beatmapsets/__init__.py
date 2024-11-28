@@ -4,7 +4,7 @@ from api.utils import prime_query_kwargs
 from app import db
 from app.beatmap_manager import BeatmapManager
 from app.database.schemas import BeatmapsetSchema
-from app.security import authorization_required
+from app.security import role_authorization
 from app.enums import RoleName
 from . import listings, snapshots
 
@@ -19,7 +19,7 @@ def search(**kwargs):
     return beatmapsets_data, 200
 
 
-@authorization_required(RoleName.ADMIN)
+@role_authorization(RoleName.ADMIN)
 def post(body: dict, **kwargs):
     beatmapset_id = body["beatmapset_id"]
 

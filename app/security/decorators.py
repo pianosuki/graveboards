@@ -7,7 +7,7 @@ from app import db
 from app.enums import RoleName
 
 
-def authorization_required(required_role: RoleName = None, override: Callable[..., bool] = None):
+def role_authorization(required_role: RoleName = None, override: Callable[..., bool] = None):
     def user_has_required_role(user_id: int) -> bool:
         if required_role is not None:
             with db.session_scope() as session:

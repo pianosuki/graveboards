@@ -1,7 +1,7 @@
 from api.utils import prime_query_kwargs
 from app import db
 from app.database.schemas import QueueSchema
-from app.security import authorization_required
+from app.security import role_authorization
 from app.enums import RoleName
 
 
@@ -23,7 +23,7 @@ def get(queue_id: int):
     return queue_data, 200
 
 
-@authorization_required(RoleName.ADMIN)
+@role_authorization(RoleName.ADMIN)
 def post(body: dict, **kwargs):  # TODO: Allow users to post queues for their user_id when we're ready for that feature
     with db.session_scope() as session:
         errors = QueueSchema(session=session).validate(body)

@@ -2,7 +2,7 @@ from api.utils import prime_query_kwargs
 from app import db
 from app.osu_api import OsuAPIClient
 from app.database.schemas import ProfileSchema
-from app.security import authorization_required
+from app.security import role_authorization
 from app.enums import RoleName
 
 
@@ -24,7 +24,7 @@ def get(user_id: int):
     return profile_data, 200
 
 
-@authorization_required(RoleName.ADMIN)
+@role_authorization(RoleName.ADMIN)
 def post(body: dict, **kwargs):
     user_id = body["user_id"]
 

@@ -1094,9 +1094,9 @@ paths:
             tags:
                 - Requests
             parameters:
+                - $ref: "#/components/parameters/RequestFilter"
                 - $ref: "#/components/parameters/Limit"
                 - $ref: "#/components/parameters/Offset"
-                - $ref: "#/components/parameters/RequestFilter"
             security:
                 - BearerAuth: []
                 - ApiKeyAuth: []
