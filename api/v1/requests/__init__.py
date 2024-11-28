@@ -7,7 +7,7 @@ from app.osu_api import OsuAPIClient
 from app.database.schemas import RequestSchema
 from app.security import role_authorization
 from app.enums import RoleName
-from app.config import PRIMARY_ADMIN_USER_ID
+from app.config import PRIMARY_ADMIN_USER_ID, ADMIN_USER_IDS
 
 
 def search(**kwargs):
@@ -18,7 +18,7 @@ def search(**kwargs):
     if "user_id" in request_filter:
         requested_user_id = request_filter["user_id"]["eq"]
 
-        if not requester_user_id == requested_user_id:
+        if not requester_user_id == requested_user_id and requester_user_id not in ADMIN_USER_IDS:
             return {"message": f"You are not authorized to access this resource"}, 403
 
         kwargs["user_id"] = requested_user_id
