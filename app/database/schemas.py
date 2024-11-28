@@ -335,10 +335,28 @@ class RequestSchema(SQLAlchemyAutoSchema):
     class Meta:
         model = Request
         load_instance = True
-        include_relationships = True
         include_fk = True
 
-    profile = fields.Nested("ProfileSchema")
+    @post_dump
+    def add_display_data(self, data, *args, **kwargs):
+        if self.session is None:
+            raise AttributeError(f"No session provided for {__class__.__name__}")
+
+        owner_profile = self.session.scalar(select(Profile).filter_by(user_id=data["user_id"]))
+
+        display_data = {
+            "owner_profile": {
+                "username": owner_profile.username,
+                "avatar_url": owner_profile.avatar_url
+            }
+        }
+
+        data["display_data"] = RequestDisplayDataSchema().dump(display_data)
+        return data
+
+
+class RequestDisplayDataSchema(Schema):
+    owner_profile = fields.Nested("ProfileSchema")
 
 
 class TagSchema(SQLAlchemyAutoSchema):

@@ -1118,6 +1118,19 @@ paths:
                     description: Successfully added request
 
     /requests/{request_id}:
+        get:
+            summary: Returns the specified request
+            tags:
+                - Requests
+            security:
+                - BearerAuth: []
+                - ApiKeyAuth: []
+            parameters:
+                - $ref: "#/components/parameters/RequestId"
+            responses:
+                200:
+                    description: Successfully retrieved request
+
         patch:
             summary: Updates a request
             tags:

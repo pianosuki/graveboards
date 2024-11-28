@@ -20,9 +20,17 @@ def search(**kwargs):  # TODO: Prevent users from having access to others' reque
 
     with db.session_scope() as session:
         requests = db.get_requests(session=session, **kwargs)
-        requests_data = RequestSchema(many=True).dump(requests)
+        requests_data = RequestSchema(many=True, session=session).dump(requests)
 
     return requests_data, 200
+
+
+def get(request_id: int):
+    with db.session_scope() as session:
+        request = db.get_request(id=request_id, session=session)
+        request_data = RequestSchema(session=session).dump(request)
+
+    return request_data, 200
 
 
 def post(body: dict, **kwargs):

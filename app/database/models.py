@@ -412,9 +412,6 @@ class Request(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=aware_utcnow, onupdate=aware_utcnow)
     status: Mapped[int] = mapped_column(Integer, default=0)
 
-    # Relationships
-    profile: Mapped["Profile"] = relationship("Profile", primaryjoin="Request.user_id == foreign(Profile.user_id)", lazy=True, viewonly=True, overlaps="profile,user")  # TODO: Consider removing in favor of adding display_data in post
-
 
 class Tag(Base):
     __tablename__ = "tags"
