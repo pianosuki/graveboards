@@ -52,9 +52,12 @@ def post(body: dict):
 
         payload = create_payload(user_id)
         jwt_str = encode_token(payload)
-        db.add_jwt(user_id=user_id, token=jwt_str, issued_at=payload["iat"], expires_at=payload["exp"])
 
-        return {"token": jwt_str, "user_id": user_id}, 201
+        with db.session_scope() as session:
+            jwt = db.add_jwt(user_id=user_id, token=jwt_str, issued_at=payload["iat"], expires_at=payload["exp"], session=session)
+            jwt_data = JWTSchema(session=session).dump(jwt)
+
+        return jwt_data, 201
 
     except OAuthError as e:
         return {"message": e.description}, 500
