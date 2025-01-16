@@ -2,11 +2,11 @@ from enum import Enum
 from typing import Callable
 
 from sqlalchemy.sql.operators import eq, gt, lt, ge, le, ne
-from sqlalchemy.sql.selectable import CTE
 from sqlalchemy.sql import asc, desc
 from sqlalchemy.orm.attributes import InstrumentedAttribute
 
 from app.database.models import ModelClass, Profile, BeatmapSnapshot, BeatmapsetSnapshot, Request
+from app.database.ctes.hashable_cte import HashableCTE
 from app.database.ctes.sr_gap import min_sr_gap_cte, max_sr_gap_cte, avg_sr_gap_cte
 from app.database.ctes.num_difficulties import num_difficulties_cte
 
@@ -88,10 +88,10 @@ class SortingField(Enum):
     BEATMAPSETSNAPSHOT__TITLE = ModelClass.BEATMAPSET_SNAPSHOT, BeatmapsetSnapshot.title
     BEATMAPSETSNAPSHOT__TITLE_UNICODE = ModelClass.BEATMAPSET_SNAPSHOT, BeatmapsetSnapshot.title_unicode
     BEATMAPSETSNAPSHOT__TRACK_ID = ModelClass.BEATMAPSET_SNAPSHOT, BeatmapsetSnapshot.track_id
-    BEATMAPSETSNAPSHOT__NUM_DIFFICULTIES = ModelClass.BEATMAPSET_SNAPSHOT, num_difficulties_cte
-    BEATMAPSETSNAPSHOT__SR_GAPS__MIN = ModelClass.BEATMAPSET_SNAPSHOT, min_sr_gap_cte
-    BEATMAPSETSNAPSHOT__SR_GAPS__MAX = ModelClass.BEATMAPSET_SNAPSHOT, max_sr_gap_cte
-    BEATMAPSETSNAPSHOT__SR_GAPS__AVG = ModelClass.BEATMAPSET_SNAPSHOT, avg_sr_gap_cte
+    BEATMAPSETSNAPSHOT__NUM_DIFFICULTIES = ModelClass.BEATMAPSET_SNAPSHOT, HashableCTE(num_difficulties_cte)
+    BEATMAPSETSNAPSHOT__SR_GAPS__MIN = ModelClass.BEATMAPSET_SNAPSHOT, HashableCTE(min_sr_gap_cte)
+    BEATMAPSETSNAPSHOT__SR_GAPS__MAX = ModelClass.BEATMAPSET_SNAPSHOT, HashableCTE(max_sr_gap_cte)
+    BEATMAPSETSNAPSHOT__SR_GAPS__AVG = ModelClass.BEATMAPSET_SNAPSHOT, HashableCTE(avg_sr_gap_cte)
 
     # Request fields
     REQUEST__COMMENT = ModelClass.REQUEST, Request.comment
@@ -100,6 +100,6 @@ class SortingField(Enum):
     REQUEST__UPDATED_AT = ModelClass.REQUEST, Request.updated_at
     REQUEST__STATUS = ModelClass.REQUEST, Request.status
 
-    def __init__(self, model_class: ModelClass, target: InstrumentedAttribute | CTE):
+    def __init__(self, model_class: ModelClass, target: InstrumentedAttribute | HashableCTE):
         self._value_ = target
         self.model_class = model_class

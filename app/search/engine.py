@@ -11,6 +11,7 @@ from sqlalchemy.dialects import postgresql
 
 from app.database.models import Profile, BeatmapSnapshot, BeatmapsetSnapshot, BeatmapsetListing, Queue, Request, ModelClass
 from app.database.utils import validate_column_value, get_filter_condition
+from app.database.ctes.hashable_cte import HashableCTE
 from app.database.ctes.bm_ss_sorting import bm_ss_sorting_cte_factory
 from app.database.ctes.search_filter import search_filter_cte_factory
 from app.database.ctes.bm_ss_filtering import bm_ss_filtering_cte_factory
@@ -133,7 +134,7 @@ class SearchEngine:
 
         for sorting_target in sorting:
             try:
-                sorting_field = SortingField[sorting_target.replace(".", "__").upper()]
+                sorting_field = getattr(SortingField, sorting_target.replace(".", "__").upper())
                 sorting_.append(sorting_field)
             except KeyError:
                 raise ValueError(f"Invalid sorting field: '{sorting_target}'")
@@ -161,8 +162,8 @@ class SearchEngine:
             case ModelClass.BEATMAPSET_SNAPSHOT:
                 if isinstance(sorting_field.value, InstrumentedAttribute):
                     self.query = self.query.order_by(sort_order.sort_func(sorting_field.value))
-                elif isinstance(sorting_field.value, CTE):
-                    cte = sorting_field.value
+                elif isinstance(sorting_field.value, HashableCTE):
+                    cte = sorting_field.value.cte
                     cte = cte.alias("sorting_" + cte.name)
                     apply_cte(rows_ranked=False)
             case ModelClass.REQUEST:
@@ -190,7 +191,7 @@ class SearchEngine:
                 operator_str = operator_str.lower()
 
                 try:
-                    filter_operator = FilterOperator[operator_str.upper()]
+                    filter_operator = getattr(FilterOperator, operator_str.upper())
                 except KeyError:
                     raise ValueError(f"Invalid operator '{operator_str}' for field '{field}' in condition {dict({operator_str: value})}")
 
