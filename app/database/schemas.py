@@ -8,7 +8,8 @@ from marshmallow.utils import EXCLUDE, RAISE
 from marshmallow.exceptions import ValidationError
 from marshmallow_sqlalchemy import SQLAlchemyAutoSchema
 from marshmallow_sqlalchemy.fields import Nested
-from sqlalchemy import select
+from sqlalchemy.sql import select, desc
+from sqlalchemy.orm.session import Session
 
 from app.utils import combine_checksums
 from .models import *
@@ -202,18 +203,22 @@ class BeatmapsetListingSchema(SQLAlchemyAutoSchema):
             raise AttributeError(f"No session provided for {__class__.__name__}")
 
         beatmapset_snapshot = data["beatmapset_snapshot"]
-        display_data = {
+        display_data = self.get_display_data_dict(self.session, beatmapset_snapshot)
+
+        data["display_data"] = BeatmapsetListingDisplayDataSchema().dump(display_data)
+        return data
+
+    @staticmethod
+    def get_display_data_dict(session: Session, beatmapset_snapshot: dict):
+        return {
             "title": beatmapset_snapshot["title"],
             "artist": beatmapset_snapshot["artist"],
             "thumbnail": beatmapset_snapshot["covers"]["cover@2x"],
             "mapper": beatmapset_snapshot["creator"],
-            "mapper_avatar": self.session.scalar(select(Profile).filter_by(user_id=beatmapset_snapshot["user_id"])).avatar_url,  # TODO: Figure out how to avoid using session in dump() here
+            "mapper_avatar": session.scalar(select(Profile).filter_by(user_id=beatmapset_snapshot["user_id"])).avatar_url,  # TODO: Figure out how to avoid using session in dump() here
             "length": max(beatmapset_snapshot["beatmap_snapshots"], key=lambda beatmap_snapshot: beatmap_snapshot["total_length"])["total_length"],
             "difficulties": sorted([beatmap_snapshot["difficulty_rating"] for beatmap_snapshot in beatmapset_snapshot["beatmap_snapshots"]]),
         }
-
-        data["display_data"] = BeatmapsetListingDisplayDataSchema().dump(display_data)
-        return data
 
 
 class BeatmapsetListingDisplayDataSchema(Schema):
@@ -343,19 +348,22 @@ class RequestSchema(SQLAlchemyAutoSchema):
             raise AttributeError(f"No session provided for {__class__.__name__}")
 
         owner_profile = self.session.scalar(select(Profile).filter_by(user_id=data["user_id"]))
+        beatmapset_snapshot = self.session.scalar(select(BeatmapsetListing).filter_by(beatmapset_id=data["beatmapset_id"]))
+        beatmapset_snapshot_display_data = BeatmapsetListingSchema(session=self.session).dump(beatmapset_snapshot)["display_data"]
 
         display_data = {
             "owner_profile": {
                 "username": owner_profile.username,
                 "avatar_url": owner_profile.avatar_url
-            }
+            },
+            **beatmapset_snapshot_display_data
         }
 
         data["display_data"] = RequestDisplayDataSchema().dump(display_data)
         return data
 
 
-class RequestDisplayDataSchema(Schema):
+class RequestDisplayDataSchema(BeatmapsetListingDisplayDataSchema):
     owner_profile = fields.Nested("ProfileSchema")
 
 
