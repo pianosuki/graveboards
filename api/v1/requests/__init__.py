@@ -46,9 +46,11 @@ def post(body: dict, **kwargs):
         return {"error_type": "validation_error", "message": "Invalid input data", "errors": errors}, 400
 
     beatmapset_id = body["beatmapset_id"]
+    queue_id = body["queue_id"]
+    queue_name = db.get_queue(id=queue_id).name
 
-    if db.get_request(beatmapset_id=beatmapset_id):
-        return {"error_type": "already_requested", "message": f"The request with beatmapset ID '{beatmapset_id}' already exists"}, 409
+    if db.get_request(beatmapset_id=beatmapset_id, queue_id=queue_id):
+        return {"error_type": "already_requested", "message": f"The request with beatmapset ID '{beatmapset_id}' already exists in queue '{queue_name}'"}, 409
 
     oac = OsuAPIClient()
     beatmapset = oac.get_beatmapset(beatmapset_id)
