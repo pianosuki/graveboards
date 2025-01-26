@@ -144,9 +144,10 @@ class BeatmapSnapshotSchema(SQLAlchemyAutoSchema):
     @pre_load
     def pre_load(self, data, *args, **kwargs):
         if not self.many:
-            snapshot_count = self.session.scalar(select(func.count(BeatmapSnapshot.id)).where(BeatmapSnapshot.beatmap_id == data["beatmap_id"]))
+            beatmap_id = data["id"]
+            snapshot_count = self.session.scalar(select(Beatmap.num_snapshots).where(Beatmap.id == beatmap_id))
 
-            data["beatmap_id"] = data["id"]
+            data["beatmap_id"] = beatmap_id
             data["snapshot_number"] = snapshot_count + 1
 
         return data
@@ -186,7 +187,7 @@ class BeatmapsetSnapshotSchema(SQLAlchemyAutoSchema):
     def pre_load(self, data, *args, **kwargs):
         if not self.many:
             data["beatmapset_id"] = data["id"]
-            data["snapshot_number"] = len(self.session.get(Beatmapset, data["beatmapset_id"]).snapshots) + 1
+            data["snapshot_number"] = self.session.scalar(select(Beatmapset.num_snapshots).where(Beatmapset.id == data["id"])) + 1
             data["checksum"] = combine_checksums([beatmap["checksum"] for beatmap in data["beatmaps"]])
             data["beatmap_snapshots"] = data["beatmaps"]
 

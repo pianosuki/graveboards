@@ -204,6 +204,18 @@ class Beatmap(Base):
     leaderboards: Mapped[list["Leaderboard"]] = relationship("Leaderboard", lazy=True)
     snapshots: Mapped[list["BeatmapSnapshot"]] = relationship("BeatmapSnapshot", lazy=True)
 
+    @hybrid_property
+    def num_snapshots(self) -> int:
+        return len(self.snapshots)
+
+    @num_snapshots.expression
+    def num_snapshots(cls):
+        return (
+            select(func.count(BeatmapSnapshot.id))
+            .where(BeatmapSnapshot.beatmap_id == cls.id)
+            .scalar_subquery()
+        )
+
 
 class BeatmapSnapshot(Base):
     __tablename__ = "beatmap_snapshots"
@@ -251,6 +263,18 @@ class Beatmapset(Base):
 
     # Relationships
     snapshots: Mapped[list["BeatmapsetSnapshot"]] = relationship("BeatmapsetSnapshot", lazy=True)
+
+    @hybrid_property
+    def num_snapshots(self) -> int:
+        return len(self.snapshots)
+
+    @num_snapshots.expression
+    def num_snapshots(cls):
+        return (
+            select(func.count(BeatmapsetSnapshot.id))
+            .where(BeatmapsetSnapshot.beatmapset_id == cls.id)
+            .scalar_subquery()
+        )
 
 
 class BeatmapsetSnapshot(Base):
