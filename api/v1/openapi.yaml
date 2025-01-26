@@ -882,26 +882,6 @@ paths:
                 201:
                     description: Successfully downloaded entire beatmapset to the server
 
-    /beatmapsets/listings:
-        get:
-            summary: Filters and returns a list of beatmapset data for the frontend
-            tags:
-                - Beatmapsets
-            parameters:
-                - $ref: "#/components/parameters/SearchQuery"
-                - $ref: "#/components/parameters/Sorting"
-                - $ref: "#/components/parameters/SortOrder"
-                - $ref: "#/components/parameters/MapperFilter"
-                - $ref: "#/components/parameters/BeatmapFilter"
-                - $ref: "#/components/parameters/BeatmapsetFilter"
-                - $ref: "#/components/parameters/RequestFilter"
-                - $ref: "#/components/parameters/SearchQueueId"
-                - $ref: "#/components/parameters/Limit"
-                - $ref: "#/components/parameters/Offset"
-            responses:
-                200:
-                    description: Successfully retrieved beatmapset listings
-
     /beatmapsets/{beatmapset_id}/snapshots:
         get:
             summary: Returns a list of the beatmapset's snapshots
@@ -938,6 +918,26 @@ paths:
             responses:
                 200:
                     description: Successfully retrieved zipped beatmap files
+
+    /beatmapsets/listings:
+        get:
+            summary: Returns a filterable and sortable list of beatmapset data for the frontend
+            tags:
+                - Beatmapsets
+            parameters:
+                - $ref: "#/components/parameters/SearchQuery"
+                - $ref: "#/components/parameters/Sorting"
+                - $ref: "#/components/parameters/SortOrder"
+                - $ref: "#/components/parameters/MapperFilter"
+                - $ref: "#/components/parameters/BeatmapFilter"
+                - $ref: "#/components/parameters/BeatmapsetFilter"
+                - $ref: "#/components/parameters/RequestFilter"
+                - $ref: "#/components/parameters/SearchQueueId"
+                - $ref: "#/components/parameters/Limit"
+                - $ref: "#/components/parameters/Offset"
+            responses:
+                200:
+                    description: Successfully retrieved beatmapset listings
 
     /leaderboards:
         get:
@@ -1145,3 +1145,23 @@ paths:
             responses:
                 200:
                     description: Successfully updated request
+
+    /requests/listings:
+        get:
+            summary: Returns a filterable and sortable list of request data for the frontend
+            tags:
+                - Requests
+            parameters:
+                - $ref: "#/components/parameters/SearchQuery"
+                - $ref: "#/components/parameters/Sorting"
+                - $ref: "#/components/parameters/SortOrder"
+                - $ref: "#/components/parameters/MapperFilter"
+                - $ref: "#/components/parameters/BeatmapFilter"
+                - $ref: "#/components/parameters/BeatmapsetFilter"
+                - $ref: "#/components/parameters/RequestFilter"
+                - $ref: "#/components/parameters/SearchQueueId"
+                - $ref: "#/components/parameters/Limit"
+                - $ref: "#/components/parameters/Offset"
+            responses:
+                200:
+                    description: Successfully retrieved request listings

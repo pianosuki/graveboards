@@ -6,10 +6,11 @@ from marshmallow.schema import Schema
 from marshmallow.decorators import pre_dump, post_dump, pre_load
 from marshmallow.utils import EXCLUDE, RAISE
 from marshmallow.exceptions import ValidationError
-from marshmallow_sqlalchemy import SQLAlchemyAutoSchema
+from marshmallow_sqlalchemy import SQLAlchemyAutoSchema, SQLAlchemySchema
 from marshmallow_sqlalchemy.fields import Nested
-from sqlalchemy.sql import select, desc
+from sqlalchemy.sql import select, func
 from sqlalchemy.orm.session import Session
+from sqlalchemy.engine.row import Row
 
 from app.utils import combine_checksums
 from .models import *
@@ -32,6 +33,7 @@ __all__ = [
     "ScoreSchema",
     "QueueSchema",
     "RequestSchema",
+    "RequestListingSchema",
     "TagSchema",
     "JSONTextSchema"
 ]
@@ -142,8 +144,10 @@ class BeatmapSnapshotSchema(SQLAlchemyAutoSchema):
     @pre_load
     def pre_load(self, data, *args, **kwargs):
         if not self.many:
+            snapshot_count = self.session.scalar(select(func.count(BeatmapSnapshot.id)).where(BeatmapSnapshot.beatmap_id == data["beatmap_id"]))
+
             data["beatmap_id"] = data["id"]
-            data["snapshot_number"] = len(self.session.get(Beatmap, data["beatmap_id"]).snapshots) + 1
+            data["snapshot_number"] = snapshot_count + 1
 
         return data
 
@@ -243,14 +247,14 @@ class LeaderboardSchema(SQLAlchemyAutoSchema):
     snapshot_number = fields.Integer(dump_only=True)
 
     @pre_dump
-    def pre_dump(self, obj, *args, **kwargs):
+    def pre_dump(self, data, *args, **kwargs):
         if self.many is False:
-            obj.snapshot_number = self.session.get(BeatmapSnapshot, obj.beatmap_snapshot_id).snapshot_number
+            data.snapshot_number = self.session.get(BeatmapSnapshot, data.beatmap_snapshot_id).snapshot_number
         elif self.many is True:
-            for leaderboard in obj:
+            for leaderboard in data:
                 leaderboard.snapshot_number = self.session.get(BeatmapSnapshot, leaderboard.beatmap_snapshot_id).snapshot_number
 
-        return obj
+        return data
 
 
 class ScoreSchema(SQLAlchemyAutoSchema):
@@ -342,14 +346,28 @@ class RequestSchema(SQLAlchemyAutoSchema):
         load_instance = True
         include_fk = True
 
+
+class RequestListingSchema(SQLAlchemySchema):
+    def _serialize(self, obj: Any, many: bool | None = None) -> dict | list[dict]:
+        if not (self.many or many):
+            if not isinstance(obj, (tuple, Row)):
+                raise TypeError("Data structure must be a tuple")
+
+            beatmapset_listing, request = obj
+            return {**RequestSchema().dump(request), "beatmapset_listing": BeatmapsetListingSchema(session=self.session).dump(beatmapset_listing)}
+        else:
+            if not isinstance(obj, list) or not all([isinstance(item, (tuple, Row)) for item in obj]):
+                raise TypeError("Data structure must be a list of tuples")
+
+            return [{**RequestSchema().dump(request), "beatmapset_listing": BeatmapsetListingSchema(session=self.session).dump(beatmapset_listing)} for beatmapset_listing, request in obj]
+
     @post_dump
     def add_display_data(self, data, *args, **kwargs):
         if self.session is None:
             raise AttributeError(f"No session provided for {__class__.__name__}")
 
         owner_profile = self.session.scalar(select(Profile).filter_by(user_id=data["user_id"]))
-        beatmapset_snapshot = self.session.scalar(select(BeatmapsetListing).filter_by(beatmapset_id=data["beatmapset_id"]))
-        beatmapset_snapshot_display_data = BeatmapsetListingSchema(session=self.session).dump(beatmapset_snapshot)["display_data"]
+        beatmapset_snapshot_display_data = data["beatmapset_listing"]["display_data"]
 
         display_data = {
             "owner_profile": {
@@ -359,11 +377,13 @@ class RequestSchema(SQLAlchemyAutoSchema):
             **beatmapset_snapshot_display_data
         }
 
-        data["display_data"] = RequestDisplayDataSchema().dump(display_data)
+        data["display_data"] = RequestListingDisplayDataSchema().dump(display_data)
+        del data["beatmapset_listing"]
+
         return data
 
 
-class RequestDisplayDataSchema(BeatmapsetListingDisplayDataSchema):
+class RequestListingDisplayDataSchema(BeatmapsetListingDisplayDataSchema):
     owner_profile = fields.Nested("ProfileSchema")
 
 

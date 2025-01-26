@@ -35,6 +35,7 @@ class SearchEngine:
         self._queue_id: int | None = None
         self._limit: int = 50
         self._offset: int = 0
+        self._requests_only: bool = False
 
         self.query: Select | None = None
 
@@ -49,7 +50,8 @@ class SearchEngine:
         request_filter: str = None,
         queue_id: int = None,
         limit: int = None,
-        offset: int = None
+        offset: int = None,
+        requests_only: bool = False
     ) -> PaginatedResultsGenerator:
         if search_query:
             self.search_query = search_query
@@ -71,6 +73,8 @@ class SearchEngine:
             self._limit = limit
         if offset:
             self._offset = offset
+        if requests_only:
+            self._requests_only = requests_only
 
         self.compose_query()
 
@@ -81,7 +85,7 @@ class SearchEngine:
             page_query = self.query.limit(self._limit).offset(self._offset)
 
             session: Session = yield
-            results = session.execute(page_query).scalars().all()
+            results = session.execute(page_query).scalars().all() if not self._requests_only else session.execute(page_query).all()
 
             if not results:
                 break
@@ -91,13 +95,26 @@ class SearchEngine:
             self._offset += self._limit
 
     def compose_query(self):
-        self.query = (
-            select(BeatmapsetListing)
-            .join(
-                BeatmapsetSnapshot,
-                BeatmapsetSnapshot.id == BeatmapsetListing.beatmapset_snapshot_id
+        if not self._requests_only:
+            self.query = (
+                select(BeatmapsetListing)
+                .join(
+                    BeatmapsetSnapshot,
+                    BeatmapsetSnapshot.id == BeatmapsetListing.beatmapset_snapshot_id
+                )
             )
-        )
+        else:
+            self.query = (
+                select(BeatmapsetListing, Request)
+                .join(
+                    BeatmapsetSnapshot,
+                    BeatmapsetSnapshot.id == BeatmapsetListing.beatmapset_snapshot_id
+                )
+                .join(
+                    Request,
+                    Request.beatmapset_id == BeatmapsetSnapshot.beatmapset_id
+                )
+            )
 
         for idx, sorting_field in enumerate(self.sorting):
             try:
@@ -109,13 +126,16 @@ class SearchEngine:
 
         if self.queue_id:
             request_cte = (
-                select(Request.beatmapset_id)
+                select(Request.id, Request.beatmapset_id)
                 .join(Queue, Queue.id == Request.queue_id)
                 .where(Queue.id == self.queue_id)
                 .cte("request_cte")
             )
 
-            self.query = self.query.join(request_cte, request_cte.c.beatmapset_id == BeatmapsetSnapshot.beatmapset_id)
+            if not self._requests_only:
+                self.query = self.query.join(request_cte, request_cte.c.beatmapset_id == BeatmapsetSnapshot.beatmapset_id)
+            else:
+                self.query = self.query.join(request_cte, request_cte.c.id == Request.id)
 
         if self.search_query:
             cte = search_filter_cte_factory(self.search_query)
