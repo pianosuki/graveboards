@@ -21,8 +21,7 @@ class ScoreFetcher(Service):
         self.oac = OsuAPIClient()
 
         self.runtime_tasks: dict[RuntimeTaskName, asyncio.Task] = {}
-        self.tasks_heap: list[tuple[datetime, int]] = []
-
+        self.task_heap: list[tuple[datetime, int]] = []
         self.events: dict[EventName, asyncio.Event] = {event_name: asyncio.Event() for event_name in EventName.__members__.values()}
 
     async def run(self):
@@ -33,8 +32,8 @@ class ScoreFetcher(Service):
 
     async def task_scheduler(self):
         while True:
-            if self.tasks_heap:
-                execution_time, task_id = heapq.heappop(self.tasks_heap)
+            if self.task_heap:
+                execution_time, task_id = heapq.heappop(self.task_heap)
                 delay = (execution_time - aware_utcnow()).total_seconds()
 
                 if delay > 0:
@@ -44,7 +43,7 @@ class ScoreFetcher(Service):
 
                 fetch_time = aware_utcnow()
                 next_execution_time = fetch_time + timedelta(hours=SCORE_FETCHER_INTERVAL_HOURS)
-                heapq.heappush(self.tasks_heap, (next_execution_time, task_id))
+                heapq.heappush(self.task_heap, (next_execution_time, task_id))
 
                 db.update_score_fetcher_task(task_id, last_fetch=fetch_time)
             else:
@@ -55,12 +54,14 @@ class ScoreFetcher(Service):
         await self.pubsub.subscribe(ChannelName.SCORE_FETCHER_TASKS.value)
 
         async for message in self.pubsub.listen():
-            if not message["type"] == "message" or not message["channel"].decode() == ChannelName.SCORE_FETCHER_TASKS.value:
+            if not message["type"] == "message" or not message["channel"] == ChannelName.SCORE_FETCHER_TASKS.value:
                 continue
 
-            await asyncio.sleep(5)  # Wait until it's safe to assume the ScoreFetcherTask was fully committed
+            # Wait until it's safe to assume the ScoreFetcherTask was fully committed
+            # TODO: This is not 100% reliable, need to find another approach
+            await asyncio.sleep(5)
 
-            task_id = int(message["data"].decode())
+            task_id = int(message["data"])
             task = db.get_score_fetcher_task(id=task_id)
 
             self.load_task(task)
@@ -81,7 +82,7 @@ class ScoreFetcher(Service):
         else:
             execution_time = aware_utcnow()
 
-        heapq.heappush(self.tasks_heap, (execution_time, task.id))
+        heapq.heappush(self.task_heap, (execution_time, task.id))
 
     def fetch_scores(self, task_id: int):
         task = db.get_score_fetcher_task(id=task_id)

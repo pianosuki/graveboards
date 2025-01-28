@@ -1,13 +1,14 @@
 import json
 
-from api import v1 as api
 from api.utils import prime_query_kwargs
-from app import db
+from app import db, rc
 from app.osu_api import OsuAPIClient
 from app.database.schemas import RequestSchema
 from app.security import role_authorization
 from app.enums import RoleName
-from app.config import PRIMARY_ADMIN_USER_ID, ADMIN_USER_IDS
+from app.redis import Namespace, ChannelName
+from app.redis.models import QueueRequestHandlerTask
+from app.config import ADMIN_USER_IDS
 
 
 def search(**kwargs):
@@ -43,26 +44,32 @@ def post(body: dict, **kwargs):
         errors = RequestSchema(session=session).validate(body)
 
     if errors:
-        return {"error_type": "validation_error", "message": "Invalid input data", "errors": errors}, 400
+        return {"message": "Invalid input data", "errors": errors}, 400
 
     beatmapset_id = body["beatmapset_id"]
     queue_id = body["queue_id"]
     queue_name = db.get_queue(id=queue_id).name
 
     if db.get_request(beatmapset_id=beatmapset_id, queue_id=queue_id):
-        return {"error_type": "already_requested", "message": f"The request with beatmapset ID '{beatmapset_id}' already exists in queue '{queue_name}'"}, 409
+        return {"message": f"The request with beatmapset ID '{beatmapset_id}' already exists in queue '{queue_name}'"}, 409
 
     oac = OsuAPIClient()
-    beatmapset = oac.get_beatmapset(beatmapset_id)
+    beatmapset_dict = oac.get_beatmapset(beatmapset_id)
 
-    if beatmapset["status"] in ("ranked", "approved", "qualified", "loved"):
-        return {"error_type": "already_ranked", "message": f"The beatmapset is already {beatmapset['status']} on osu!"}, 400
+    if beatmapset_dict["status"] in ("ranked", "approved", "qualified", "loved"):
+        return {"message": f"The beatmapset is already {beatmapset_dict['status']} on osu!"}, 400
 
-    api.beatmapsets.post({"beatmapset_id": beatmapset_id}, user=PRIMARY_ADMIN_USER_ID)
+    task = QueueRequestHandlerTask(**body)
+    task_id = hash(task)
+    task_hash_name = Namespace.QUEUE_REQUEST_HANDLER_TASK.hash_name(task_id)
 
-    db.add_request(**body)
+    if rc.exists(task_hash_name):
+        return {"message": f"The request with beatmapset ID '{beatmapset_id}' in queue '{queue_name}' is currently being processed"}, 409
 
-    return {"message": "Request submitted successfully!"}, 201
+    rc.hset(task_hash_name, mapping=task.serialize())
+    rc.publish(ChannelName.QUEUE_REQUEST_HANDLER_TASKS.value, task_id)
+
+    return {"message": "Request submitted and queued for processing!"}, 202
 
 
 @role_authorization(RoleName.ADMIN)

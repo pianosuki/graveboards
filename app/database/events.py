@@ -58,10 +58,7 @@ def user_after_insert(mapper: Mapper[User], connection: Connection, target: User
 
     insert_profile_fetcher_stmt = (
         insert(ProfileFetcherTask)
-        .values(
-            user_id=target.id,
-            last_fetch=aware_utcnow()
-        )
+        .values(user_id=target.id, last_fetch=aware_utcnow())
         .returning(ProfileFetcherTask.id)
     )
 
@@ -82,15 +79,14 @@ def score_fetcher_task_enabled_set(target: ScoreFetcherTask, value: bool, oldval
 
 @event.listens_for(BeatmapsetSnapshot, "after_insert")
 def beatmapset_snapshot_after_insert(mapper: Mapper[BeatmapsetSnapshot], connection: Connection, target: BeatmapsetSnapshot):
-
     select_stmt = (
-        select(BeatmapsetListing)
+        select(BeatmapsetListing.id)
         .where(BeatmapsetListing.beatmapset_id == target.beatmapset_id)
     )
 
-    beatmapset_listing = connection.scalar(select_stmt)
+    beatmapset_listing_id = connection.scalar(select_stmt)
 
-    if not beatmapset_listing:
+    if not beatmapset_listing_id:
         insert_stmt = (
             insert(BeatmapsetListing)
             .values(beatmapset_id=target.beatmapset_id, beatmapset_snapshot_id=target.id)
@@ -100,7 +96,7 @@ def beatmapset_snapshot_after_insert(mapper: Mapper[BeatmapsetSnapshot], connect
     else:
         update_stmt = (
             update(BeatmapsetListing)
-            .where(BeatmapsetListing.id == beatmapset_listing.id)
+            .where(BeatmapsetListing.id == beatmapset_listing_id)
             .values(beatmapset_snapshot_id=target.id)
         )
 

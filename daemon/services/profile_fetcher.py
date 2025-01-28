@@ -20,8 +20,7 @@ class ProfileFetcher(Service):
         self.oac = OsuAPIClient()
 
         self.runtime_tasks: dict[RuntimeTaskName, asyncio.Task] = {}
-        self.tasks_heap: list[tuple[datetime, int]] = []
-
+        self.task_heap: list[tuple[datetime, int]] = []
         self.events: dict[EventName, asyncio.Event] = {event_name: asyncio.Event() for event_name in EventName.__members__.values()}
 
     async def run(self):
@@ -32,8 +31,8 @@ class ProfileFetcher(Service):
 
     async def task_scheduler(self):
         while True:
-            if self.tasks_heap:
-                execution_time, task_id = heapq.heappop(self.tasks_heap)
+            if self.task_heap:
+                execution_time, task_id = heapq.heappop(self.task_heap)
                 delay = (execution_time - aware_utcnow()).total_seconds()
 
                 if delay > 0:
@@ -43,7 +42,7 @@ class ProfileFetcher(Service):
 
                 fetch_time = aware_utcnow()
                 next_execution_time = fetch_time + timedelta(hours=PROFILE_FETCHER_INTERVAL_HOURS)
-                heapq.heappush(self.tasks_heap, (next_execution_time, task_id))
+                heapq.heappush(self.task_heap, (next_execution_time, task_id))
 
                 db.update_profile_fetcher_task(task_id, last_fetch=fetch_time)
             else:
@@ -54,12 +53,12 @@ class ProfileFetcher(Service):
         await self.pubsub.subscribe(ChannelName.PROFILE_FETCHER_TASKS.value)
 
         async for message in self.pubsub.listen():
-            if not message["type"] == "message" or not message["channel"].decode() == ChannelName.PROFILE_FETCHER_TASKS.value:
+            if not message["type"] == "message" or not message["channel"] == ChannelName.PROFILE_FETCHER_TASKS.value:
                 continue
 
             await asyncio.sleep(5)  # Wait until it's safe to assume the MapperInfoFetcherTask was fully committed
 
-            task_id = int(message["data"].decode())
+            task_id = int(message["data"])
             task = db.get_profile_fetcher_task(id=task_id)
 
             self.load_task(task)
@@ -80,7 +79,7 @@ class ProfileFetcher(Service):
         else:
             execution_time = aware_utcnow()
 
-        heapq.heappush(self.tasks_heap, (execution_time, task.id))
+        heapq.heappush(self.task_heap, (execution_time, task.id))
 
     def fetch_profile(self, task_id: int):
         with db.session_scope() as session:

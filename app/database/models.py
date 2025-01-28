@@ -429,7 +429,7 @@ class Request(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"), nullable=False)
     beatmapset_id: Mapped[int] = mapped_column(Integer, ForeignKey("beatmapsets.id"), nullable=False)
-    queue_id: Mapped[int] = mapped_column(Integer, ForeignKey("queues.id"))
+    queue_id: Mapped[int] = mapped_column(Integer, ForeignKey("queues.id"), nullable=False)
     comment: Mapped[str] = mapped_column(Text)
     mv_checked: Mapped[bool] = mapped_column(Boolean, default=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=aware_utcnow)

@@ -2,7 +2,14 @@ from redis import Redis
 from redis.asyncio import Redis as AsyncRedis
 
 from app.config import REDIS_CONFIGURATION
-from .enums import ChannelName
+from .enums import ChannelName, Namespace
+
+__all__ = [
+    "RedisClient",
+    "AsyncRedisClient",
+    "ChannelName",
+    "Namespace"
+]
 
 REDIS_BASE_URL = f"redis://{REDIS_CONFIGURATION["username"]}:***@{REDIS_CONFIGURATION["host"]}:{REDIS_CONFIGURATION["port"]}/{REDIS_CONFIGURATION["db"]}"
 
