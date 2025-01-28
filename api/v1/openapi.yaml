@@ -1162,6 +1162,9 @@ paths:
                 - $ref: "#/components/parameters/SearchQueueId"
                 - $ref: "#/components/parameters/Limit"
                 - $ref: "#/components/parameters/Offset"
+            security:
+                - BearerAuth: []
+                - ApiKeyAuth: []
             responses:
                 200:
                     description: Successfully retrieved request listings
