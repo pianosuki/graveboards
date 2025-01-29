@@ -1,9 +1,12 @@
+from api.utils import pop_auth_info
 from app import db
 from app.database.schemas import RequestListingSchema
 from app.search import SearchEngine
 
 
 def search(**kwargs):
+    pop_auth_info(kwargs)
+
     se = SearchEngine()
 
     try:

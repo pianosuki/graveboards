@@ -8,8 +8,7 @@ from marshmallow.utils import EXCLUDE, RAISE
 from marshmallow.exceptions import ValidationError
 from marshmallow_sqlalchemy import SQLAlchemyAutoSchema, SQLAlchemySchema
 from marshmallow_sqlalchemy.fields import Nested
-from sqlalchemy.sql import select, func
-from sqlalchemy.orm.session import Session
+from sqlalchemy.sql import select
 from sqlalchemy.engine.row import Row
 
 from app.utils import combine_checksums
@@ -182,6 +181,7 @@ class BeatmapsetSnapshotSchema(SQLAlchemyAutoSchema):
     hype = fields.Nested("HypeSchema", allow_none=True)
     beatmap_snapshots = Nested("BeatmapSnapshotSchema", many=True, dump_only=True)
     tags = Nested("TagSchema", many=True, dump_only=True)
+    user_profile = fields.Nested("ProfileSchema", dump_only=True)
 
     @pre_load
     def pre_load(self, data, *args, **kwargs):
@@ -201,40 +201,6 @@ class BeatmapsetListingSchema(SQLAlchemyAutoSchema):
         include_relationships = True
 
     beatmapset_snapshot = fields.Nested("BeatmapsetSnapshotSchema")
-
-    @post_dump
-    def add_display_data(self, data, *args, **kwargs):
-        if self.session is None:
-            raise AttributeError(f"No session provided for {__class__.__name__}")
-
-        beatmapset_snapshot = data["beatmapset_snapshot"]
-        display_data = self.get_display_data_dict(self.session, beatmapset_snapshot)
-
-        data["display_data"] = BeatmapsetListingDisplayDataSchema().dump(display_data)
-        return data
-
-    @staticmethod
-    def get_display_data_dict(session: Session, beatmapset_snapshot: dict):
-        return {
-            "title": beatmapset_snapshot["title"],
-            "artist": beatmapset_snapshot["artist"],
-            "thumbnail": beatmapset_snapshot["covers"]["cover@2x"],
-            "mapper": beatmapset_snapshot["creator"],
-            "mapper_avatar": session.scalar(select(Profile).filter_by(user_id=beatmapset_snapshot["user_id"])).avatar_url,  # TODO: Figure out how to avoid using session in dump() here
-            "length": max(beatmapset_snapshot["beatmap_snapshots"], key=lambda beatmap_snapshot: beatmap_snapshot["total_length"])["total_length"],
-            "difficulties": sorted([beatmap_snapshot["difficulty_rating"] for beatmap_snapshot in beatmapset_snapshot["beatmap_snapshots"]]),
-        }
-
-
-class BeatmapsetListingDisplayDataSchema(Schema):
-    title = fields.String()
-    artist = fields.String()
-    thumbnail = fields.String()
-    mapper = fields.String()
-    mapper_avatar = fields.String()
-    length = fields.Integer()
-    difficulties = fields.List(fields.Float())
-    verified = fields.Boolean()
 
 
 class LeaderboardSchema(SQLAlchemyAutoSchema):
@@ -304,41 +270,8 @@ class QueueSchema(SQLAlchemyAutoSchema):
         load_instance = True
         include_fk = True
 
-    @post_dump
-    def add_display_data(self, data, *args, **kwargs):
-        if self.session is None:
-            raise AttributeError(f"No session provided for {__class__.__name__}")
-
-        manager_profiles_query = (
-            select(Profile)
-            .join(queue_manager_association, queue_manager_association.c.user_id == Profile.user_id)
-            .join(Queue, Queue.id == queue_manager_association.c.queue_id)
-            .where(Queue.id == data["id"])
-        )
-
-        owner_profile = self.session.scalar(select(Profile).filter_by(user_id=data["user_id"]))
-        manager_profiles = self.session.scalars(manager_profiles_query).all()
-
-        display_data = {
-            "owner_profile": {
-                "username": owner_profile.username,
-                "avatar_url": owner_profile.avatar_url
-            },
-            "manager_profiles": [
-                {
-                    "username": manager.username,
-                    "avatar_url": manager.avatar_url
-                } for manager in manager_profiles
-            ]
-        }
-
-        data["display_data"] = QueueDisplayDataSchema().dump(display_data)
-        return data
-
-
-class QueueDisplayDataSchema(Schema):
-    owner_profile = fields.Nested("ProfileSchema")
-    manager_profiles = fields.Nested("ProfileSchema", many=True)
+    user_profile = fields.Nested("ProfileSchema", dump_only=True)
+    manager_profiles = fields.Nested("ProfileSchema", many=True, dump_only=True)
 
 
 class RequestSchema(SQLAlchemyAutoSchema):
@@ -347,45 +280,29 @@ class RequestSchema(SQLAlchemyAutoSchema):
         load_instance = True
         include_fk = True
 
+    user_profile = fields.Nested("ProfileSchema", dump_only=True)
+    queue = fields.Nested("QueueSchema", dump_only=True)
+
 
 class RequestListingSchema(SQLAlchemySchema):
     def _serialize(self, obj: Any, many: bool | None = None) -> dict | list[dict]:
+        def get_serialized_dict(beatmapset_listing_: BeatmapsetListing, request_: Request) -> dict:
+            return {
+                **RequestSchema().dump(request_),
+                "beatmapset_snapshot": BeatmapsetSnapshotSchema(session=self.session).dump(beatmapset_listing_.beatmapset_snapshot),
+            }
+
         if not (self.many or many):
             if not isinstance(obj, (tuple, Row)):
                 raise TypeError("Data structure must be a tuple")
 
             beatmapset_listing, request = obj
-            return {**RequestSchema().dump(request), "beatmapset_listing": BeatmapsetListingSchema(session=self.session).dump(beatmapset_listing)}
+            return get_serialized_dict(beatmapset_listing, request)
         else:
             if not isinstance(obj, list) or not all([isinstance(item, (tuple, Row)) for item in obj]):
                 raise TypeError("Data structure must be a list of tuples")
 
-            return [{**RequestSchema().dump(request), "beatmapset_listing": BeatmapsetListingSchema(session=self.session).dump(beatmapset_listing)} for beatmapset_listing, request in obj]
-
-    @post_dump
-    def add_display_data(self, data, *args, **kwargs):
-        if self.session is None:
-            raise AttributeError(f"No session provided for {__class__.__name__}")
-
-        owner_profile = self.session.scalar(select(Profile).filter_by(user_id=data["user_id"]))
-        beatmapset_snapshot_display_data = data["beatmapset_listing"]["display_data"]
-
-        display_data = {
-            "owner_profile": {
-                "username": owner_profile.username,
-                "avatar_url": owner_profile.avatar_url
-            },
-            **beatmapset_snapshot_display_data
-        }
-
-        data["display_data"] = RequestListingDisplayDataSchema().dump(display_data)
-        del data["beatmapset_listing"]
-
-        return data
-
-
-class RequestListingDisplayDataSchema(BeatmapsetListingDisplayDataSchema):
-    owner_profile = fields.Nested("ProfileSchema")
+            return [get_serialized_dict(beatmapset_listing, request) for beatmapset_listing, request in obj]
 
 
 class TagSchema(SQLAlchemyAutoSchema):

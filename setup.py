@@ -1,10 +1,11 @@
-from app import db
+from app import db, rc
 from app.security.api_key import generate_api_key
 from app.enums import RoleName
 from app.config import ADMIN_USER_IDS, MASTER_QUEUE_NAME, MASTER_QUEUE_DESCRIPTION, DEBUG
 
 
 def setup():
+    rc.flushdb()
     db.create_database()
 
     if db.is_empty():

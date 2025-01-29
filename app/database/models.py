@@ -307,8 +307,24 @@ class BeatmapsetSnapshot(Base):
     video: Mapped[bool] = mapped_column(Boolean, nullable=False)
 
     # Relationships
-    beatmap_snapshots: Mapped[list["BeatmapSnapshot"]] = relationship("BeatmapSnapshot", secondary=beatmap_snapshot_beatmapset_snapshot_association, back_populates="beatmapset_snapshots", lazy=True)
-    tags: Mapped[list["Tag"]] = relationship("Tag", secondary=tag_beatmapset_snapshot_association, lazy=True)
+    beatmap_snapshots: Mapped[list["BeatmapSnapshot"]] = relationship(
+        "BeatmapSnapshot",
+        secondary=beatmap_snapshot_beatmapset_snapshot_association,
+        back_populates="beatmapset_snapshots",
+        lazy=True
+    )
+    tags: Mapped[list["Tag"]] = relationship(
+        "Tag",
+        secondary=tag_beatmapset_snapshot_association,
+        lazy=True
+    )
+    user_profile: Mapped["Profile"] = relationship(
+        "Profile",
+        primaryjoin="foreign(BeatmapsetSnapshot.user_id) == remote(Profile.user_id)",
+        uselist=False,
+        overlaps="beatmapset_snapshots",
+        lazy=True
+    )
 
     # Hybrid annotations
     sr_gaps: Mapped[list[float]]
@@ -416,8 +432,33 @@ class Queue(Base):
     is_open: Mapped[bool] = mapped_column(Boolean, default=True)
 
     # Relationships
-    requests: Mapped[list["Request"]] = relationship("Request", lazy=True)
-    managers: Mapped[list["User"]] = relationship("User", secondary=queue_manager_association, backref="managed_queues", lazy=True)
+    requests: Mapped[list["Request"]] = relationship(
+        "Request",
+        back_populates="queue",
+        overlaps="queue",
+        lazy=True
+    )
+    managers: Mapped[list["User"]] = relationship(
+        "User",
+        secondary=queue_manager_association,
+        backref="managed_queues",
+        lazy=True
+    )
+    user_profile: Mapped["Profile"] = relationship(
+        "Profile",
+        primaryjoin="foreign(Queue.user_id) == remote(Profile.user_id)",
+        uselist=False,
+        overlaps="queues",
+        lazy=True
+    )
+    manager_profiles: Mapped[list["Profile"]] = relationship(
+        "Profile",
+        secondary=queue_manager_association,
+        primaryjoin="Queue.id == queue_manager_association.c.queue_id",
+        secondaryjoin="and_(User.id == queue_manager_association.c.user_id, User.id == Profile.user_id)",
+        viewonly=True,
+        lazy=True
+    )
 
     __table_args__ = (
         UniqueConstraint("user_id", "name", name="_user_and_name_uc"),
@@ -435,6 +476,21 @@ class Request(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=aware_utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=aware_utcnow, onupdate=aware_utcnow)
     status: Mapped[int] = mapped_column(Integer, default=0)
+
+    # Relationships
+    user_profile: Mapped["Profile"] = relationship(
+        "Profile",
+        primaryjoin="foreign(Request.user_id) == remote(Profile.user_id)",
+        uselist=False,
+        overlaps="requests",
+        lazy=True
+    )
+    queue: Mapped["Queue"] = relationship(
+        "Queue",
+        back_populates="requests",
+        overlaps="requests",
+        lazy=True
+    )
 
 
 class Tag(Base):
