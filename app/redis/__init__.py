@@ -22,7 +22,21 @@ class RedisClientBase:
 
 
 class RedisClient(RedisClientBase, Redis):
-    pass
+    def paginate_scan(self, pattern: str, limit: int = None, offset: int = 0, type_: str = None) -> list[str]:
+        keys = []
+        count = 0
+
+        for key in self.scan_iter(match=pattern, _type=type_):
+            if count < offset:
+                count += 1
+                continue
+
+            if limit is not None and len(keys) >= limit:
+                break
+
+            keys.append(key)
+
+        return keys
 
 
 class AsyncRedisClient(RedisClientBase, AsyncRedis):

@@ -1,7 +1,7 @@
 from datetime import datetime
 from ast import literal_eval
 
-from pydantic import BaseModel
+from pydantic import BaseModel, computed_field
 
 __all__ = [
     "QueueRequestHandlerTask",
@@ -18,14 +18,10 @@ class QueueRequestHandlerTask(BaseModel):
     mv_checked: bool
     completed_at: datetime | None = None
 
-    def __hash__(self) -> int:
-        return hash((self.queue_id, self.beatmapset_id))
-
-    def __eq__(self, other: object) -> bool:
-        if not isinstance(other, QueueRequestHandlerTask):
-            return NotImplemented
-
-        return self.queue_id == other.queue_id and self.beatmapset_id == other.beatmapset_id
+    @computed_field
+    @property
+    def hashed_id(self) -> int:
+        return hash((self.queue_id, self.beatmapset_id)) & 0x7FFFFFFFFFFFFFFF
 
     def serialize(self) -> dict[str, str]:
         serialized_dict = {}

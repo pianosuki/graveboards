@@ -30,8 +30,7 @@ class QueueRequestHandler(Service):
         while True:
             if not self.task_queue.empty():
                 task = await self.task_queue.get()
-                task_id = hash(task)
-                self.tasks[task_id] = asyncio.create_task(self.handle_queue_request(task))
+                self.tasks[task.hashed_id] = asyncio.create_task(self.handle_queue_request(task))
             else:
                 await self.events[EventName.QUEUE_REQUEST_HANDLER_TASK_ADDED].wait()
                 self.events[EventName.QUEUE_REQUEST_HANDLER_TASK_ADDED].clear()
@@ -58,6 +57,5 @@ class QueueRequestHandler(Service):
         request_dict = RequestSchema().dump(task.model_dump())
         db.add_request(**request_dict)
 
-        task_id = hash(task)
-        task_hash_name = Namespace.QUEUE_REQUEST_HANDLER_TASK.hash_name(task_id)
+        task_hash_name = Namespace.QUEUE_REQUEST_HANDLER_TASK.hash_name(task.hashed_id)
         await arc.hset(task_hash_name, "completed_at", aware_utcnow().isoformat())

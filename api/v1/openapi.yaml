@@ -591,6 +591,14 @@ components:
             schema:
                 type: string
 
+        TaskId:
+            name: task_id
+            description: Task ID
+            in: path
+            required: true
+            schema:
+                type: integer
+
 
     requestBodies:
         AuthorizationCode:
@@ -1093,13 +1101,13 @@ paths:
             summary: Returns a list of map requests
             tags:
                 - Requests
+            security:
+                - BearerAuth: []
+                - ApiKeyAuth: []
             parameters:
                 - $ref: "#/components/parameters/RequestFilter"
                 - $ref: "#/components/parameters/Limit"
                 - $ref: "#/components/parameters/Offset"
-            security:
-                - BearerAuth: []
-                - ApiKeyAuth: []
             responses:
                 200:
                     description: Successfully retrieved requests
@@ -1135,11 +1143,11 @@ paths:
             summary: Updates a request
             tags:
                 - Requests
-            parameters:
-                - $ref: "#/components/parameters/RequestId"
             security:
                 - BearerAuth: []
                 - ApiKeyAuth: []
+            parameters:
+                - $ref: "#/components/parameters/RequestId"
             requestBody:
                 $ref: "#/components/requestBodies/RequestPatch"
             responses:
@@ -1151,6 +1159,9 @@ paths:
             summary: Returns a filterable and sortable list of request data for the frontend
             tags:
                 - Requests
+            security:
+                - BearerAuth: []
+                - ApiKeyAuth: []
             parameters:
                 - $ref: "#/components/parameters/SearchQuery"
                 - $ref: "#/components/parameters/Sorting"
@@ -1162,9 +1173,35 @@ paths:
                 - $ref: "#/components/parameters/SearchQueueId"
                 - $ref: "#/components/parameters/Limit"
                 - $ref: "#/components/parameters/Offset"
-            security:
-                - BearerAuth: []
-                - ApiKeyAuth: []
             responses:
                 200:
                     description: Successfully retrieved request listings
+
+    /requests/tasks:
+        get:
+            summary: Returns a list of request tasks
+            tags:
+                - Requests
+            security:
+                - BearerAuth: []
+                - ApiKeyAuth: []
+            parameters:
+                - $ref: "#/components/parameters/Limit"
+                - $ref: "#/components/parameters/Offset"
+            responses:
+                200:
+                    description: Successfully retrieved tasks
+
+    /requests/tasks/{task_id}:
+        get:
+            summary: Returns the specified task
+            tags:
+                - Requests
+            security:
+                - BearerAuth: []
+                - ApiKeyAuth: []
+            parameters:
+                - $ref: "#/components/parameters/TaskId"
+            responses:
+                200:
+                    description: Successfully retrieved task

@@ -60,16 +60,15 @@ def post(body: dict, **kwargs):
         return {"message": f"The beatmapset is already {beatmapset_dict['status']} on osu!"}, 400
 
     task = QueueRequestHandlerTask(**body)
-    task_id = hash(task)
-    task_hash_name = Namespace.QUEUE_REQUEST_HANDLER_TASK.hash_name(task_id)
+    task_hash_name = Namespace.QUEUE_REQUEST_HANDLER_TASK.hash_name(task.hashed_id)
 
     if rc.exists(task_hash_name):
         return {"message": f"The request with beatmapset ID '{beatmapset_id}' in queue '{queue_name}' is currently being processed"}, 409
 
     rc.hset(task_hash_name, mapping=task.serialize())
-    rc.publish(ChannelName.QUEUE_REQUEST_HANDLER_TASKS.value, task_id)
+    rc.publish(ChannelName.QUEUE_REQUEST_HANDLER_TASKS.value, task.hashed_id)
 
-    return {"message": "Request submitted and queued for processing!"}, 202
+    return {"message": "Request submitted and queued for processing!", "task_id": task.hashed_id}, 202
 
 
 @role_authorization(RoleName.ADMIN)
