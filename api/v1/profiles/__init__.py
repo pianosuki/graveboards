@@ -1,42 +1,36 @@
+from connexion import request
+
 from api.utils import prime_query_kwargs
-from app import db
-from app.osu_api import OsuAPIClient
+from app.database import PostgresqlDB
 from app.database.schemas import ProfileSchema
-from app.security import role_authorization
-from app.enums import RoleName
 
 
-def search(**kwargs):
+async def search(**kwargs):
+    db: PostgresqlDB = request.state.db
+
     prime_query_kwargs(kwargs)
 
-    with db.session_scope() as session:
-        profiles = db.get_profiles(session=session, **kwargs)
-        profiles_data = ProfileSchema(many=True).dump(profiles)
+    profiles = await db.get_profiles(
+        **kwargs
+    )
+    profiles_data = [
+        ProfileSchema.model_validate(profile).model_dump()
+        for profile in profiles
+    ]
 
     return profiles_data, 200
 
 
-def get(user_id: int):
-    with db.session_scope() as session:
-        profile = db.get_profile(user_id=user_id, session=session)
-        profile_data = ProfileSchema().dump(profile)
+async def get(user_id: int):
+    db: PostgresqlDB = request.state.db
+
+    profile = await db.get_profile(
+        user_id=user_id
+    )
+
+    if not profile:
+        return {"message": f"Profile with user_id '{user_id}' not found"}, 404
+
+    profile_data = ProfileSchema.model_validate(profile).model_dump()
 
     return profile_data, 200
-
-
-@role_authorization(RoleName.ADMIN)
-def post(body: dict, **kwargs):
-    user_id = body["user_id"]
-
-    if db.get_profile(id=user_id):
-        return {"message": f"The profile with user ID '{user_id}' already exists"}, 409
-    else:
-        oac = OsuAPIClient()
-
-        user_dict = oac.get_user(user_id)
-
-        with db.session_scope() as session:
-            profile = ProfileSchema(session=session).load(user_dict)
-            session.add(profile)
-
-    return {"message": "Profile added successfully!"}, 201

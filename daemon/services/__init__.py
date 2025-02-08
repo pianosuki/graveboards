@@ -20,5 +20,5 @@ ServiceType = TypeVar("ServiceType", bound=Service)
 
 class ServiceClass(Enum):
     SCORE_FETCHER = ScoreFetcher
-    MAPPER_INFO_FETCHER = ProfileFetcher
+    PROFILE_FETCHER = ProfileFetcher
     QUEUE_REQUEST_HANDLER = QueueRequestHandler

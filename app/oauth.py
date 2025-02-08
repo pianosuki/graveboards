@@ -1,12 +1,12 @@
 from typing import Literal
 
-from authlib.integrations.httpx_client import OAuth2Client
+from authlib.integrations.httpx_client import AsyncOAuth2Client
 from authlib.oauth2.auth import OAuth2Token
 
 from .config import OAUTH_CONFIGURATION
 
 
-class OAuth(OAuth2Client):
+class OAuth(AsyncOAuth2Client):
     def __init__(self):
         super().__init__(
             client_id=OAUTH_CONFIGURATION["client_id"],
@@ -21,5 +21,5 @@ class OAuth(OAuth2Client):
     def create_authorization_url(self, *args, **kwargs) -> tuple[Literal[b""], str]:
         return super().create_authorization_url(self.authorize_url, *args, **kwargs)
 
-    def fetch_token(self, *args, **kwargs) -> OAuth2Token:
-        return super().fetch_token(self.token_endpoint, *args, **kwargs)
+    async def fetch_token(self, *args, **kwargs) -> OAuth2Token:
+        return await super().fetch_token(self.token_endpoint, *args, **kwargs)

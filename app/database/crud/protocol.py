@@ -1,17 +1,13 @@
-from typing import Protocol, ContextManager
+from typing import Protocol
+from contextlib import AbstractAsyncContextManager
 
-from sqlalchemy.engine.base import Engine
-from sqlalchemy.orm.session import Session
-
-MIN_LIMIT = 1
-MAX_LIMIT = 100
-DEFAULT_LIMIT = 50
+from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession
 
 
 class DatabaseProtocol(Protocol):
-    engine: Engine = ...
+    engine: AsyncEngine
 
-    def session_scope(self) -> ContextManager[Session]:
+    async def session(self) -> AbstractAsyncContextManager[AsyncSession, None]:
         ...
-        yield Session()
+        yield AsyncSession()
         ...

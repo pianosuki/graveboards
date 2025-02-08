@@ -52,16 +52,18 @@ class OsuAPIClientBase:
     def __init__(self):
         self._oauth = OAuth()
         self._token: dict | None = None
-        self._client: httpx.Client | None = None
 
-    def __enter__(self):
-        self.client = httpx.Client()
+    async def get_token(self) -> str:
+        if self._token is None or self._token.get("expires_at") < time.time():
+            await self.refresh_token()
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        self.client.close()
+        return self._token.get("access_token")
 
-    def refresh_token(self):
-        self.token = self._oauth.fetch_token(grant_type="client_credentials", scope="public")
+    async def refresh_token(self):
+        self._token = await self._oauth.fetch_token(grant_type="client_credentials", scope="public")
+
+    async def get_auth_headers(self) -> dict:
+        return {"Authorization": f"Bearer {await self.get_token()}"}
 
     @staticmethod
     def get_user_auth_header(access_token: str) -> dict:
@@ -73,62 +75,41 @@ class OsuAPIClientBase:
 
         return f"?{'&'.join(parameter_strings)}"
 
-    @property
-    def token(self) -> str:
-        if self._token is None or self._token.get("expires_at") < time.time():
-            self.refresh_token()
-
-        return self._token.get("access_token")
-
-    @token.setter
-    def token(self, value: dict):
-        self._token = value
-
-    @property
-    def client(self) -> httpx.Client:
-        return self._client if self._client is not None and not self._client.is_closed else httpx.Client()
-
-    @client.setter
-    def client(self, value: httpx.Client):
-        self._client = value
-
-    @property
-    def auth_headers(self) -> dict:
-        return {"Authorization": f"Bearer {self.token}"}
-
 
 class OsuAPIClient(OsuAPIClientBase):
     # BEATMAPS
-    def get_beatmap(self, beatmap_id: int) -> dict:
+    async def get_beatmap(self, beatmap_id: int) -> dict:
         url = APIEndpoint.BEATMAP.format(beatmap=beatmap_id)
 
         headers = {
             "Content-Type": "application/json",
             "Accept": "application/json",
-            **self.auth_headers
+            **await self.get_auth_headers()
         }
 
-        response = self.client.get(url, headers=headers)
-        response.raise_for_status()
+        async with httpx.AsyncClient() as client:
+            response = await client.get(url, headers=headers)
 
+        response.raise_for_status()
         return response.json()
 
-    def get_beatmapset(self, beatmapset_id: int) -> dict:
+    async def get_beatmapset(self, beatmapset_id: int) -> dict:
         url = APIEndpoint.BEATMAPSET.format(beatmapset=beatmapset_id)
 
         headers = {
             "Content-Type": "application/json",
             "Accept": "application/json",
-            **self.auth_headers
+            **await self.get_auth_headers()
         }
 
-        response = self.client.get(url, headers=headers)
-        response.raise_for_status()
+        async with httpx.AsyncClient() as client:
+            response = await client.get(url, headers=headers)
 
+        response.raise_for_status()
         return response.json()
 
     # USERS
-    def get_own_data(self, access_token: str) -> dict:
+    async def get_own_data(self, access_token: str) -> dict:
         url = APIEndpoint.ME.value
 
         headers = {
@@ -137,18 +118,19 @@ class OsuAPIClient(OsuAPIClientBase):
             **self.get_user_auth_header(access_token)
         }
 
-        response = self.client.get(url, headers=headers)
-        response.raise_for_status()
+        async with httpx.AsyncClient() as client:
+            response = await client.get(url, headers=headers)
 
+        response.raise_for_status()
         return response.json()
 
-    def get_user_scores(self, user_id: int, score_type: ScoreType, legacy_only: int = 0, include_fails: int = 0, mode: Ruleset | None = None, limit: int | None = None, offset: int | None = None):
+    async def get_user_scores(self, user_id: int, score_type: ScoreType, legacy_only: int = 0, include_fails: int = 0, mode: Ruleset | None = None, limit: int | None = None, offset: int | None = None):
         url = APIEndpoint.SCORES.format(user=user_id, type=score_type.value)
 
         headers = {
             "Content-Type": "application/json",
             "Accept": "application/json",
-            **self.auth_headers
+            **await self.get_auth_headers()
         }
 
         query_parameters = {
@@ -167,21 +149,23 @@ class OsuAPIClient(OsuAPIClientBase):
 
         url += self.format_query_parameters(query_parameters)
 
-        response = self.client.get(url, headers=headers)
-        response.raise_for_status()
+        async with httpx.AsyncClient() as client:
+            response = await client.get(url, headers=headers)
 
+        response.raise_for_status()
         return response.json()
 
-    def get_user(self, user_id: int, mode: Ruleset | None = None) -> dict:
+    async def get_user(self, user_id: int, mode: Ruleset | None = None) -> dict:
         url = APIEndpoint.USER.format(user=user_id, mode=mode)
 
         headers = {
             "Content-Type": "application/json",
             "Accept": "application/json",
-            **self.auth_headers
+            **await self.get_auth_headers()
         }
 
-        response = self.client.get(url, headers=headers)
-        response.raise_for_status()
+        async with httpx.AsyncClient() as client:
+            response = await client.get(url, headers=headers)
 
+        response.raise_for_status()
         return response.json()

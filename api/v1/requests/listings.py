@@ -1,26 +1,40 @@
+from connexion import request
+
 from api.utils import pop_auth_info
-from app import db
-from app.database.schemas import RequestListingSchema
+from app.database import PostgresqlDB
+from app.database.schemas import RequestListingSchema, BeatmapSnapshotSchema
 from app.search import SearchEngine
 
 
-def search(**kwargs):
+async def search(**kwargs):  # TODO: Improve security
+    db: PostgresqlDB = request.state.db
+
     pop_auth_info(kwargs)
 
     se = SearchEngine()
 
-    try:
-        results = se.search(requests_only=True, **kwargs)
-    except (ValueError, TypeError) as e:
-        return {"message": str(e)}, 400
-
-    with db.session_scope() as session:
+    async with db.session() as session:
         try:
-            next(results)
-            page = results.send(session)
-        except StopIteration:
+            results_generator = se.search(session, requests_only=True, **kwargs)
+        except (ValueError, TypeError) as e:
+            return {"message": str(e)}, 400
+
+        try:
+            page = await anext(results_generator)
+        except StopAsyncIteration:
             return [], 200
 
-        page_data = RequestListingSchema(many=True, session=session).dump(page)
+        context = {
+            "exclusions": {
+                BeatmapSnapshotSchema: {"beatmapset_snapshots", "leaderboard"}
+            }
+        }
+
+        page_data = [
+            RequestListingSchema.model_validate((beatmapset_listing.beatmapset_snapshot, request_)).model_dump(
+                context=context
+            )
+            for beatmapset_listing, request_ in page
+        ]
 
     return page_data, 200

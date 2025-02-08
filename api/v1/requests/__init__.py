@@ -1,17 +1,23 @@
 import json
 
+from connexion import request
+from pydantic import ValidationError
+
 from api.utils import prime_query_kwargs
-from app import db, rc
 from app.osu_api import OsuAPIClient
+from app.database import PostgresqlDB
 from app.database.schemas import RequestSchema
 from app.security import role_authorization
 from app.enums import RoleName
-from app.redis import Namespace, ChannelName
+from app.redis import Namespace, ChannelName, RedisClient
 from app.redis.models import QueueRequestHandlerTask
 from app.config import ADMIN_USER_IDS
+from . import listings, tasks
 
 
-def search(**kwargs):
+async def search(**kwargs):  # TODO: Need to redo this since /requests/listings is a thing now
+    db: PostgresqlDB = request.state.db
+
     requester_user_id = kwargs["user"]
     prime_query_kwargs(kwargs)
     request_filter = json.loads(kwargs.pop("request_filter")) if "request_filter" in kwargs else {}
@@ -24,37 +30,56 @@ def search(**kwargs):
 
         kwargs["user_id"] = requested_user_id
 
-    with db.session_scope() as session:
-        requests = db.get_requests(session=session, **kwargs)
-        requests_data = RequestSchema(many=True, session=session).dump(requests)
+    requests = await db.get_requests(
+        _exclude_lazy=True,
+        **kwargs
+    )
+    requests_data = [
+        RequestSchema.model_validate(request_).model_dump(
+            exclude={"user_profile", "queue"}
+        )
+        for request_ in requests
+    ]
 
     return requests_data, 200
 
 
-def get(request_id: int):
-    with db.session_scope() as session:
-        request = db.get_request(id=request_id, session=session)
-        request_data = RequestSchema(session=session).dump(request)
+async def get(request_id: int):
+    db: PostgresqlDB = request.state.db
+
+    request_ = await db.get_request(
+        id=request_id,
+        _exclude_lazy=True
+    )
+
+    if not request_:
+        return {"message": f"Request with ID '{request_id}' not found"}, 404
+
+    request_data = RequestSchema.model_validate(request_).model_dump(
+        exclude={"user_profile", "queue"}
+    )
 
     return request_data, 200
 
 
-def post(body: dict, **kwargs):
-    with db.session_scope() as session:
-        errors = RequestSchema(session=session).validate(body)
+async def post(body: dict, **kwargs):
+    rc: RedisClient = request.state.rc
+    db: PostgresqlDB = request.state.db
 
-    if errors:
-        return {"message": "Invalid input data", "errors": errors}, 400
+    try:
+        RequestSchema.model_validate(body)
+    except ValidationError as e:
+        return {"message": "Invalid input data", "errors": str(e)}, 400
 
     beatmapset_id = body["beatmapset_id"]
     queue_id = body["queue_id"]
-    queue_name = db.get_queue(id=queue_id).name
+    queue_name = (await db.get_queue(id=queue_id)).name
 
-    if db.get_request(beatmapset_id=beatmapset_id, queue_id=queue_id):
+    if await db.get_request(beatmapset_id=beatmapset_id, queue_id=queue_id):
         return {"message": f"The request with beatmapset ID '{beatmapset_id}' already exists in queue '{queue_name}'"}, 409
 
     oac = OsuAPIClient()
-    beatmapset_dict = oac.get_beatmapset(beatmapset_id)
+    beatmapset_dict = await oac.get_beatmapset(beatmapset_id)
 
     if beatmapset_dict["status"] in ("ranked", "approved", "qualified", "loved"):
         return {"message": f"The beatmapset is already {beatmapset_dict['status']} on osu!"}, 400
@@ -62,17 +87,19 @@ def post(body: dict, **kwargs):
     task = QueueRequestHandlerTask(**body)
     task_hash_name = Namespace.QUEUE_REQUEST_HANDLER_TASK.hash_name(task.hashed_id)
 
-    if rc.exists(task_hash_name):
+    if await rc.exists(task_hash_name):
         return {"message": f"The request with beatmapset ID '{beatmapset_id}' in queue '{queue_name}' is currently being processed"}, 409
 
-    rc.hset(task_hash_name, mapping=task.serialize())
-    rc.publish(ChannelName.QUEUE_REQUEST_HANDLER_TASKS.value, task.hashed_id)
+    await rc.hset(task_hash_name, mapping=task.serialize())
+    await rc.publish(ChannelName.QUEUE_REQUEST_HANDLER_TASKS.value, task.hashed_id)
 
     return {"message": "Request submitted and queued for processing!", "task_id": task.hashed_id}, 202
 
 
 @role_authorization(RoleName.ADMIN)
-def patch(request_id: int, body: dict, **kwargs):
-    db.update_request(request_id, **body)
+async def patch(request_id: int, body: dict, **kwargs):
+    db: PostgresqlDB = request.state.db
+
+    await db.update_request(request_id, **body)
 
     return {"message": "Request updated successfully!"}, 200

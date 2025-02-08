@@ -1,6 +1,6 @@
 import asyncio
+import logging
 
-from app import db, arc
 from app.osu_api import OsuAPIClient
 from app.beatmap_manager import BeatmapManager
 from app.database.schemas import RequestSchema
@@ -10,13 +10,16 @@ from app.utils import aware_utcnow
 from .enums import EventName, RuntimeTaskName
 from .service import Service
 
+logger = logging.getLogger(__name__)
+
 
 class QueueRequestHandler(Service):
-    def __init__(self):
-        self.pubsub = arc.pubsub()
+    def __init__(self, *args):
+        super().__init__(*args)
+
+        self.pubsub = self.rc.pubsub()
         self.oac = OsuAPIClient()
 
-        self.runtime_tasks: dict[RuntimeTaskName, asyncio.Task] = {}
         self.task_queue: asyncio.Queue[QueueRequestHandlerTask] = asyncio.Queue()
         self.tasks: dict[int, asyncio.Task] = {}
         self.events: dict[EventName, asyncio.Event] = {event_name: asyncio.Event() for event_name in EventName.__members__.values()}
@@ -30,7 +33,9 @@ class QueueRequestHandler(Service):
         while True:
             if not self.task_queue.empty():
                 task = await self.task_queue.get()
-                self.tasks[task.hashed_id] = asyncio.create_task(self.handle_queue_request(task))
+                scheduled_task = asyncio.create_task(self.handle_queue_request(task))
+                self.tasks[task.hashed_id] = scheduled_task
+                scheduled_task.add_done_callback(self.handle_task_error)
             else:
                 await self.events[EventName.QUEUE_REQUEST_HANDLER_TASK_ADDED].wait()
                 self.events[EventName.QUEUE_REQUEST_HANDLER_TASK_ADDED].clear()
@@ -44,18 +49,27 @@ class QueueRequestHandler(Service):
 
             task_id = int(message["data"])
             task_hash_name = Namespace.QUEUE_REQUEST_HANDLER_TASK.hash_name(task_id)
-            serialized_task = await arc.hgetall(task_hash_name)
+            serialized_task = await self.rc.hgetall(task_hash_name)
             task = QueueRequestHandlerTask.deserialize(serialized_task)
 
             await self.task_queue.put(task)
             self.events[EventName.QUEUE_REQUEST_HANDLER_TASK_ADDED].set()
 
-    async def handle_queue_request(self, task: QueueRequestHandlerTask):
-        bm = BeatmapManager()
-        bm.archive(task.beatmapset_id)
+    @staticmethod
+    def handle_task_error(task: asyncio.Task):
+        try:
+            task.result()
+        except Exception as e:
+            logger.error(f"Task '{task.get_name()}' failed with error: {e}", exc_info=True)
 
-        request_dict = RequestSchema().dump(task.model_dump())
-        db.add_request(**request_dict)
+    async def handle_queue_request(self, task: QueueRequestHandlerTask):
+        bm = BeatmapManager(self.db)
+        await bm.archive(task.beatmapset_id)
+
+        request_dict = RequestSchema.model_validate(task).model_dump(
+            exclude={"user_profile", "queue"}
+        )
+        await self.db.add_request(**request_dict)
 
         task_hash_name = Namespace.QUEUE_REQUEST_HANDLER_TASK.hash_name(task.hashed_id)
-        await arc.hset(task_hash_name, "completed_at", aware_utcnow().isoformat())
+        await self.rc.hset(task_hash_name, "completed_at", aware_utcnow().isoformat())

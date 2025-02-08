@@ -10,10 +10,10 @@ JWT_LIFETIME_DAYS = 30
 
 
 def generate_token(user_id: int | str) -> str:
-    return encode_token(create_payload(user_id))
+    return encode_token(create_token_payload(user_id))
 
 
-def create_payload(user_id: int | str) -> dict[str, Any]:
+def create_token_payload(user_id: int | str) -> dict[str, Any]:
     return {
         "sub": str(user_id),
         "iss": FRONTEND_BASE_URL,

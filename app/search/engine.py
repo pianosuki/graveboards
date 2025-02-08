@@ -1,12 +1,13 @@
 import json
-from typing import Literal, Generator
+from typing import Literal, AsyncGenerator, Generator
 
 from sqlalchemy.sql import select, and_
 from sqlalchemy.sql.selectable import Select
 from sqlalchemy.sql.elements import ColumnClause, BinaryExpression
 from sqlalchemy.sql.expression import CTE
 from sqlalchemy.orm.attributes import InstrumentedAttribute
-from sqlalchemy.orm.session import Session
+from sqlalchemy.orm.strategy_options import joinedload, noload, selectinload
+from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.dialects import postgresql
 
 from app.database.models import Profile, BeatmapSnapshot, BeatmapsetSnapshot, BeatmapsetListing, Queue, Request, ModelClass
@@ -22,7 +23,7 @@ from app.database.ctes.request_filtering import request_filtering_cte_factory
 from app.exceptions import TypeValidationError
 from .enums import FilterName, SortOrder, FilterOperator, AdvancedFilterField, SortingField
 
-PaginatedResultsGenerator = Generator[list[BeatmapsetListing], Session, None]
+PaginatedResultsGenerator = AsyncGenerator[list[BeatmapsetListing], AsyncSession]
 FilterDict = dict[str, dict]
 
 
@@ -41,6 +42,7 @@ class SearchEngine:
 
     def search(
         self,
+        session: AsyncSession,
         search_query: str = None,
         sorting: list[str] = None,
         sort_orders: list[str] = None,
@@ -78,14 +80,14 @@ class SearchEngine:
 
         self.compose_query()
 
-        return self.results_generator()
+        return self.results_generator(session)
 
-    def results_generator(self) -> PaginatedResultsGenerator:
+    async def results_generator(self, session: AsyncSession) -> PaginatedResultsGenerator:
         while True:
             page_query = self.query.limit(self._limit).offset(self._offset)
 
-            session: Session = yield
-            results = session.execute(page_query).scalars().all() if not self._requests_only else session.execute(page_query).all()
+            result = await session.execute(page_query)
+            results = result.scalars().all() if not self._requests_only else result.all()
 
             if not results:
                 break
@@ -114,7 +116,30 @@ class SearchEngine:
                     Request,
                     Request.beatmapset_id == BeatmapsetSnapshot.beatmapset_id
                 )
+                .options(
+                    joinedload(Request.user_profile),
+                    joinedload(Request.queue).options(
+                        noload(Queue.requests),
+                        noload(Queue.managers),
+                        joinedload(Queue.user_profile),
+                        selectinload(Queue.manager_profiles)
+                    )
+                )
             )
+
+        self.query = (
+            self.query.options(
+                joinedload(BeatmapsetListing.beatmapset_snapshot)
+                .selectinload(BeatmapsetSnapshot.beatmap_snapshots)
+                .options(
+                    selectinload(BeatmapSnapshot.owner_profiles),
+                    noload(BeatmapSnapshot.beatmapset_snapshots),
+                    noload(BeatmapSnapshot.leaderboard),
+                ),
+                joinedload(BeatmapsetListing.beatmapset_snapshot).selectinload(BeatmapsetSnapshot.tags),
+                joinedload(BeatmapsetListing.beatmapset_snapshot).joinedload(BeatmapsetSnapshot.user_profile)
+            )
+        )
 
         for idx, sorting_field in enumerate(self.sorting):
             try:
@@ -278,7 +303,7 @@ class SearchEngine:
             column = getattr(model_class.value, field, None)
 
             column_is_column = isinstance(column, InstrumentedAttribute)
-            column_is_hybrid = column is not None and field in model_class.value.__annotations__.keys() and field not in model_class.value.__mapper__.c.keys()
+            column_is_hybrid = column is not None and field in model_class.value.__annotations__.keys() and field not in model_class.mapper.columns.keys()
             needs_advanced_filtering = column_is_hybrid and field.upper() in AdvancedFilterField.__members__.keys()
 
             if not column_is_column and not column_is_hybrid:

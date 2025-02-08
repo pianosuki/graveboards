@@ -1,40 +1,63 @@
+from connexion import request
+
 from api.utils import prime_query_kwargs
-from app import db
-from app.database.schemas import UserSchema, RoleSchema
+from app.database import PostgresqlDB
+from app.database.schemas import UserSchema
 from app.enums import RoleName
-from app.security import role_authorization, matching_user_id_override
+from app.security import role_authorization
+from app.security.overrides import matching_user_id_override
 
 
 @role_authorization(RoleName.ADMIN)
-def search(**kwargs):
+async def search(**kwargs):
+    db: PostgresqlDB = request.state.db
+
     prime_query_kwargs(kwargs)
 
-    with db.session_scope() as session:
-        users = db.get_users(session=session, **kwargs)
-        users_data = UserSchema(many=True).dump(users)
+    users = await db.get_users(
+        _exclude_lazy=True,
+        **kwargs
+    )
+    users_data = [
+        UserSchema.model_validate(user).model_dump(
+            exclude={"profile", "roles", "scores", "tokens", "queues", "requests", "beatmaps", "beatmapsets"}
+        )
+        for user in users
+    ]
 
     return users_data, 200
 
 
 @role_authorization(RoleName.ADMIN, override=matching_user_id_override)
-def get(user_id: int, **kwargs):
-    with db.session_scope() as session:
-        user = db.get_user(id=user_id, session=session)
-        user_data = UserSchema().dump(user)
+async def get(user_id: int, **kwargs):
+    db: PostgresqlDB = request.state.db
+
+    prime_query_kwargs(kwargs)
+
+    user = await db.get_user(
+        id=user_id,
+        _exclude_lazy=True
+    )
+
+    if not user:
+        return {"message": f"User with ID '{user_id}' not found"}, 404
+
+    user_data = UserSchema.model_validate(user).model_dump(
+        exclude={"profile", "roles", "scores", "tokens", "queues", "requests", "beatmaps", "beatmapsets"}
+    )
 
     return user_data, 200
 
 
 @role_authorization(RoleName.ADMIN)
-def post(body: dict, **kwargs):
+async def post(body: dict, **kwargs):
+    db: PostgresqlDB = request.state.db
+
     user_id = body["user_id"]
 
-    if db.get_user(id=user_id):
+    if await db.get_user(id=user_id):
         return {"message": f"The user with ID '{user_id}' already exists"}, 409
 
-    with db.session_scope() as session:
-        roles = RoleSchema(many=True, session=session).load(body["roles"]) if "roles" in body else []
-
-    db.add_user(id=user_id, roles=roles)
+    await db.add_user(id=user_id)
 
     return {"message": "User added successfully!"}, 201

@@ -779,19 +779,6 @@ paths:
                 401:
                     $ref: "#/components/responses/UnauthorizedError"
 
-        post:
-            summary: Adds a profile
-            tags:
-                - Profiles
-            security:
-                - BearerAuth: []
-                - ApiKeyAuth: []
-            requestBody:
-                $ref: "#/components/requestBodies/User"
-            responses:
-                201:
-                    description: Successfully added profile
-
     /profiles/{user_id}:
         get:
             summary: Returns the profile for the specified user ID
@@ -814,17 +801,6 @@ paths:
             responses:
                 200:
                     description: Successfully retrieved beatmaps
-
-    /beatmaps/{beatmap_id}:
-        get:
-            summary: Returns the metadata of the beatmap
-            tags:
-                - Beatmaps
-            parameters:
-                - $ref: "#/components/parameters/BeatmapId"
-            responses:
-                200:
-                    description: Successfully retrieved beatmap metadata
 
     /beatmaps/{beatmap_id}/snapshots:
         get:

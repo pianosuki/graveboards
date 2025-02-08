@@ -35,3 +35,7 @@ async def stream_file(file: BytesIO, chunk_size: int = 1024):
 
     while chunk := file.read(chunk_size):
         yield chunk
+
+
+def clamp(value: int, min_value: int, max_value: int) -> int:
+    return max(min_value, min(value, max_value))

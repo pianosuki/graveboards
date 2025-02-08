@@ -1,4 +1,3 @@
-import json
 from datetime import datetime
 from enum import Enum
 from typing import Optional, TypeVar, Any
@@ -14,7 +13,8 @@ from sqlalchemy.orm.decl_api import DeclarativeBase
 from sqlalchemy.orm.base import Mapped
 from sqlalchemy.orm.mapper import Mapper
 from sqlalchemy.ext.hybrid import hybrid_property
-from sqlalchemy.dialects.postgresql.json import JSONB
+from sqlalchemy.ext.asyncio import AsyncAttrs
+from sqlalchemy.dialects.postgresql.json import JSON
 
 from app.utils import aware_utcnow
 
@@ -26,7 +26,7 @@ __all__ = [
     "Role",
     "Profile",
     "ApiKey",
-    "OauthToken",
+    "OAuthToken",
     "JWT",
     "ScoreFetcherTask",
     "ProfileFetcherTask",
@@ -42,11 +42,13 @@ __all__ = [
     "Tag",
     "user_role_association",
     "beatmap_snapshot_beatmapset_snapshot_association",
-    "queue_manager_association"
+    "queue_manager_association",
+    "tag_beatmapset_snapshot_association",
+    "beatmap_snapshot_owner_association"
 ]
 
 
-class Base(DeclarativeBase):
+class Base(AsyncAttrs, DeclarativeBase):
     def to_dict(self) -> dict[str, Any]:
         return {key: value for key, value in self.__dict__.items() if not key.startswith("_")}
 
@@ -77,6 +79,12 @@ tag_beatmapset_snapshot_association = Table(
     Column("beatmapset_snapshot_id", Integer, ForeignKey("beatmapset_snapshots.id"), primary_key=True)
 )
 
+beatmap_snapshot_owner_association = Table(
+    "beatmap_snapshot_owner_association", Base.metadata,
+    Column("profile_id", Integer, ForeignKey("profiles.id"), primary_key=True),
+    Column("beatmap_snapshot_id", Integer, ForeignKey("beatmap_snapshots.id"), primary_key=True)
+)
+
 
 class User(Base):
     __tablename__ = "users"
@@ -86,7 +94,7 @@ class User(Base):
     profile: Mapped["Profile"] = relationship("Profile", backref="user", uselist=False, lazy=True)
     roles: Mapped[list["Role"]] = relationship("Role", secondary=user_role_association, lazy=True)
     scores: Mapped[list["Score"]] = relationship("Score", lazy=True)
-    tokens: Mapped[list["OauthToken"]] = relationship("OauthToken", lazy=True)
+    tokens: Mapped[list["OAuthToken"]] = relationship("OAuthToken", lazy=True)
     queues: Mapped[list["Queue"]] = relationship("Queue", lazy=True)
     requests: Mapped[list["Request"]] = relationship("Request", lazy=True)
     beatmaps: Mapped[list["Beatmap"]] = relationship("Beatmap", lazy=True)
@@ -103,7 +111,7 @@ class Profile(Base):
     __tablename__ = "profiles"
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"), unique=True, nullable=False)
-    updated_at: Mapped[datetime] = mapped_column(DateTime, default=aware_utcnow, onupdate=aware_utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=aware_utcnow, onupdate=aware_utcnow)
 
     # osu! API datastructure
     avatar_url: Mapped[Optional[str]] = mapped_column(String)
@@ -113,7 +121,7 @@ class Profile(Base):
     loved_beatmapset_count: Mapped[Optional[int]] = mapped_column(Integer)
     pending_beatmapset_count: Mapped[Optional[int]] = mapped_column(Integer)
     ranked_beatmapset_count: Mapped[Optional[int]] = mapped_column(Integer)
-    kudosu: Mapped[Optional[str]] = mapped_column(Text)
+    kudosu: Mapped[Optional[dict[str, int]]] = mapped_column(JSON)
     is_restricted: Mapped[bool] = mapped_column(Boolean, default=False)
 
     # Hybrid annotations
@@ -140,11 +148,11 @@ class Profile(Base):
 
     @hybrid_property
     def total_kudosu(self) -> int:
-        return json.loads(self.kudosu)["total"] if self.kudosu else 0
+        return self.kudosu.get("total", 0) if self.kudosu else 0
 
     @total_kudosu.expression
     def total_kudosu(cls):
-        return func.coalesce(cast(func.jsonb_extract_path_text(cast(cls.kudosu, JSONB), "total"), Integer), 0)
+        return func.coalesce(cast(cls.kudosu["total"], Integer), 0)
 
 
 class ApiKey(Base):
@@ -152,46 +160,48 @@ class ApiKey(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     key: Mapped[str] = mapped_column(String(32), unique=True)
     user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"), nullable=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=aware_utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=aware_utcnow)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    is_revoked: Mapped[bool] = mapped_column(Boolean, default=False)
 
 
-class OauthToken(Base):
+class OAuthToken(Base):
     __tablename__ = "oauth_tokens"
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"), nullable=False)
-    access_token: Mapped[str] = mapped_column(String, nullable=False)
+    access_token: Mapped[str] = mapped_column(String, unique=True, nullable=False)
     refresh_token: Mapped[str] = mapped_column(String, nullable=False)
-    expires_at: Mapped[int] = mapped_column(Integer, nullable=False)
+    expires_at: Mapped[int] = mapped_column(Integer, nullable=False)  # TODO: Replace all integer type time columns with DateTime types for consistency
     is_revoked: Mapped[bool] = mapped_column(Boolean, default=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=aware_utcnow)
-    updated_at: Mapped[datetime] = mapped_column(DateTime, default=aware_utcnow, onupdate=aware_utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=aware_utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=aware_utcnow, onupdate=aware_utcnow)
 
 
 class JWT(Base):
     __tablename__ = "jwts"
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"), nullable=False)
-    token: Mapped[str] = mapped_column(String, nullable=False)
+    token: Mapped[str] = mapped_column(String, unique=True, nullable=False)
     issued_at: Mapped[int] = mapped_column(Integer, nullable=False)
     expires_at: Mapped[int] = mapped_column(Integer, nullable=False)
     is_revoked: Mapped[bool] = mapped_column(Boolean, default=False)
-    updated_at: Mapped[datetime] = mapped_column(DateTime, default=aware_utcnow, onupdate=aware_utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=aware_utcnow, onupdate=aware_utcnow)
 
 
 class ScoreFetcherTask(Base):
     __tablename__ = "score_fetcher_tasks"
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"), nullable=False)
+    user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"), unique=True, nullable=False)
     enabled: Mapped[bool] = mapped_column(Boolean, default=False)
-    last_fetch: Mapped[Optional[datetime]] = mapped_column(DateTime)
+    last_fetch: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
 
 
 class ProfileFetcherTask(Base):
     __tablename__ = "profile_fetcher_tasks"
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"), nullable=False)
+    user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"), unique=True, nullable=False)
     enabled: Mapped[bool] = mapped_column(Boolean, default=True)
-    last_fetch: Mapped[Optional[datetime]] = mapped_column(DateTime)
+    last_fetch: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
 
 
 class Beatmap(Base):
@@ -203,6 +213,9 @@ class Beatmap(Base):
     # Relationships
     leaderboards: Mapped[list["Leaderboard"]] = relationship("Leaderboard", lazy=True)
     snapshots: Mapped[list["BeatmapSnapshot"]] = relationship("BeatmapSnapshot", lazy=True)
+
+    # Hybrid annotations
+    num_snapshots: Mapped[int]
 
     @hybrid_property
     def num_snapshots(self) -> int:
@@ -221,39 +234,57 @@ class BeatmapSnapshot(Base):
     __tablename__ = "beatmap_snapshots"
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     beatmap_id: Mapped[int] = mapped_column(Integer, ForeignKey("beatmaps.id"), nullable=False)
+    user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"), nullable=False)
     snapshot_number: Mapped[int] = mapped_column(Integer, nullable=False)
-    snapshot_date: Mapped[datetime] = mapped_column(DateTime, default=aware_utcnow)
-    checksum: Mapped[str] = mapped_column(String(32), unique=True, nullable=False)
+    snapshot_date: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=aware_utcnow)
 
     # osu! API datastructure
-    difficulty_rating: Mapped[float] = mapped_column(Float, nullable=False)
-    mode: Mapped[str] = mapped_column(String, nullable=False)
-    status: Mapped[str] = mapped_column(String, nullable=False)
-    total_length: Mapped[int] = mapped_column(Integer, nullable=False)
-    user_id: Mapped[int] = mapped_column(Integer, nullable=False)
-    version: Mapped[str] = mapped_column(String, nullable=False)
     accuracy: Mapped[float] = mapped_column(Float, nullable=False)
     ar: Mapped[float] = mapped_column(Float, nullable=False)
     bpm: Mapped[int] = mapped_column(Integer, nullable=False)
-    convert: Mapped[bool] = mapped_column(Boolean, nullable=False)
+    checksum: Mapped[str] = mapped_column(String(32), unique=True, nullable=False)
     count_circles: Mapped[int] = mapped_column(Integer, nullable=False)
     count_sliders: Mapped[int] = mapped_column(Integer, nullable=False)
     count_spinners: Mapped[int] = mapped_column(Integer, nullable=False)
     cs: Mapped[float] = mapped_column(Float, nullable=False)
-    deleted_at: Mapped[Optional[datetime]] = mapped_column(DateTime)
+    deleted_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
+    difficulty_rating: Mapped[float] = mapped_column(Float, nullable=False)
     drain: Mapped[int] = mapped_column(Integer, nullable=False)
+    failtimes: Mapped[dict[str, Optional[list[int]]]] = mapped_column(JSON, nullable=False)
     hit_length: Mapped[int] = mapped_column(Integer, nullable=False)
-    is_scoreable: Mapped[bool] = mapped_column(Boolean, nullable=False)
-    last_updated: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    last_updated: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    max_combo: Mapped[int] = mapped_column(Integer, nullable=False)
+    mode: Mapped[str] = mapped_column(String, nullable=False)
     mode_int: Mapped[int] = mapped_column(Integer, nullable=False)
     passcount: Mapped[int] = mapped_column(Integer, nullable=False)
     playcount: Mapped[int] = mapped_column(Integer, nullable=False)
     ranked: Mapped[int] = mapped_column(Integer, nullable=False)
+    status: Mapped[str] = mapped_column(String, nullable=False)
+    total_length: Mapped[int] = mapped_column(Integer, nullable=False)
     url: Mapped[str] = mapped_column(String, nullable=False)
+    version: Mapped[str] = mapped_column(String, nullable=False)
 
     # Relationships
-    beatmapset_snapshots: Mapped[list["BeatmapsetSnapshot"]] = relationship("BeatmapsetSnapshot", secondary=beatmap_snapshot_beatmapset_snapshot_association, back_populates="beatmap_snapshots", lazy=True)
-    leaderboard: Mapped["Leaderboard"] = relationship("Leaderboard", uselist=False, lazy=True)
+    beatmapset_snapshots: Mapped[list["BeatmapsetSnapshot"]] = relationship(
+        "BeatmapsetSnapshot",
+        secondary=beatmap_snapshot_beatmapset_snapshot_association,
+        back_populates="beatmap_snapshots",
+        lazy=True
+    )
+    leaderboard: Mapped["Leaderboard"] = relationship(
+        "Leaderboard",
+        uselist=False,
+        lazy=True
+    )
+    owner_profiles: Mapped[list["Profile"]] = relationship(
+        "Profile",
+        secondary=beatmap_snapshot_owner_association,
+        lazy=True
+    )
+
+    __table_args__ = (
+        UniqueConstraint("beatmap_id", "snapshot_number", name="_beatmap_and_snapshot_number_uc"),
+    )
 
 
 class Beatmapset(Base):
@@ -263,6 +294,9 @@ class Beatmapset(Base):
 
     # Relationships
     snapshots: Mapped[list["BeatmapsetSnapshot"]] = relationship("BeatmapsetSnapshot", lazy=True)
+
+    # Hybrid annotations
+    num_snapshots: Mapped[int]
 
     @hybrid_property
     def num_snapshots(self) -> int:
@@ -281,29 +315,35 @@ class BeatmapsetSnapshot(Base):
     __tablename__ = "beatmapset_snapshots"
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     beatmapset_id: Mapped[int] = mapped_column(Integer, ForeignKey("beatmapsets.id"), nullable=False)
+    user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"), nullable=False)
     snapshot_number: Mapped[int] = mapped_column(Integer, nullable=False)
-    snapshot_date: Mapped[datetime] = mapped_column(DateTime, default=aware_utcnow)
+    snapshot_date: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=aware_utcnow)
     checksum: Mapped[str] = mapped_column(String(32), unique=True, nullable=False)
     verified: Mapped[bool] = mapped_column(Boolean, default=False)
 
     # osu! API datastructure
     artist: Mapped[str] = mapped_column(String, nullable=False)
     artist_unicode: Mapped[str] = mapped_column(String, nullable=False)
-    covers: Mapped[str] = mapped_column(Text, nullable=False)
+    availability: Mapped[dict[str, bool | Optional[str]]] = mapped_column(JSON, nullable=False)
+    covers: Mapped[Optional[dict[str, str]]] = mapped_column(JSON)
     creator: Mapped[str] = mapped_column(String, nullable=False)
+    deleted_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
     favourite_count: Mapped[int] = mapped_column(Integer, nullable=False)
-    hype: Mapped[Optional[str]] = mapped_column(Text)
+    genre: Mapped[Optional[dict[str, int | str]]] = mapped_column(JSON)
+    hype: Mapped[Optional[dict[str, int]]] = mapped_column(JSON)
+    language: Mapped[Optional[dict[str, int | str]]] = mapped_column(JSON)
+    last_updated: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     nsfw: Mapped[bool] = mapped_column(Boolean, nullable=False)
     offset: Mapped[int] = mapped_column(Integer, nullable=False)
     play_count: Mapped[int] = mapped_column(Integer, nullable=False)
     preview_url: Mapped[str] = mapped_column(String, nullable=False)
+    ranked: Mapped[int] = mapped_column(Integer, nullable=False)
     source: Mapped[str] = mapped_column(String, nullable=False)
-    spotlight: Mapped[bool] = mapped_column(Boolean, nullable=False)
     status: Mapped[str] = mapped_column(String, nullable=False)
+    submitted_date: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     title: Mapped[str] = mapped_column(String, nullable=False)
     title_unicode: Mapped[str] = mapped_column(String, nullable=False)
     track_id: Mapped[Optional[int]] = mapped_column(Integer)
-    user_id: Mapped[int] = mapped_column(Integer, nullable=False)
     video: Mapped[bool] = mapped_column(Boolean, nullable=False)
 
     # Relationships
@@ -327,8 +367,12 @@ class BeatmapsetSnapshot(Base):
     )
 
     # Hybrid annotations
-    sr_gaps: Mapped[list[float]]
     num_difficulties: Mapped[int]
+    sr_gaps: Mapped[list[float]]
+
+    __table_args__ = (
+        UniqueConstraint("beatmapset_id", "snapshot_number", name="_beatmapset_and_snapshot_number_uc"),
+    )
 
     @hybrid_property
     def num_difficulties(self) -> int:
@@ -370,7 +414,7 @@ class BeatmapsetListing(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     beatmapset_id: Mapped[int] = mapped_column(Integer, ForeignKey("beatmapsets.id"), nullable=False)
     beatmapset_snapshot_id: Mapped[int] = mapped_column(Integer, ForeignKey("beatmapset_snapshots.id"), nullable=False)
-    updated_at: Mapped[datetime] = mapped_column(DateTime, default=aware_utcnow, onupdate=aware_utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=aware_utcnow, onupdate=aware_utcnow)
 
     # Relationships
     beatmapset_snapshot: Mapped["BeatmapsetSnapshot"] = relationship("BeatmapsetSnapshot", primaryjoin="BeatmapsetListing.beatmapset_snapshot_id == BeatmapsetSnapshot.id", uselist=False)
@@ -404,20 +448,20 @@ class Score(Base):
 
     # osu! API datastructure
     accuracy: Mapped[float] = mapped_column(Float, nullable=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     max_combo: Mapped[int] = mapped_column(Integer, nullable=False)
     mode: Mapped[str] = mapped_column(String, nullable=False)
     mode_int: Mapped[int] = mapped_column(Integer, nullable=False)
-    mods: Mapped[str] = mapped_column(Text, nullable=False)
+    mods: Mapped[list[str]] = mapped_column(JSON, nullable=False)
     perfect: Mapped[bool] = mapped_column(Boolean, nullable=False)
     pp: Mapped[Optional[float]] = mapped_column(Float)
     rank: Mapped[str] = mapped_column(String, nullable=False)
     score: Mapped[int] = mapped_column(Integer, nullable=False)
-    statistics: Mapped[str] = mapped_column(Text, nullable=False)
+    statistics: Mapped[dict[str, Optional[int]]] = mapped_column(JSON, nullable=False)
     type: Mapped[str] = mapped_column(String, nullable=False)
 
     __table_args__ = (
-        UniqueConstraint("beatmap_id", "created_at", name="_beatmap_and_creation_time_uc"),
+        UniqueConstraint("user_id", "beatmap_id", "created_at", name="_user_and_beatmap_and_creation_uc"),
     )
 
 
@@ -427,8 +471,8 @@ class Queue(Base):
     user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"), nullable=False)
     name: Mapped[str] = mapped_column(String, nullable=False)
     description: Mapped[str] = mapped_column(Text)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=aware_utcnow)
-    updated_at: Mapped[datetime] = mapped_column(DateTime, default=aware_utcnow, onupdate=aware_utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=aware_utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=aware_utcnow, onupdate=aware_utcnow)
     is_open: Mapped[bool] = mapped_column(Boolean, default=True)
 
     # Relationships
@@ -455,7 +499,7 @@ class Queue(Base):
         "Profile",
         secondary=queue_manager_association,
         primaryjoin="Queue.id == queue_manager_association.c.queue_id",
-        secondaryjoin="and_(User.id == queue_manager_association.c.user_id, User.id == Profile.user_id)",
+        secondaryjoin="Profile.user_id == queue_manager_association.c.user_id",
         viewonly=True,
         lazy=True
     )
@@ -473,8 +517,8 @@ class Request(Base):
     queue_id: Mapped[int] = mapped_column(Integer, ForeignKey("queues.id"), nullable=False)
     comment: Mapped[str] = mapped_column(Text)
     mv_checked: Mapped[bool] = mapped_column(Boolean, default=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=aware_utcnow)
-    updated_at: Mapped[datetime] = mapped_column(DateTime, default=aware_utcnow, onupdate=aware_utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=aware_utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=aware_utcnow, onupdate=aware_utcnow)
     status: Mapped[int] = mapped_column(Integer, default=0)
 
     # Relationships
@@ -504,7 +548,7 @@ class ModelClass(Enum):
     ROLE = Role
     PROFILE = Profile
     API_KEY = ApiKey
-    OAUTH_TOKEN = OauthToken
+    OAUTH_TOKEN = OAuthToken
     JWT = JWT
     SCORE_FETCHER_TASK = ScoreFetcherTask
     PROFILE_FETCHER_TASK = ProfileFetcherTask

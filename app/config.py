@@ -14,7 +14,7 @@ JWT_SECRET_KEY = os.getenv("JWT_SECRET_KEY")
 JWT_ALGORITHM = os.getenv("JWT_ALGORITHM")
 
 POSTGRESQL_CONFIGURATION = {
-    "drivername": "postgresql+psycopg",
+    "drivername": "postgresql+asyncpg",
     "host": os.getenv("POSTGRESQL_HOST"),
     "port": os.getenv("POSTGRESQL_PORT"),
     "username": os.getenv("POSTGRESQL_USERNAME"),

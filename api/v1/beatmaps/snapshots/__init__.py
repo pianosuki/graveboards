@@ -1,22 +1,45 @@
+from connexion import request
+
 from api.utils import prime_query_kwargs
-from app import db
+from app.database import PostgresqlDB
 from app.database.schemas import BeatmapSnapshotSchema
 from . import osu
 
 
-def search(beatmap_id: int, **kwargs):
+async def search(beatmap_id: int, **kwargs):
+    db: PostgresqlDB = request.state.db
+
     prime_query_kwargs(kwargs)
 
-    with db.session_scope() as session:
-        beatmap_snapshots = db.get_beatmap_snapshots(beatmap_id=beatmap_id, session=session, **kwargs)
-        beatmap_snapshots_data = BeatmapSnapshotSchema(many=True).dump(beatmap_snapshots)
+    beatmap_snapshots = await db.get_beatmap_snapshots(
+        beatmap_id=beatmap_id,
+        _exclude_lazy=True,
+        **kwargs
+    )
+    beatmap_snapshots_data = [
+        BeatmapSnapshotSchema.model_validate(beatmap_snapshot).model_dump(
+            exclude={"leaderboard", "beatmapset_snapshots"}
+        )
+        for beatmap_snapshot in beatmap_snapshots
+    ]
 
     return beatmap_snapshots_data, 200
 
 
-def get(beatmap_id: int, snapshot_number: int):
-    with db.session_scope() as session:
-        beatmap_snapshot = db.get_beatmap_snapshot(beatmap_id=beatmap_id, snapshot_number=snapshot_number, session=session)
-        beatmap_snapshot_data = BeatmapSnapshotSchema().dump(beatmap_snapshot)
+async def get(beatmap_id: int, snapshot_number: int):
+    db: PostgresqlDB = request.state.db
+
+    beatmap_snapshot = await db.get_beatmap_snapshot(
+        beatmap_id=beatmap_id,
+        snapshot_number=snapshot_number,
+        _exclude_lazy=True
+    )
+
+    if not beatmap_snapshot:
+        return {"message": f"BeatmapSnapshot with beatmap_id '{beatmap_id}' and snapshot_number '{snapshot_number}' not found"}, 404
+
+    beatmap_snapshot_data = BeatmapSnapshotSchema.model_validate(beatmap_snapshot).model_dump(
+        exclude={"leaderboard", "beatmapset_snapshots"}
+    )
 
     return beatmap_snapshot_data, 200

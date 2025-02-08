@@ -1,21 +1,25 @@
+from connexion import request
+
 from api.utils import prime_query_kwargs
-from app import db
+from app.database import PostgresqlDB
 from app.database.schemas import BeatmapSchema
+from . import snapshots
 
 
-def search(**kwargs):
+async def search(**kwargs):
+    db: PostgresqlDB = request.state.db
+
     prime_query_kwargs(kwargs)
 
-    with db.session_scope() as session:
-        beatmaps = db.get_beatmaps(session=session, **kwargs)
-        beatmaps_data = BeatmapSchema(many=True).dump(beatmaps)
+    beatmaps = await db.get_beatmaps(
+        _exclude_lazy=True,
+        **kwargs
+    )
+    beatmaps_data = [
+        BeatmapSchema.model_validate(beatmap).model_dump(
+            exclude={"leaderboards", "snapshots"}
+        )
+        for beatmap in beatmaps
+    ]
 
     return beatmaps_data, 200
-
-
-def get(beatmap_id: int):
-    with db.session_scope() as session:
-        beatmap = db.get_beatmap(id=beatmap_id, session=session)
-        beatmap_data = BeatmapSchema().dump(beatmap)
-
-    return beatmap_data, 200

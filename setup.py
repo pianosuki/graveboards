@@ -1,30 +1,46 @@
-from app import db, rc
+import asyncio
+from datetime import timedelta
+
+from app.redis import RedisClient
+from app.database import PostgresqlDB
 from app.security.api_key import generate_api_key
 from app.enums import RoleName
-from app.config import ADMIN_USER_IDS, MASTER_QUEUE_NAME, MASTER_QUEUE_DESCRIPTION, DEBUG
+from app.utils import aware_utcnow
+from app.config import ADMIN_USER_IDS, MASTER_QUEUE_NAME, MASTER_QUEUE_DESCRIPTION, DEBUG, PRIMARY_ADMIN_USER_ID
 
 
-def setup():
-    rc.flushdb()
-    db.create_database()
+async def setup():
+    rc = RedisClient()
+    db = PostgresqlDB()
 
-    if db.is_empty():
-        with db.session_scope() as session:
-            admin_role = db.add_role(name=RoleName.ADMIN.value, session=session)
+    await rc.flushdb()
+    await db.create_database()
+
+    if await db.is_empty():
+        async with db.session() as session:
+            admin_role = await db.add_role(name=RoleName.ADMIN.value, session=session)
 
             for user_id in ADMIN_USER_IDS:
-                db.add_user(id=user_id, roles=[admin_role], session=session)
-                db.add_api_key(key=generate_api_key(), user_id=user_id, session=session)
+                await db.add_user(id=user_id, roles=[admin_role], session=session)
 
-            db.add_queue(user_id=ADMIN_USER_IDS[0], name=MASTER_QUEUE_NAME, description=MASTER_QUEUE_DESCRIPTION, session=session)
-            db.add_queue(user_id=5099768, name="Net0's BN Queue", description="Net0's BN modding queue", session=session)
+                score_fetcher_task = await db.get_score_fetcher_task(user_id=user_id)
+                await db.update_score_fetcher_task(score_fetcher_task.id, enabled=True)
+
+                expires_at = aware_utcnow() + timedelta(weeks=1)
+                await db.add_api_key(key=generate_api_key(), user_id=user_id, expires_at=expires_at, session=session)
+
+            await db.add_queue(user_id=ADMIN_USER_IDS[0], name=MASTER_QUEUE_NAME, description=MASTER_QUEUE_DESCRIPTION, session=session)
+            await db.add_queue(user_id=5099768, name="Net0's BN Queue", description="Net0's BN modding queue", session=session)
 
         if DEBUG:
             print(f"[{__name__}] Fresh database set up successfully!")
 
     if DEBUG:
-        print(f"[{__name__}] Primary API key: {db.get_api_key(user_id=ADMIN_USER_IDS[0]).key}")
+        print(f"[{__name__}] Primary API key: {(await db.get_api_key(user_id=PRIMARY_ADMIN_USER_ID)).key}")
+
+    await rc.aclose()
+    await db.close()
 
 
 if __name__ == "__main__":
-    setup()
+    asyncio.run(setup())

@@ -3,7 +3,6 @@ import heapq
 from datetime import datetime, timedelta, timezone
 
 from api import v1 as api
-from app import db, arc
 from app.osu_api import OsuAPIClient, ScoreType
 from app.database.models import ScoreFetcherTask
 from app.redis import ChannelName
@@ -16,21 +15,22 @@ SCORE_FETCHER_INTERVAL_HOURS = 24
 
 
 class ScoreFetcher(Service):
-    def __init__(self):
-        self.pubsub = arc.pubsub()
+    def __init__(self, *args):
+        super().__init__(*args)
+
+        self.pubsub = self.rc.pubsub()
         self.oac = OsuAPIClient()
 
-        self.runtime_tasks: dict[RuntimeTaskName, asyncio.Task] = {}
         self.task_heap: list[tuple[datetime, int]] = []
         self.events: dict[EventName, asyncio.Event] = {event_name: asyncio.Event() for event_name in EventName.__members__.values()}
 
     async def run(self):
-        self.preload_tasks()
+        await self.preload_tasks()
         self.runtime_tasks[RuntimeTaskName.SCHEDULER_TASK] = asyncio.create_task(self.task_scheduler(), name="Scheduler Task")
         self.runtime_tasks[RuntimeTaskName.SUBSCRIBER_TASK] = asyncio.create_task(self.task_subscriber(), name="Subscriber Task")
         await asyncio.gather(*self.runtime_tasks.values())
 
-    async def task_scheduler(self):
+    async def task_scheduler(self):  # TODO: Fix async execution of tasks (currently gets stuck waiting for each delay)
         while True:
             if self.task_heap:
                 execution_time, task_id = heapq.heappop(self.task_heap)
@@ -39,13 +39,13 @@ class ScoreFetcher(Service):
                 if delay > 0:
                     await asyncio.sleep(delay)
 
-                self.fetch_scores(task_id)
+                await self.fetch_scores(task_id)
 
                 fetch_time = aware_utcnow()
                 next_execution_time = fetch_time + timedelta(hours=SCORE_FETCHER_INTERVAL_HOURS)
                 heapq.heappush(self.task_heap, (next_execution_time, task_id))
 
-                db.update_score_fetcher_task(task_id, last_fetch=fetch_time)
+                await self.db.update_score_fetcher_task(task_id, last_fetch=fetch_time)
             else:
                 await self.events[EventName.SCORE_FETCHER_TASK_ADDED].wait()
                 self.events[EventName.SCORE_FETCHER_TASK_ADDED].clear()
@@ -62,13 +62,13 @@ class ScoreFetcher(Service):
             await asyncio.sleep(5)
 
             task_id = int(message["data"])
-            task = db.get_score_fetcher_task(id=task_id)
+            task = await self.db.get_score_fetcher_task(id=task_id)
 
             self.load_task(task)
             self.events[EventName.SCORE_FETCHER_TASK_ADDED].set()
 
-    def preload_tasks(self):
-        tasks = db.get_score_fetcher_tasks(enabled=True)
+    async def preload_tasks(self):
+        tasks = await self.db.get_score_fetcher_tasks(enabled=True)
 
         for task in tasks:
             self.load_task(task)
@@ -84,20 +84,19 @@ class ScoreFetcher(Service):
 
         heapq.heappush(self.task_heap, (execution_time, task.id))
 
-    def fetch_scores(self, task_id: int):
-        task = db.get_score_fetcher_task(id=task_id)
+    async def fetch_scores(self, task_id: int):
+        task = await self.db.get_score_fetcher_task(id=task_id)
 
-        user_id = task.user_id
-        scores = self.oac.get_user_scores(user_id, ScoreType.RECENT)
+        if not task:
+            raise ValueError(f"Task with ID '{task_id}' not found")
+
+        scores = await self.oac.get_user_scores(task.user_id, ScoreType.RECENT)
 
         for score in scores:
-            if not self.score_is_submittable(score):
+            if not await self.score_is_submittable(score):
                 continue
 
-            api.scores.post(score, user=PRIMARY_ADMIN_USER_ID)
+            await api.scores.post(score, user=PRIMARY_ADMIN_USER_ID)
 
-    @staticmethod
-    def score_is_submittable(score: dict) -> bool:
-        beatmap_id = score["beatmap"]["id"]
-
-        return bool(db.get_leaderboard(beatmap_id=beatmap_id))
+    async def score_is_submittable(self, score: dict) -> bool:
+        return bool(await self.db.get_leaderboard(beatmap_id=score["beatmap"]["id"]))

@@ -1,34 +1,33 @@
 from functools import wraps
 from typing import Callable
 
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database.models import ModelClass, BaseType
+from .protocol import DatabaseProtocol
 
 
 def session_manager(func: Callable):
     @wraps(func)
-    def wrapper(self, *args, **kwargs):
+    async def wrapper(self: DatabaseProtocol, *args, **kwargs):
         ctx = None
         session = kwargs.get("session", None)
 
         if not session:
-            ctx = self.session_scope()
-            session = ctx.__enter__()
+            ctx = self.session()
+            session = await ctx.__aenter__()
             kwargs["session"] = session
 
         try:
-            result = func(self, *args, **kwargs)
-
+            result = await func(self, *args, **kwargs)
         except Exception as e:
             if ctx:
-                ctx.__exit__(type(e), e, e.__traceback__)
+                await ctx.__aexit__(type(e), e, e.__traceback__)
 
             raise e
-
         else:
             if ctx:
-                ctx.__exit__(None, None, None)
+                await ctx.__aexit__(None, None, None)
 
             return result
 
@@ -37,13 +36,13 @@ def session_manager(func: Callable):
 
 def ensure_required(func: Callable):
     @wraps(func)
-    def wrapper(model_class: ModelClass, session: Session, **kwargs) -> BaseType:
+    async def wrapper(model_class: ModelClass, session: AsyncSession, **kwargs) -> BaseType:
         required_columns = model_class.get_required_columns()
         missing_columns = [col for col in required_columns if col not in kwargs]
 
         if missing_columns:
             raise ValueError(f"Missing required columns: {', '.join(missing_columns)}")
 
-        return func(model_class, session, **kwargs)
+        return await func(model_class, session, **kwargs)
 
     return wrapper

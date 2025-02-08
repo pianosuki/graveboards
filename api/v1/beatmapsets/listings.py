@@ -1,23 +1,35 @@
-from app import db
-from app.database.schemas import BeatmapsetListingSchema
+from connexion import request
+
+from api.utils import pop_auth_info
+from app.database import PostgresqlDB
+from app.database.schemas import BeatmapsetListingSchema, BeatmapSnapshotSchema
 from app.search import SearchEngine
 
 
-def search(**kwargs):
+async def search(**kwargs):
+    db: PostgresqlDB = request.state.db
+
+    pop_auth_info(kwargs)
+
     se = SearchEngine()
 
-    try:
-        results = se.search(**kwargs)
-    except (ValueError, TypeError) as e:
-        return {"message": str(e)}, 400
-
-    with db.session_scope() as session:
+    async with db.session() as session:
         try:
-            next(results)
-            page = results.send(session)
-        except StopIteration:
+            results_generator = se.search(session, **kwargs)
+        except (ValueError, TypeError) as e:
+            return {"message": str(e)}, 400
+
+        try:
+            page = await anext(results_generator)
+        except StopAsyncIteration:
             return [], 200
 
-        page_data = BeatmapsetListingSchema(many=True, session=session).dump(page)
+        context = {
+            "exclusions": {
+                BeatmapSnapshotSchema: {"beatmapset_snapshots", "leaderboard"}
+            }
+        }
+
+        page_data = [BeatmapsetListingSchema.model_validate(beatmapset_listing).model_dump(context=context) for beatmapset_listing in page]
 
     return page_data, 200
