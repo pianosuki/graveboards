@@ -1,10 +1,19 @@
+from connexion.context import request
+
 from app.oauth import OAuth
+from app.redis import RedisClient, Namespace
+
+STATE_EXPIRES_IN = 300
 
 
-def search():  # TODO: Protect against CSRF attacks
+async def search():
+    rc: RedisClient = request.state.rc
+
     oauth = OAuth()
-
     authorization_url, state = oauth.create_authorization_url()
+
+    state_hash_name = Namespace.CSRF_STATE.hash_name(state)
+    await rc.set(state_hash_name, "valid", ex=STATE_EXPIRES_IN)
 
     return {
         "authorization_url": authorization_url,

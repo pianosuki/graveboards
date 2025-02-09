@@ -8,6 +8,7 @@ class ChannelName(Enum):
 
 
 class Namespace(Enum):
+    CSRF_STATE = "csrf_state"
     QUEUE_REQUEST_HANDLER_TASK = "queue_request_handler_task"
     BEATMAPSET_CACHE = "beatmapset_cache"
 
