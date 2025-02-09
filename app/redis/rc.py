@@ -1,13 +1,11 @@
 from contextlib import contextmanager
 
-from redis import Redis, ConnectionPool
+from redis import Redis
 from redis.asyncio import Redis as AsyncRedis
 
 from app.config import REDIS_CONFIGURATION
 
 REDIS_BASE_URL = f"redis://{REDIS_CONFIGURATION["username"]}:***@{REDIS_CONFIGURATION["host"]}:{REDIS_CONFIGURATION["port"]}/{REDIS_CONFIGURATION["db"]}"
-
-pool = ConnectionPool(**REDIS_CONFIGURATION)
 
 
 class RedisClient(AsyncRedis):
@@ -33,8 +31,9 @@ class RedisClient(AsyncRedis):
 
 
 @contextmanager
-def redis_connection(connection_pool: ConnectionPool = None):
-    connection_pool = connection_pool if connection_pool else pool
+def redis_connection():
+    from .pool import connection_pool
+
     rc = Redis(connection_pool=connection_pool)
 
     try:

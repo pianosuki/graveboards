@@ -34,3 +34,6 @@ async def lifespan(app: ConnexionMiddleware):
 
         await rc.aclose()
         await db.close()
+
+        from app.redis.pool import connection_pool
+        connection_pool.close()
