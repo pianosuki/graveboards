@@ -153,18 +153,13 @@ class BeatmapManager:
         return profiles
 
     async def _populate_tags(self, tags_str: str) -> list[Tag]:
-        tags_str = tags_str.strip()
+        tag_strs = set(tag.strip() for tag in tags_str.split(" ") if tag.strip())
         tags = []
 
         if not tags_str:
             return []
 
-        for tag_str in tags_str.split(" "):
-            tag_str = tag_str.strip()
-
-            if not tag_str:
-                continue
-
+        for tag_str in tag_strs:
             tag = await self.db.get_tag(name=tag_str)
 
             if not tag:
