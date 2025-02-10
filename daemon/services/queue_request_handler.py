@@ -1,7 +1,6 @@
 import asyncio
 import logging
 
-from app.osu_api import OsuAPIClient
 from app.beatmap_manager import BeatmapManager
 from app.database.schemas import RequestSchema
 from app.redis import ChannelName, Namespace
@@ -18,7 +17,6 @@ class QueueRequestHandler(Service):
         super().__init__(*args)
 
         self.pubsub = self.rc.pubsub()
-        self.oac = OsuAPIClient()
 
         self.task_queue: asyncio.Queue[QueueRequestHandlerTask] = asyncio.Queue()
         self.tasks: dict[int, asyncio.Task] = {}

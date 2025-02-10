@@ -62,12 +62,8 @@ class OsuAPIClientBase:
     async def refresh_token(self):
         self._token = await self._oauth.fetch_token(grant_type="client_credentials", scope="public")
 
-    async def get_auth_headers(self) -> dict:
-        return {"Authorization": f"Bearer {await self.get_token()}"}
-
-    @staticmethod
-    def get_user_auth_header(access_token: str) -> dict:
-        return {"Authorization": f"Bearer {access_token}"}
+    async def get_auth_headers(self, access_token: str = None) -> dict:
+        return {"Authorization": f"Bearer {access_token or await self.get_token()}"}
 
     @staticmethod
     def format_query_parameters(query_parameters: dict) -> str:
@@ -115,7 +111,7 @@ class OsuAPIClient(OsuAPIClientBase):
         headers = {
             "Content-Type": "application/json",
             "Accept": "application/json",
-            **self.get_user_auth_header(access_token)
+            **await self.get_auth_headers(access_token)
         }
 
         async with httpx.AsyncClient() as client:
