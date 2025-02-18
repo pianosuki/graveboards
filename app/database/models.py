@@ -241,7 +241,7 @@ class BeatmapSnapshot(Base):
     # osu! API datastructure
     accuracy: Mapped[float] = mapped_column(Float, nullable=False)
     ar: Mapped[float] = mapped_column(Float, nullable=False)
-    bpm: Mapped[int] = mapped_column(Integer, nullable=False)
+    bpm: Mapped[float] = mapped_column(Float, nullable=False)
     checksum: Mapped[str] = mapped_column(String(32), unique=True, nullable=False)
     count_circles: Mapped[int] = mapped_column(Integer, nullable=False)
     count_sliders: Mapped[int] = mapped_column(Integer, nullable=False)
@@ -249,7 +249,7 @@ class BeatmapSnapshot(Base):
     cs: Mapped[float] = mapped_column(Float, nullable=False)
     deleted_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
     difficulty_rating: Mapped[float] = mapped_column(Float, nullable=False)
-    drain: Mapped[int] = mapped_column(Integer, nullable=False)
+    drain: Mapped[float] = mapped_column(Float, nullable=False)
     failtimes: Mapped[dict[str, Optional[list[int]]]] = mapped_column(JSON, nullable=False)
     hit_length: Mapped[int] = mapped_column(Integer, nullable=False)
     last_updated: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)

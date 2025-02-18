@@ -173,14 +173,14 @@ class BeatmapSnapshotSchema(BaseModel, BaseModelExtra):
     snapshot_date: Optional[datetime] = None
     accuracy: float
     ar: float
-    bpm: int
+    bpm: float
     checksum: str
     count_circles: int
     count_sliders: int
     count_spinners: int
     cs: float
     difficulty_rating: float
-    drain: int
+    drain: float
     failtimes: "FailtimesSchema"
     hit_length: int
     last_updated: datetime
