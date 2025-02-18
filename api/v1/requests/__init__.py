@@ -88,7 +88,13 @@ async def post(body: dict, **kwargs):
     task_hash_name = Namespace.QUEUE_REQUEST_HANDLER_TASK.hash_name(task.hashed_id)
 
     if await rc.exists(task_hash_name):
-        return {"message": f"The request with beatmapset ID '{beatmapset_id}' in queue '{queue_name}' is currently being processed"}, 409
+        serialized_existing_task = await rc.hgetall(task_hash_name)
+        existing_task = QueueRequestHandlerTask.deserialize(serialized_existing_task)
+
+        if existing_task.failed_at:
+            await rc.delete(task_hash_name)
+        else:
+            return {"message": f"The request with beatmapset ID '{beatmapset_id}' in queue '{queue_name}' is currently being processed"}, 409
 
     await rc.hset(task_hash_name, mapping=task.serialize())
     await rc.publish(ChannelName.QUEUE_REQUEST_HANDLER_TASKS.value, task.hashed_id)
