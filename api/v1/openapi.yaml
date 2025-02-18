@@ -209,6 +209,12 @@ components:
                     type: string
                 description:
                     type: string
+                visibility:
+                    type: integer
+                    enum:
+                        - 0 # Public
+                        - 1 # Unlisted
+                        - 2 # Private
             required:
                 - user_id
                 - name

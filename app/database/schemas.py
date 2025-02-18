@@ -348,7 +348,8 @@ class QueueSchema(BaseModel, BaseModelExtra):
     description: Optional[str] = None
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
-    is_open: Optional[bool] = True
+    is_open: Optional[bool] = None
+    visibility: Optional[int] = None
 
     requests: list["RequestSchema"] = []
     managers: list["UserSchema"] = []
