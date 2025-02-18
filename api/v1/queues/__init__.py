@@ -4,7 +4,7 @@ from api.utils import prime_query_kwargs
 from app.database import PostgresqlDB
 from app.database.schemas import QueueSchema
 from app.security import role_authorization
-from app.security.overrides import matching_user_id_override
+from app.security.overrides import matching_user_id_override, queue_owner_override
 from app.enums import RoleName
 
 
@@ -47,8 +47,8 @@ async def get(queue_id: int):
     return queue_data, 200
 
 
-@role_authorization(RoleName.ADMIN, override=matching_user_id_override)
-async def post(body: dict, **kwargs):  # TODO: Allow users to post queues for their user_id when we're ready for that feature
+@role_authorization(RoleName.ADMIN, override=matching_user_id_override, override_kwargs={"resource_user_id_lookup": "body.user_id"})
+async def post(body: dict, **kwargs):
     db: PostgresqlDB = request.state.db
 
     raise NotImplementedError

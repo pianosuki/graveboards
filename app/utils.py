@@ -2,6 +2,7 @@ import uuid
 import hashlib
 from datetime import datetime, timezone
 from io import BytesIO
+from typing import Any
 
 
 def generate_uuid() -> str:
@@ -39,3 +40,16 @@ async def stream_file(file: BytesIO, chunk_size: int = 1024):
 
 def clamp(value: int, min_value: int, max_value: int) -> int:
     return max(min_value, min(value, max_value))
+
+
+def get_nested_value(data: dict[str, Any], path: str) -> Any:
+    keys = path.split(".")
+    value = data
+
+    for key in keys:
+        if isinstance(value, dict) and key in value:
+            value = value[key]
+        else:
+            raise KeyError(f"Key '{key}' not found in {value}")
+
+    return value

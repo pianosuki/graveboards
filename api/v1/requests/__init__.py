@@ -8,6 +8,7 @@ from app.osu_api import OsuAPIClient
 from app.database import PostgresqlDB
 from app.database.schemas import RequestSchema
 from app.security import role_authorization
+from app.security.overrides import queue_owner_override
 from app.enums import RoleName
 from app.redis import Namespace, ChannelName, RedisClient
 from app.redis.models import QueueRequestHandlerTask
@@ -102,7 +103,7 @@ async def post(body: dict, **kwargs):
     return {"message": "Request submitted and queued for processing!", "task_id": task.hashed_id}, 202
 
 
-@role_authorization(RoleName.ADMIN)
+@role_authorization(RoleName.ADMIN, override=queue_owner_override, override_kwargs={"from_request": True})
 async def patch(request_id: int, body: dict, **kwargs):
     db: PostgresqlDB = request.state.db
 

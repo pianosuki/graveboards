@@ -9,7 +9,7 @@ from app.database import PostgresqlDB
 from app.enums import RoleName
 
 
-def role_authorization(required_role: RoleName = None, override: Callable[..., bool] = None):
+def role_authorization(required_role: RoleName = None, override: Callable[..., Awaitable[bool]] = None, override_kwargs: dict[str, Any] = None):
     def decorator(func: Callable[..., Awaitable[Any]]):
         if not asyncio.iscoroutinefunction(func):
             raise ValueError(f"Function '{func.__name__}' must be async to use @role_authorization")
@@ -26,13 +26,15 @@ def role_authorization(required_role: RoleName = None, override: Callable[..., b
 
             user_has_required_role = required_role in [
                 RoleName(role.name) for role in (
-                    await db.get_user(id=user_id, _eager_loads={"roles": "selectinload"})
+                    await db.get_user(id=user_id, _auto_eager_loads={"roles"})
                 ).roles
             ] if required_role is not None else True
 
+            override_kwargs_ = {"_db": db, **kwargs, **(override_kwargs if override_kwargs else {})}
+
             if not (
                 (override is None and user_has_required_role) or
-                (override is not None and (override(*args, **kwargs) or user_has_required_role))
+                (override is not None and (await override(**override_kwargs_) or user_has_required_role))
             ):
                 raise Forbidden(detail="User does not have permission to access this resource")
 
