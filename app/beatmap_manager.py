@@ -75,12 +75,9 @@ class BeatmapManager:
         if not await self.db.get_user(id=user_id):
             await self.db.add_user(id=user_id)
 
-            try:
-                await self._populate_profile(user_id)
-            except HTTPError:
-                pass
-
-        if not await self.db.get_profile(user_id=user_id):
+        try:
+            await self._populate_profile(user_id)
+        except HTTPError:
             raise RestrictedUserError(user_id)
 
     async def _populate_profile(self, user_id: int) -> Profile:
