@@ -1,6 +1,6 @@
 from connexion import request
 
-from api.utils import prime_query_kwargs
+from api.utils import prime_query_kwargs, bleach_body
 from app.database import PostgresqlDB
 from app.database.schemas import QueueSchema
 from app.security import role_authorization
@@ -52,3 +52,11 @@ async def post(body: dict, **kwargs):
     db: PostgresqlDB = request.state.db
 
     raise NotImplementedError
+    body = bleach_body(
+        body,
+        whitelisted_keys=QueueSchema.model_fields.keys(),
+        blacklisted_keys={"id", "created_at", "updated_at", "requests", "managers", "user_profile", "manager_profiles"}
+    )
+    await db.add_queue(**body)
+
+    return {"message": "Queue added successfully!"}

@@ -1,6 +1,7 @@
 from connexion import request
 
-from api.utils import prime_query_kwargs
+from api.utils import prime_query_kwargs, bleach_body
+from app.database import PostgresqlDB
 from app.database.schemas import ScoreSchema
 from app.utils import parse_iso8601
 from app.security import role_authorization
@@ -9,7 +10,7 @@ from app.enums import RoleName
 
 async def search(**kwargs):
     # TODO: handle filtering
-    db = request.state.db
+    db: PostgresqlDB = request.state.db
 
     prime_query_kwargs(kwargs)
 
@@ -24,7 +25,7 @@ async def search(**kwargs):
 
 @role_authorization(RoleName.ADMIN)
 async def post(body: dict, **kwargs):
-    db = request.state.db
+    db: PostgresqlDB = request.state.db
 
     user_id = body["user_id"]
     beatmap_id = body["beatmap"]["id"]
@@ -51,6 +52,11 @@ async def post(body: dict, **kwargs):
     if await db.get_score(user_id=user_id, beatmap_id=beatmap_id, created_at=created_at):
         return {"message": f"The score created by '{user_id}' at '{created_at}' on the beatmap with ID '{beatmap_id}' already exists"}, 409
 
-    await db.add_score(body)
+    body = bleach_body(
+        body,
+        whitelisted_keys=ScoreSchema.model_fields.keys(),
+        blacklisted_keys={"id"}
+    )
+    await db.add_score(**body)
 
     return {"message": "Score added successfully!"}, 201

@@ -3,7 +3,7 @@ import json
 from connexion import request
 from pydantic import ValidationError
 
-from api.utils import prime_query_kwargs
+from api.utils import prime_query_kwargs, bleach_body
 from app.osu_api import OsuAPIClient
 from app.database import PostgresqlDB
 from app.database.schemas import RequestSchema
@@ -107,6 +107,11 @@ async def post(body: dict, **kwargs):
 async def patch(request_id: int, body: dict, **kwargs):
     db: PostgresqlDB = request.state.db
 
+    body = bleach_body(
+        body,
+        whitelisted_keys=RequestSchema.model_fields.keys(),
+        blacklisted_keys={"id", "user_id", "beatmapset_id", "queue_id", "comment", "mv_checked", "created_at", "updated_at", "user_profile", "queue"}
+    )
     await db.update_request(request_id, **body)
 
     return {"message": "Request updated successfully!"}, 200
