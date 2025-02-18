@@ -238,6 +238,23 @@ components:
                 - user_id
                 - queue_id
 
+        QueuePatch:
+            description: A JSON object containing queue data to update
+            type: object
+            properties:
+                name:
+                    type: string
+                description:
+                    type: string
+                is_open:
+                    type: boolean
+                visibility:
+                    type: integer
+                    enum:
+                        - 0 # Public
+                        - 1 # Unlisted
+                        - 2 # Private
+
         RequestPatch:
             description: A JSON object containing request data to update
             type: object
@@ -663,6 +680,14 @@ components:
                     schema:
                         $ref: "#/components/schemas/Request"
 
+        QueuePatch:
+            description: Queue data to update
+            required: true
+            content:
+                application/json:
+                    schema:
+                        $ref: "#/components/schemas/QueuePatch"
+
         RequestPatch:
             description: Request data to update
             required: true
@@ -1077,6 +1102,21 @@ paths:
             responses:
                 200:
                     description: Successfully retrieved queue
+
+        patch:
+            summary: Updates a queue
+            tags:
+                - Queues
+            security:
+                - BearerAuth: []
+                - ApiKeyAuth: []
+            parameters:
+                - $ref: "#/components/parameters/QueueId"
+            requestBody:
+                $ref: "#/components/requestBodies/QueuePatch"
+            responses:
+                200:
+                    description: Successfully updated queue
 
     /requests:
         get:

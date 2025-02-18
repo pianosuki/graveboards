@@ -51,7 +51,6 @@ async def get(queue_id: int):
 async def post(body: dict, **kwargs):
     db: PostgresqlDB = request.state.db
 
-    raise NotImplementedError
     body = bleach_body(
         body,
         whitelisted_keys=QueueSchema.model_fields.keys(),
@@ -60,3 +59,17 @@ async def post(body: dict, **kwargs):
     await db.add_queue(**body)
 
     return {"message": "Queue added successfully!"}
+
+
+@role_authorization(RoleName.ADMIN, override=queue_owner_override)
+async def patch(queue_id: int, body: dict, **kwargs):
+    db: PostgresqlDB = request.state.db
+
+    body = bleach_body(
+        body,
+        whitelisted_keys=QueueSchema.model_fields.keys(),
+        blacklisted_keys={"id", "user_id", "created_at", "updated_at", "requests", "managers", "user_profile", "manager_profiles"}
+    )
+    await db.update_queue(queue_id, **body)
+
+    return {"message": "Queue updated successfully!"}, 200
