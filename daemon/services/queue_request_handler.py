@@ -61,13 +61,18 @@ class QueueRequestHandler(Service):
             logger.error(f"Task '{task.get_name()}' failed with error: {e}", exc_info=True)
 
     async def handle_queue_request(self, task: QueueRequestHandlerTask):
-        bm = BeatmapManager(self.db)
-        await bm.archive(task.beatmapset_id)
+        try:
+            bm = BeatmapManager(self.db)
+            await bm.archive(task.beatmapset_id)
 
-        request_dict = RequestSchema.model_validate(task).model_dump(
-            exclude={"user_profile", "queue"}
-        )
-        await self.db.add_request(**request_dict)
+            request_dict = RequestSchema.model_validate(task).model_dump(
+                exclude={"user_profile", "queue"}
+            )
+            await self.db.add_request(**request_dict)
 
-        task_hash_name = Namespace.QUEUE_REQUEST_HANDLER_TASK.hash_name(task.hashed_id)
-        await self.rc.hset(task_hash_name, "completed_at", aware_utcnow().isoformat())
+            task_hash_name = Namespace.QUEUE_REQUEST_HANDLER_TASK.hash_name(task.hashed_id)
+            await self.rc.hset(task_hash_name, "completed_at", aware_utcnow().isoformat())
+        except Exception:
+            task_hash_name = Namespace.QUEUE_REQUEST_HANDLER_TASK.hash_name(task.hashed_id)
+            await self.rc.hset(task_hash_name, "failed_at", aware_utcnow().isoformat())
+            raise

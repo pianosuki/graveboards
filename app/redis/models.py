@@ -17,6 +17,7 @@ class QueueRequestHandlerTask(BaseModel):
     comment: str
     mv_checked: bool
     completed_at: datetime | None = None
+    failed_at: datetime | None = None
 
     @computed_field
     @property
@@ -28,7 +29,7 @@ class QueueRequestHandlerTask(BaseModel):
 
         for key, value in self.__dict__.items():
             match key:
-                case "completed_at":
+                case "completed_at" | "failed_at":
                     value = value.isoformat() if value is not None else ""
 
             serialized_dict[key] = str(value)
@@ -45,7 +46,7 @@ class QueueRequestHandlerTask(BaseModel):
                     value = int(value)
                 case "mv_checked":
                     value = literal_eval(value)
-                case "completed_at":
+                case "completed_at" | "failed_at":
                     value = datetime.fromisoformat(value) if value else None
 
             deserialized_dict[key] = value
