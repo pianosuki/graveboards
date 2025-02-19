@@ -6,7 +6,7 @@ from app.database.schemas import RequestSchema
 from app.redis import ChannelName, Namespace
 from app.redis.models import QueueRequestHandlerTask
 from app.utils import aware_utcnow
-from .enums import EventName, RuntimeTaskName
+from .enums import RuntimeTaskName
 from .service import Service
 
 logger = logging.getLogger(__name__)
@@ -20,7 +20,7 @@ class QueueRequestHandler(Service):
 
         self.task_queue: asyncio.Queue[QueueRequestHandlerTask] = asyncio.Queue()
         self.tasks: dict[int, asyncio.Task] = {}
-        self.events: dict[EventName, asyncio.Event] = {event_name: asyncio.Event() for event_name in EventName.__members__.values()}
+        self.task_condition = asyncio.Condition()
 
     async def run(self):
         self.runtime_tasks[RuntimeTaskName.SCHEDULER_TASK] = asyncio.create_task(self.task_scheduler(), name="Scheduler Task")
@@ -29,14 +29,15 @@ class QueueRequestHandler(Service):
 
     async def task_scheduler(self):
         while True:
-            if not self.task_queue.empty():
+            async with self.task_condition:
+                while self.task_queue.empty():
+                    await self.task_condition.wait()
+
                 task = await self.task_queue.get()
-                scheduled_task = asyncio.create_task(self.handle_queue_request(task))
-                self.tasks[task.hashed_id] = scheduled_task
-                scheduled_task.add_done_callback(self.handle_task_error)
-            else:
-                await self.events[EventName.QUEUE_REQUEST_HANDLER_TASK_ADDED].wait()
-                self.events[EventName.QUEUE_REQUEST_HANDLER_TASK_ADDED].clear()
+
+            scheduled_task = asyncio.create_task(self.handle_queue_request(task))
+            self.tasks[task.hashed_id] = scheduled_task
+            scheduled_task.add_done_callback(self.handle_task_error)
 
     async def task_subscriber(self):
         await self.pubsub.subscribe(ChannelName.QUEUE_REQUEST_HANDLER_TASKS.value)
@@ -50,8 +51,9 @@ class QueueRequestHandler(Service):
             serialized_task = await self.rc.hgetall(task_hash_name)
             task = QueueRequestHandlerTask.deserialize(serialized_task)
 
-            await self.task_queue.put(task)
-            self.events[EventName.QUEUE_REQUEST_HANDLER_TASK_ADDED].set()
+            async with self.task_condition:
+                await self.task_queue.put(task)
+                self.task_condition.notify()
 
     @staticmethod
     def handle_task_error(task: asyncio.Task):

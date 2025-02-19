@@ -6,6 +6,7 @@ from zipfile import ZipFile
 import httpx
 import aiofiles
 from httpx import HTTPError
+from sqlalchemy.exc import IntegrityError
 
 from app.osu_api import OsuAPIClient
 from .database import PostgresqlDB
@@ -83,26 +84,37 @@ class BeatmapManager:
     async def _populate_profile(self, user_id: int) -> Profile:
         profile = await self.db.get_profile(user_id=user_id)
 
-        if not profile:
-            user_dict = await self.oac.get_user(user_id)
-            profile_dict = ProfileSchema.model_validate(user_dict).model_dump()
-            profile = await self.db.add_profile(**profile_dict)
+        if profile:
+            return profile
 
-            task = await self.db.get_profile_fetcher_task(user_id=user_id)
-            await self.db.update_profile_fetcher_task(task.id, last_fetch=aware_utcnow())
+        user_dict = await self.oac.get_user(user_id)
+        profile_dict = ProfileSchema.model_validate(user_dict).model_dump()
+
+        try:
+            profile = await self.db.add_profile(**profile_dict)
+            task_id = (await self.db.get_profile_fetcher_task(user_id=user_id)).id
+            await self.db.update_profile_fetcher_task(task_id, last_fetch=aware_utcnow())
+        except IntegrityError:
+            profile = await self.db.get_profile(user_id=user_id)
 
         return profile
 
     async def _populate_restricted_profile(self, user_id: int, user_dict: dict = None) -> Profile:
-        return await self.db.add_profile(
-            user_id=user_id,
-            is_restricted=True,
-            **{
-                "avatar_url": user_dict.get("avatar_url"),
-                "username": user_dict.get("username"),
-                "country_code": user_dict.get("country_code"),
-            } if user_dict else {}
-        )
+        profile_data = {
+            "user_id": user_id,
+            "is_restricted": True,
+            "avatar_url": user_dict.get("avatar_url"),
+            "username": user_dict.get("username"),
+            "country_code": user_dict.get("country_code"),
+        }
+
+        try:
+            profile = await self.db.add_profile(**profile_data)
+        except IntegrityError:
+            profile_id = (await self.db.get_profile(user_id=user_id)).id
+            profile = await self.db.update_profile(profile_id, **profile_data)
+
+        return profile
 
     async def _snapshot(self, beatmapset_dict: dict) -> list[int]:
         beatmap_snapshots = []

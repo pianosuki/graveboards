@@ -1,5 +1,6 @@
 import asyncio
 import heapq
+import logging
 from datetime import datetime, timedelta, timezone
 
 from api import v1 as api
@@ -8,10 +9,13 @@ from app.database.models import ScoreFetcherTask
 from app.redis import ChannelName
 from app.utils import aware_utcnow
 from app.config import PRIMARY_ADMIN_USER_ID
-from .enums import EventName, RuntimeTaskName
+from .enums import RuntimeTaskName
 from .service import Service
 
+logger = logging.getLogger(__name__)
+
 SCORE_FETCHER_INTERVAL_HOURS = 24
+PENDING_TASK_TIMEOUT_SECONDS = 60
 
 
 class ScoreFetcher(Service):
@@ -22,7 +26,8 @@ class ScoreFetcher(Service):
         self.oac = OsuAPIClient()
 
         self.task_heap: list[tuple[datetime, int]] = []
-        self.events: dict[EventName, asyncio.Event] = {event_name: asyncio.Event() for event_name in EventName.__members__.values()}
+        self.tasks: dict[int, asyncio.Task] = {}
+        self.task_condition = asyncio.Condition()
 
     async def run(self):
         await self.preload_tasks()
@@ -30,25 +35,17 @@ class ScoreFetcher(Service):
         self.runtime_tasks[RuntimeTaskName.SUBSCRIBER_TASK] = asyncio.create_task(self.task_subscriber(), name="Subscriber Task")
         await asyncio.gather(*self.runtime_tasks.values())
 
-    async def task_scheduler(self):  # TODO: Fix async execution of tasks (currently gets stuck waiting for each delay)
+    async def task_scheduler(self):
         while True:
-            if self.task_heap:
+            async with self.task_condition:
+                while not self.task_heap:
+                    await self.task_condition.wait()
+
                 execution_time, task_id = heapq.heappop(self.task_heap)
-                delay = (execution_time - aware_utcnow()).total_seconds()
 
-                if delay > 0:
-                    await asyncio.sleep(delay)
-
-                await self.fetch_scores(task_id)
-
-                fetch_time = aware_utcnow()
-                next_execution_time = fetch_time + timedelta(hours=SCORE_FETCHER_INTERVAL_HOURS)
-                heapq.heappush(self.task_heap, (next_execution_time, task_id))
-
-                await self.db.update_score_fetcher_task(task_id, last_fetch=fetch_time)
-            else:
-                await self.events[EventName.SCORE_FETCHER_TASK_ADDED].wait()
-                self.events[EventName.SCORE_FETCHER_TASK_ADDED].clear()
+            scheduled_task = asyncio.create_task(self.handle_task(execution_time, task_id))
+            self.tasks[task_id] = scheduled_task
+            scheduled_task.add_done_callback(self.handle_task_error)
 
     async def task_subscriber(self):
         await self.pubsub.subscribe(ChannelName.SCORE_FETCHER_TASKS.value)
@@ -57,15 +54,17 @@ class ScoreFetcher(Service):
             if not message["type"] == "message" or not message["channel"] == ChannelName.SCORE_FETCHER_TASKS.value:
                 continue
 
-            # Wait until it's safe to assume the ScoreFetcherTask was fully committed
-            # TODO: This is not 100% reliable, need to find another approach
-            await asyncio.sleep(5)
-
             task_id = int(message["data"])
-            task = await self.db.get_score_fetcher_task(id=task_id)
 
-            self.load_task(task)
-            self.events[EventName.SCORE_FETCHER_TASK_ADDED].set()
+            try:
+                task = await self.get_pending_task(task_id)
+            except TimeoutError:
+                logger.warning(f"Task {task_id} was not found in the database after waiting")
+                continue
+
+            async with self.task_condition:
+                self.load_task(task)
+                self.task_condition.notify()
 
     async def preload_tasks(self):
         tasks = await self.db.get_score_fetcher_tasks(enabled=True)
@@ -83,6 +82,41 @@ class ScoreFetcher(Service):
             execution_time = aware_utcnow()
 
         heapq.heappush(self.task_heap, (execution_time, task.id))
+
+    async def get_pending_task(self, task_id: int, timeout: int = PENDING_TASK_TIMEOUT_SECONDS) -> ScoreFetcherTask:
+        start_time = aware_utcnow()
+
+        while (aware_utcnow() - start_time).total_seconds() < timeout:
+            task = await self.db.get_score_fetcher_task(id=task_id)
+
+            if task:
+                return task
+
+            await asyncio.sleep(0.5)
+
+        raise TimeoutError
+
+    async def handle_task(self, execution_time: datetime, task_id: int):
+        delay = (execution_time - aware_utcnow()).total_seconds()
+
+        if delay > 0:
+            await asyncio.sleep(delay)
+
+        await self.fetch_scores(task_id)
+        fetch_time = aware_utcnow()
+        next_execution_time = fetch_time + timedelta(hours=SCORE_FETCHER_INTERVAL_HOURS)
+        await self.db.update_profile_fetcher_task(task_id, last_fetch=fetch_time)
+
+        async with self.task_condition:
+            heapq.heappush(self.task_heap, (next_execution_time, task_id))
+            self.task_condition.notify()
+
+    @staticmethod
+    def handle_task_error(task: asyncio.Task):
+        try:
+            task.result()
+        except Exception as e:
+            logger.error(f"Task '{task.get_name()}' failed with error: {e}", exc_info=True)
 
     async def fetch_scores(self, task_id: int):
         task = await self.db.get_score_fetcher_task(id=task_id)
