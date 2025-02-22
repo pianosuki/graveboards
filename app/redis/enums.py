@@ -9,7 +9,7 @@ class ChannelName(Enum):
 
 class Namespace(Enum):
     LOCK = "lock"
-    OSU_CLIENT_OAUTH_TOKEN = "osu_token"
+    OSU_CLIENT_OAUTH_TOKEN = "osu_client_oauth_token"
     CSRF_STATE = "csrf_state"
     QUEUE_REQUEST_HANDLER_TASK = "queue_request_handler_task"
     BEATMAPSET_CACHE = "beatmapset_cache"
