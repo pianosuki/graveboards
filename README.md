@@ -71,7 +71,7 @@ Frontend: https://github.com/FlavioAngnes/graveboards-frontend
 
 ### Prerequisites
 
-- Python 3.12+
+- Python 3.13+
 
 ### Setup
 

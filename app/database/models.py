@@ -21,7 +21,6 @@ from app.utils import aware_utcnow
 __all__ = [
     "BaseType",
     "ModelClass",
-    "Base",
     "User",
     "Role",
     "Profile",

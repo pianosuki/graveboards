@@ -1,4 +1,5 @@
-from contextlib import asynccontextmanager, AbstractAsyncContextManager
+from contextlib import asynccontextmanager
+from typing import AsyncGenerator
 
 from sqlalchemy import event
 from sqlalchemy.sql import select
@@ -40,7 +41,7 @@ class PostgresqlDB(CRUD):
             await self.close()
 
     @asynccontextmanager
-    async def session(self) -> AbstractAsyncContextManager[AsyncSession, None]:
+    async def session(self) -> AsyncGenerator[AsyncSession, None]:
         new_async_session = self.async_session_generator()
 
         async with new_async_session() as session_:
