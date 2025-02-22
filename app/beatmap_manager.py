@@ -12,6 +12,7 @@ from app.osu_api import OsuAPIClient
 from .database import PostgresqlDB
 from .database.models import Profile, Tag
 from .database.schemas import BeatmapSnapshotSchema, BeatmapsetSnapshotSchema, ProfileSchema
+from .redis import RedisClient
 from .utils import combine_checksums, aware_utcnow
 from .exceptions import RestrictedUserError
 from .config import INSTANCE_DIR
@@ -23,9 +24,10 @@ BEATMAP_SNAPSHOT_FILE_PATH = os.path.join(BEATMAPS_PATH, "{beatmap_id}/{snapshot
 
 
 class BeatmapManager:
-    def __init__(self, db: PostgresqlDB):
+    def __init__(self, rc: RedisClient, db: PostgresqlDB):
+        self.rc = rc
         self.db = db
-        self.oac = OsuAPIClient()
+        self.oac = OsuAPIClient(rc)
 
     async def archive(self, beatmapset_id: int) -> list[int]:
         beatmapset_dict = await self.oac.get_beatmapset(beatmapset_id)

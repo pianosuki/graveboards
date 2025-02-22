@@ -5,6 +5,7 @@ from api.utils import prime_query_kwargs
 from app.beatmap_manager import BeatmapManager
 from app.database import PostgresqlDB
 from app.database.schemas import BeatmapsetSchema
+from app.redis import RedisClient
 from app.security import role_authorization
 from app.enums import RoleName
 from . import listings, snapshots
@@ -31,12 +32,13 @@ async def search(**kwargs):
 
 @role_authorization(RoleName.ADMIN)
 async def post(body: dict, **kwargs):
+    rc: RedisClient = request.state.rc
     db: PostgresqlDB = request.state.db
 
     beatmapset_id = body["beatmapset_id"]
 
     try:
-        bm = BeatmapManager(db)
+        bm = BeatmapManager(rc, db)
         beatmap_ids = await bm.archive(beatmapset_id)
     except httpx.HTTPStatusError as e:
         return e.response.json(), e.response.status_code

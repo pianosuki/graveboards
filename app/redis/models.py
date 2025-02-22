@@ -4,10 +4,39 @@ from ast import literal_eval
 from pydantic import BaseModel, computed_field
 
 __all__ = [
+    "OsuClientOAuthToken",
     "QueueRequestHandlerTask",
     "BeatmapCache",
     "BeatmapsetCache"
 ]
+
+
+class OsuClientOAuthToken(BaseModel):
+    access_token: str
+    token_type: str
+    expires_in: int
+    expires_at: int
+
+    def serialize(self) -> dict[str, str]:
+        serialized_dict = {}
+
+        for key, value in self.__dict__.items():
+            serialized_dict[key] = str(value)
+
+        return serialized_dict
+
+    @classmethod
+    def deserialize(cls, serialized_dict: dict[str, str]) -> "OsuClientOAuthToken":
+        deserialized_dict = {}
+
+        for key, value in serialized_dict.items():
+            match key:
+                case "expires_in" | "expires_at":
+                    value = int(value)
+
+            deserialized_dict[key] = value
+
+        return cls.model_validate(deserialized_dict)
 
 
 class QueueRequestHandlerTask(BaseModel):
@@ -51,7 +80,7 @@ class QueueRequestHandlerTask(BaseModel):
 
             deserialized_dict[key] = value
 
-        return QueueRequestHandlerTask.model_validate(deserialized_dict)
+        return cls.model_validate(deserialized_dict)
 
 
 class BeatmapCache(BaseModel):
@@ -78,7 +107,7 @@ class BeatmapCache(BaseModel):
 
             deserialized_dict[key] = value
 
-        return BeatmapCache.model_validate(deserialized_dict)
+        return cls.model_validate(deserialized_dict)
 
 
 class BeatmapsetCache(BaseModel):
@@ -111,4 +140,4 @@ class BeatmapsetCache(BaseModel):
 
             deserialized_dict[key] = value
 
-        return BeatmapsetCache.model_validate(deserialized_dict)
+        return cls.model_validate(deserialized_dict)

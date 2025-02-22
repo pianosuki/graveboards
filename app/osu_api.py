@@ -1,11 +1,17 @@
 import time
+import asyncio
 from enum import Enum
 
 import httpx
+from pydantic import ValidationError
 
+from .redis import RedisClient, Namespace
+from .redis.models import OsuClientOAuthToken
 from .oauth import OAuth
 
 API_BASEURL = "https://osu.ppy.sh/api/v2"
+REDIS_LOCK_EXPIRY = 10
+MAX_TOKEN_FETCH_RETRIES = 3
 
 
 class APIEndpoint(Enum):
@@ -49,18 +55,70 @@ class Ruleset(Enum):
 
 
 class OsuAPIClientBase:
-    def __init__(self):
+    def __init__(self, rc: RedisClient):
+        self.rc = rc
         self._oauth = OAuth()
-        self._token: dict | None = None
+        self._token: OsuClientOAuthToken | None = None
 
     async def get_token(self) -> str:
-        if self._token is None or self._token.get("expires_at") < time.time():
-            await self.refresh_token()
+        async def get_valid_token_from_redis() -> OsuClientOAuthToken | None:
+            serialized_token = await self.rc.hgetall(Namespace.OSU_CLIENT_OAUTH_TOKEN.value)
 
-        return self._token.get("access_token")
+            if serialized_token:
+                try:
+                    token_ = OsuClientOAuthToken.deserialize(serialized_token)
+
+                    if token_.expires_at > time.time():
+                        return token_
+                except (ValidationError, ValueError):
+                    pass
+
+            return None
+
+        async def do_refresh_token():
+            try:
+                await self.refresh_token()
+            finally:
+                await self.rc.delete(lock_hash_name)
+
+        if self._token and self._token.expires_at > time.time():
+            return self._token.access_token
+
+        if token := await get_valid_token_from_redis():
+            self._token = token
+            return token.access_token
+
+        lock_hash_name = Namespace.LOCK.hash_name(Namespace.OSU_CLIENT_OAUTH_TOKEN.value)
+        lock_acquired = await self.rc.set(lock_hash_name, "locked", ex=REDIS_LOCK_EXPIRY, nx=True)
+
+        if lock_acquired:
+            await do_refresh_token()
+        else:
+            for _ in range(REDIS_LOCK_EXPIRY):
+                await asyncio.sleep(1)
+
+                if token := await get_valid_token_from_redis():
+                    self._token = token
+                    return token.access_token
+
+            await do_refresh_token()
+
+        return self._token.access_token
 
     async def refresh_token(self):
-        self._token = await self._oauth.fetch_token(grant_type="client_credentials", scope="public")
+        for attempt in range(MAX_TOKEN_FETCH_RETRIES):
+            try:
+                token_dict = await self._oauth.fetch_token(grant_type="client_credentials", scope="public")
+                token = OsuClientOAuthToken.model_validate(token_dict)
+                await self.rc.hset(Namespace.OSU_CLIENT_OAUTH_TOKEN.value, mapping=token.serialize())
+                self._token = token
+                return
+            except httpx.ReadTimeout:
+                if attempt < MAX_TOKEN_FETCH_RETRIES:
+                    await asyncio.sleep(2 ** attempt)
+                    continue
+
+                raise TimeoutError(f"Failed to fetch token after {MAX_TOKEN_FETCH_RETRIES} retries due to ReadTimeout")
 
     async def get_auth_headers(self, access_token: str = None) -> dict:
         return {"Authorization": f"Bearer {access_token or await self.get_token()}"}

@@ -24,7 +24,7 @@ class ProfileFetcher(Service):
         super().__init__(*args)
 
         self.pubsub = self.rc.pubsub()
-        self.oac = OsuAPIClient()
+        self.oac = OsuAPIClient(self.rc)
 
         self.task_heap: list[tuple[datetime, int]] = []
         self.tasks: dict[int, asyncio.Task] = {}

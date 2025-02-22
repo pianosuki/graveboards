@@ -64,7 +64,7 @@ class QueueRequestHandler(Service):
 
     async def handle_queue_request(self, task: QueueRequestHandlerTask):
         try:
-            bm = BeatmapManager(self.db)
+            bm = BeatmapManager(self.rc, self.db)
             await bm.archive(task.beatmapset_id)
 
             request_dict = RequestSchema.model_validate(task).model_dump(

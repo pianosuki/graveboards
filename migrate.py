@@ -5,12 +5,13 @@ from datetime import datetime, timezone
 from httpx import HTTPStatusError
 
 from app.database import PostgresqlDB
-from app.database.schemas import ProfileSchema
 from app.beatmap_manager import BeatmapManager
+from app.redis import RedisClient
 from setup import setup
 
 
 async def migrate():
+    rc = RedisClient()
     db = PostgresqlDB()
 
     print("Starting migration...\n")
@@ -26,7 +27,7 @@ async def migrate():
 
             if not await db.get_beatmapset(id=beatmapset_id):
                 try:
-                    bm = BeatmapManager(db)
+                    bm = BeatmapManager(rc, db)
                     await bm.archive(beatmapset_id)
                 except HTTPStatusError as e:
                     if e.response.status_code == 404:
