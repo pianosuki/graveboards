@@ -260,10 +260,6 @@ class BeatmapsetSnapshotSchema(BaseModel, BaseModelExtra):
     tags: list["TagSchema"] = []
     user_profile: Optional["ProfileSchema"] = None
 
-    def model_dump(self, **kwargs) -> dict:
-        kwargs.setdefault("by_alias", True)
-        return super().model_dump(**kwargs)
-
     @model_validator(mode="before")
     @classmethod
     def from_osu_api_format(cls, data: Any) -> Any:
@@ -292,10 +288,6 @@ class BeatmapsetListingSchema(BaseModel, BaseModelExtra):
     updated_at: datetime
 
     beatmapset_snapshot: BeatmapsetSnapshotSchema
-
-    def model_dump(self, **kwargs) -> dict:
-        kwargs.setdefault("by_alias", True)
-        return super().model_dump(**kwargs)
 
 
 class LeaderboardSchema(BaseModel, BaseModelExtra):
@@ -381,10 +373,6 @@ class RequestSchema(BaseModel, BaseModelExtra):
 class RequestListingSchema(RequestSchema):
     beatmapset_snapshot: "BeatmapsetSnapshotSchema"
 
-    def model_dump(self, **kwargs) -> dict:
-        kwargs.setdefault("by_alias", True)
-        return super().model_dump(**kwargs)
-
     @model_validator(mode="before")
     @classmethod
     def from_tuple(cls, data: Any) -> Any:
@@ -428,6 +416,8 @@ class AvailabilitySchema(BaseModel, BaseModelExtra):
 
 
 class CoversSchema(BaseModel, BaseModelExtra):
+    model_config = ConfigDict(populate_by_name=True)
+
     cover: str
     cover2x: str = Field(alias="cover@2x")
     card: str
@@ -437,9 +427,9 @@ class CoversSchema(BaseModel, BaseModelExtra):
     slimcover: str
     slimcover2x: str = Field(alias="slimcover@2x")
 
-    def model_dump(self, **kwargs) -> dict:
-        kwargs.setdefault("by_alias", True)
-        return super().model_dump(**kwargs)
+    @model_serializer
+    def serialize_with_aliases(self):
+        return {self.model_fields[field].alias or field: value for field, value in self.__dict__.items()}
 
 
 class HypeSchema(BaseModel, BaseModelExtra):

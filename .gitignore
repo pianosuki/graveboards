@@ -2,7 +2,7 @@
 instance/
 
 # Dotenv
-.env
+.env*
 
 # Python virtual environment
 .venv/
