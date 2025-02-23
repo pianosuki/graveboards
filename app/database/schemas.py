@@ -293,6 +293,10 @@ class BeatmapsetListingSchema(BaseModel, BaseModelExtra):
 
     beatmapset_snapshot: BeatmapsetSnapshotSchema
 
+    def model_dump(self, **kwargs) -> dict:
+        kwargs.setdefault("by_alias", True)
+        return super().model_dump(**kwargs)
+
 
 class LeaderboardSchema(BaseModel, BaseModelExtra):
     model_config = ConfigDict(from_attributes=True)
@@ -376,6 +380,10 @@ class RequestSchema(BaseModel, BaseModelExtra):
 
 class RequestListingSchema(RequestSchema):
     beatmapset_snapshot: "BeatmapsetSnapshotSchema"
+
+    def model_dump(self, **kwargs) -> dict:
+        kwargs.setdefault("by_alias", True)
+        return super().model_dump(**kwargs)
 
     @model_validator(mode="before")
     @classmethod

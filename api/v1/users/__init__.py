@@ -15,12 +15,13 @@ async def search(**kwargs):
     prime_query_kwargs(kwargs)
 
     users = await db.get_users(
-        _exclude_lazy=True,
+        _auto_eager_loads={"profile", "roles"},
+        _exclude={"scores", "tokens", "queues", "requests", "beatmaps", "beatmapsets"},
         **kwargs
     )
     users_data = [
         UserSchema.model_validate(user).model_dump(
-            exclude={"profile", "roles", "scores", "tokens", "queues", "requests", "beatmaps", "beatmapsets"}
+            exclude={"scores", "tokens", "queues", "requests", "beatmaps", "beatmapsets"}
         )
         for user in users
     ]
@@ -36,14 +37,15 @@ async def get(user_id: int, **kwargs):
 
     user = await db.get_user(
         id=user_id,
-        _exclude_lazy=True
+        _auto_eager_loads={"profile", "roles"},
+        _exclude={"scores", "tokens", "queues", "requests", "beatmaps", "beatmapsets"}
     )
 
     if not user:
         return {"message": f"User with ID '{user_id}' not found"}, 404
 
     user_data = UserSchema.model_validate(user).model_dump(
-        exclude={"profile", "roles", "scores", "tokens", "queues", "requests", "beatmaps", "beatmapsets"}
+        exclude={"scores", "tokens", "queues", "requests", "beatmaps", "beatmapsets"}
     )
 
     return user_data, 200

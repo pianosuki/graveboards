@@ -74,12 +74,15 @@ async def post(body: dict, **kwargs):
 
     beatmapset_id = body["beatmapset_id"]
     queue_id = body["queue_id"]
-    queue_name = (await db.get_queue(id=queue_id)).name
+    queue = await db.get_queue(id=queue_id)
+
+    if not queue.is_open:
+        return {"message": f"The queue '{queue.name}' is closed"}, 403
 
     if await db.get_request(beatmapset_id=beatmapset_id, queue_id=queue_id):
-        return {"message": f"The request with beatmapset ID '{beatmapset_id}' already exists in queue '{queue_name}'"}, 409
+        return {"message": f"The request with beatmapset ID '{beatmapset_id}' already exists in queue '{queue.name}'"}, 409
 
-    oac = OsuAPIClient()
+    oac = OsuAPIClient(rc)
     beatmapset_dict = await oac.get_beatmapset(beatmapset_id)
 
     if beatmapset_dict["status"] in ("ranked", "approved", "qualified", "loved"):

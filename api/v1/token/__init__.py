@@ -51,7 +51,7 @@ async def post(body: dict):
     except OAuthError as e:
         return {"message": f"OAuth error: {e.description}"}, 500
 
-    oac = OsuAPIClient()
+    oac = OsuAPIClient(rc)
     user_data = await oac.get_own_data(access_token)
     user_id = user_data["id"]
 
