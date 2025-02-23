@@ -8,8 +8,8 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
-COPY entrypoint.sh /app/
-COPY wait-for-it.sh /app/
+COPY entrypoint.sh /app
+COPY wait-for-it.sh /app
 
 RUN chmod +x /app/entrypoint.sh /app/wait-for-it.sh
 
