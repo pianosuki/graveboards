@@ -622,6 +622,13 @@ components:
             schema:
                 type: integer
 
+        QueueIsOpen:
+            name: is_open
+            description: Queue status
+            in: query
+            schema:
+                type: boolean
+
 
     requestBodies:
         AuthorizationCode:
@@ -1070,6 +1077,8 @@ paths:
                 - BearerAuth: []
                 - ApiKeyAuth: []
             parameters:
+                - $ref: "#/components/parameters/UserIdQuery"
+                - $ref: "#/components/parameters/QueueIsOpen"
                 - $ref: "#/components/parameters/Limit"
                 - $ref: "#/components/parameters/Offset"
             responses:
