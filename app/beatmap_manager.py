@@ -12,7 +12,7 @@ from app.osu_api import OsuAPIClient
 from .database import PostgresqlDB
 from .database.models import Profile, Tag
 from .database.schemas import BeatmapSnapshotSchema, BeatmapsetSnapshotSchema, ProfileSchema
-from .redis import RedisClient
+from .redis import RedisClient, Namespace, REDIS_LOCK_EXPIRY
 from .utils import combine_checksums, aware_utcnow
 from .exceptions import RestrictedUserError
 from .config import INSTANCE_DIR
@@ -56,7 +56,7 @@ class BeatmapManager:
             if user_dict.get("is_deleted", False):
                 user_dict["username"] = beatmapset_dict.get("creator")
 
-            await self._populate_restricted_profile(user_id, user_dict)
+            await self._populate_profile(user_id, restricted_user_dict=user_dict, is_restricted=True)
 
         if not await self.db.get_beatmapset(id=beatmapset_id):
             await self.db.add_beatmapset(id=beatmapset_id, user_id=user_id)
@@ -69,7 +69,7 @@ class BeatmapManager:
             try:
                 await self._ensure_user_populated(user_id)
             except RestrictedUserError:
-                await self._populate_restricted_profile(user_id)
+                await self._populate_profile(user_id, is_restricted=True)
 
             if not await self.db.get_beatmap(id=beatmap_id):
                 await self.db.add_beatmap(id=beatmap_id, beatmapset_id=beatmapset_id, user_id=user_id)
@@ -83,38 +83,45 @@ class BeatmapManager:
         except HTTPError:
             raise RestrictedUserError(user_id)
 
-    async def _populate_profile(self, user_id: int) -> Profile:
-        profile = await self.db.get_profile(user_id=user_id)
-
-        if profile:
-            return profile
-
-        user_dict = await self.oac.get_user(user_id)
-        profile_dict = ProfileSchema.model_validate(user_dict).model_dump()
+    async def _populate_profile(self, user_id: int, restricted_user_dict: dict = None, is_restricted: bool = False) -> Profile | None:
+        restricted_user_dict = restricted_user_dict if restricted_user_dict is not None else {}
+        lock_hash_name = Namespace.LOCK.hash_name(Namespace.OSU_USER_PROFILE.hash_name(user_id))
 
         try:
-            profile = await self.db.add_profile(**profile_dict)
+            lock_acquired = await self.rc.set(lock_hash_name, "locked", ex=REDIS_LOCK_EXPIRY, nx=True)
+
+            if not lock_acquired:
+                for _ in range(REDIS_LOCK_EXPIRY):
+                    await asyncio.sleep(1)
+
+                    if (profile := await self.db.get_profile(user_id=user_id)) and not is_restricted:
+                        return profile
+
+            if (profile := await self.db.get_profile(user_id=user_id)) and not is_restricted:
+                return profile
+
+            if not is_restricted:
+                user_dict = await self.oac.get_user(user_id)
+                profile_dict = ProfileSchema.model_validate(user_dict).model_dump()
+            else:
+                profile_dict = {
+                    "user_id": user_id,
+                    "is_restricted": True,
+                    "avatar_url": restricted_user_dict.get("avatar_url"),
+                    "username": restricted_user_dict.get("username"),
+                    "country_code": restricted_user_dict.get("country_code"),
+                }
+
+            try:
+                profile = await self.db.add_profile(**profile_dict)
+            except IntegrityError:
+                profile_id = (await self.db.get_profile(user_id=user_id)).id
+                profile = await self.db.update_profile(profile_id, **profile_dict)
+
             task_id = (await self.db.get_profile_fetcher_task(user_id=user_id)).id
             await self.db.update_profile_fetcher_task(task_id, last_fetch=aware_utcnow())
-        except IntegrityError:
-            profile = await self.db.get_profile(user_id=user_id)
-
-        return profile
-
-    async def _populate_restricted_profile(self, user_id: int, user_dict: dict = None) -> Profile:
-        profile_data = {
-            "user_id": user_id,
-            "is_restricted": True,
-            "avatar_url": user_dict.get("avatar_url"),
-            "username": user_dict.get("username"),
-            "country_code": user_dict.get("country_code"),
-        }
-
-        try:
-            profile = await self.db.add_profile(**profile_data)
-        except IntegrityError:
-            profile_id = (await self.db.get_profile(user_id=user_id)).id
-            profile = await self.db.update_profile(profile_id, **profile_data)
+        finally:
+            await self.rc.delete(lock_hash_name)
 
         return profile
 
@@ -157,7 +164,7 @@ class BeatmapManager:
             try:
                 profile = await self._populate_profile(user_id)
             except HTTPError:
-                profile = await self._populate_restricted_profile(user_id)
+                profile = await self._populate_profile(user_id, is_restricted=True)
 
             profiles.append(profile)
 

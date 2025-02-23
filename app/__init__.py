@@ -1,4 +1,5 @@
 import os
+import logging
 
 from connexion import AsyncApp
 from connexion.exceptions import Forbidden
@@ -10,6 +11,10 @@ from .lifespan import lifespan
 from .error_handlers import forbidden
 from .enums import AppName
 from .config import SPEC_DIR
+
+logging.basicConfig(
+    level=logging.INFO
+)
 
 connexion_app = AsyncApp(__name__, specification_dir=SPEC_DIR, lifespan=lifespan)
 

@@ -3,17 +3,16 @@ import heapq
 import logging
 from datetime import datetime, timedelta, timezone
 
-from sqlalchemy.exc import IntegrityError
-
 from app.osu_api import OsuAPIClient
 from app.database.models import ProfileFetcherTask
 from app.database.schemas import ProfileSchema
-from app.redis import ChannelName
+from app.redis import ChannelName, Namespace, REDIS_LOCK_EXPIRY
 from app.utils import aware_utcnow
 from .enums import RuntimeTaskName
 from .service import Service
 
 logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
 
 PROFILE_FETCHER_INTERVAL_HOURS = 24
 PENDING_TASK_TIMEOUT_SECONDS = 60
@@ -120,23 +119,27 @@ class ProfileFetcher(Service):
             logger.error(f"Task '{task.get_name()}' failed with error: {e}", exc_info=True)
 
     async def fetch_profile(self, task_id: int):
-        async with self.db.session() as session:
-            task = await self.db.get_profile_fetcher_task(id=task_id, session=session)
+        if not (task := await self.db.get_profile_fetcher_task(id=task_id)):
+            raise ValueError(f"Task with ID '{task_id}' not found")
 
-            if not task:
-                raise ValueError(f"Task with ID '{task_id}' not found")
+        lock_hash_name = Namespace.LOCK.hash_name(Namespace.OSU_USER_PROFILE.hash_name(task.user_id))
+
+        try:
+            lock_acquired = await self.rc.set(lock_hash_name, "locked", ex=REDIS_LOCK_EXPIRY, nx=True)
+
+            if not lock_acquired:
+                return
 
             user_dict = await self.oac.get_user(task.user_id)
+            profile = await self.db.get_profile(user_id=task.user_id)
 
-            profile = await self.db.get_profile(user_id=task.user_id, session=session)
             profile_dict = ProfileSchema.model_validate(user_dict).model_dump(
                 exclude={"id", "updated_at", "is_restricted"}
             )
 
             if not profile:
-                try:
-                    await self.db.add_profile(session=session, **profile_dict)
-                except IntegrityError:
-                    pass
+                await self.db.add_profile(**profile_dict)
             else:
-                await self.db.update_profile(profile.id, session=session, **profile_dict)
+                await self.db.update_profile(profile.id, **profile_dict)
+        finally:
+            await self.rc.delete(lock_hash_name)

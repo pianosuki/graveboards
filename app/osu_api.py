@@ -5,12 +5,11 @@ from enum import Enum
 import httpx
 from pydantic import ValidationError
 
-from .redis import RedisClient, Namespace
+from .redis import RedisClient, Namespace, REDIS_LOCK_EXPIRY
 from .redis.models import OsuClientOAuthToken
 from .oauth import OAuth
 
 API_BASEURL = "https://osu.ppy.sh/api/v2"
-REDIS_LOCK_EXPIRY = 10
 MAX_TOKEN_FETCH_RETRIES = 3
 
 
