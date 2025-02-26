@@ -9,11 +9,11 @@ from starlette.middleware.cors import CORSMiddleware
 
 from .lifespan import lifespan
 from .error_handlers import forbidden
-from .enums import AppName
 from .config import SPEC_DIR
 
 logging.basicConfig(
-    level=logging.INFO
+    level=logging.INFO,
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )
 
 connexion_app = AsyncApp(__name__, specification_dir=SPEC_DIR, lifespan=lifespan)

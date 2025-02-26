@@ -1,9 +1,12 @@
+import logging
 from contextlib import contextmanager
 
 from redis import Redis
 from redis.asyncio import Redis as AsyncRedis
 
 from app.config import REDIS_CONFIGURATION
+
+logging.getLogger("push_response").disabled = True
 
 REDIS_BASE_URL = f"redis://{REDIS_CONFIGURATION["username"]}:***@{REDIS_CONFIGURATION["host"]}:{REDIS_CONFIGURATION["port"]}/{REDIS_CONFIGURATION["db"]}"
 
