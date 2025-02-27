@@ -42,6 +42,7 @@ OAUTH_CONFIGURATION = {
 }
 
 ADMIN_USER_IDS = [int(user_id.strip()) for user_id in os.getenv("ADMIN_USER_IDS").split(",")]
+PRIVILEGED_USER_IDS = [int(user_id.strip()) for user_id in os.getenv("PRIVILEGED_USER_IDS").split(",")]
 PRIMARY_ADMIN_USER_ID = ADMIN_USER_IDS[0]
 MASTER_QUEUE_NAME = "Graveboards Queue"
 MASTER_QUEUE_DESCRIPTION = "Master queue for beatmaps to receive leaderboards"

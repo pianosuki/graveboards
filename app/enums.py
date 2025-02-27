@@ -9,6 +9,7 @@ class RequestStatus(Enum):
 
 class RoleName(Enum):
     ADMIN = "admin"
+    PRIVILEGED = "privileged"
 
 
 class QueueVisibility(Enum):
