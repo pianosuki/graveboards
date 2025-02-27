@@ -7,6 +7,7 @@ from connexion.exceptions import Forbidden
 
 from app.database import PostgresqlDB
 from app.enums import RoleName
+from app.config import DISABLE_SECURITY
 
 
 def role_authorization(*required_roles: RoleName, one_of: Iterable[RoleName] = None, override: Callable[..., Awaitable[bool]] = None, override_kwargs: dict[str, Any] = None):
@@ -21,6 +22,9 @@ def role_authorization(*required_roles: RoleName, one_of: Iterable[RoleName] = N
 
         @wraps(func)
         async def wrapper(*args, **kwargs) -> Awaitable[Any]:
+            if DISABLE_SECURITY:
+                return await func(*args, **kwargs)
+
             db: PostgresqlDB = request.state.db
 
             try:

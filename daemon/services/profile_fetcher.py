@@ -11,8 +11,7 @@ from app.utils import aware_utcnow
 from .enums import RuntimeTaskName
 from .service import Service
 
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
+logger = logging.getLogger("profile_fetcher")
 
 PROFILE_FETCHER_INTERVAL_HOURS = 24
 PENDING_TASK_TIMEOUT_SECONDS = 60

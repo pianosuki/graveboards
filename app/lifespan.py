@@ -5,12 +5,17 @@ from connexion.middleware import ConnexionMiddleware
 
 from app.redis import RedisClient
 from app.database import PostgresqlDB
+from app.logger import logger
+from app.config import DISABLE_SECURITY
 from daemon.service_daemon import ServiceDaemon
 from daemon.services import ServiceClass
 
 
 @asynccontextmanager
 async def lifespan(app: ConnexionMiddleware):
+    if DISABLE_SECURITY:
+        logger.warning("Security has been disabled!")
+
     rc = RedisClient()
     db = PostgresqlDB()
 

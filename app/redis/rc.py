@@ -1,12 +1,10 @@
-import logging
 from contextlib import contextmanager
 
 from redis import Redis
 from redis.asyncio import Redis as AsyncRedis
 
+from app.logger import logger
 from app.config import REDIS_CONFIGURATION
-
-logging.getLogger("push_response").disabled = True
 
 REDIS_BASE_URL = f"redis://{REDIS_CONFIGURATION["username"]}:***@{REDIS_CONFIGURATION["host"]}:{REDIS_CONFIGURATION["port"]}/{REDIS_CONFIGURATION["db"]}"
 
@@ -14,7 +12,7 @@ REDIS_BASE_URL = f"redis://{REDIS_CONFIGURATION["username"]}:***@{REDIS_CONFIGUR
 class RedisClient(AsyncRedis):
     def __init__(self):
         super().__init__(**REDIS_CONFIGURATION)
-        print(f"[{self.__class__.__name__}] Connected to Redis at '{REDIS_BASE_URL}'")
+        logger.info(f"[{self.__class__.__name__}] Connected to Redis at '{REDIS_BASE_URL}'")
 
     async def paginate_scan(self, pattern: str, limit: int = None, offset: int = 0, type_: str = None) -> list[str]:
         keys = []

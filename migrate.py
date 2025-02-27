@@ -7,6 +7,7 @@ from httpx import HTTPStatusError
 from app.database import PostgresqlDB
 from app.beatmap_manager import BeatmapManager
 from app.redis import RedisClient
+from app.logger import logger
 from setup import setup
 
 
@@ -14,7 +15,7 @@ async def migrate():
     rc = RedisClient()
     db = PostgresqlDB()
 
-    print("Starting migration...\n")
+    logger.info("Starting migration...\n")
 
     with open("requests.json", "r") as file:
         rows = json.load(file)
@@ -43,7 +44,7 @@ async def migrate():
             if __name__ == "__main__":
                 print(f"\r[requests] [{bar}{spaces}] {progress}% ({i}/{total_rows})", end="")
 
-    print("\nMigration complete!")
+    logger.info("\nMigration complete!")
 
 
 if __name__ == "__main__":

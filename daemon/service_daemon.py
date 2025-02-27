@@ -5,7 +5,7 @@ from app.redis import RedisClient
 from app.database import PostgresqlDB
 from .services import ServiceClass, ServiceType
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("daemon")
 
 
 class ServiceDaemon:
@@ -22,7 +22,7 @@ class ServiceDaemon:
             for service_class, service in self.services.items()
         }
 
-        print(f"[{self.__class__.__name__}] Loaded services ({len(self.services)})")
+        logger.info(f"Loaded services: ({len(self.services)})")
 
         try:
             await asyncio.gather(*self.service_tasks.values())

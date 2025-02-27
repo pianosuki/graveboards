@@ -15,6 +15,7 @@ from .database.schemas import BeatmapSnapshotSchema, BeatmapsetSnapshotSchema, P
 from .redis import RedisClient, Namespace, REDIS_LOCK_EXPIRY
 from .utils import combine_checksums, aware_utcnow
 from .exceptions import RestrictedUserError
+from .logger import logger
 from .config import INSTANCE_DIR
 
 BEATMAPS_PATH = os.path.join(INSTANCE_DIR, "beatmaps")
@@ -230,7 +231,7 @@ class BeatmapManager:
             if os.path.exists(beatmap_path):
                 beatmap_paths.append((beatmap_path, f"{beatmap_snapshot.beatmap_id}.osu"))
             else:
-                print(f"Warning: File {beatmap_path} does not exist and will be skipped.")
+                logger.warning(f"File {beatmap_path} does not exist and will be skipped.")
 
         return await asyncio.to_thread(self._create_zip, beatmap_paths)
 

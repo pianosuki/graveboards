@@ -12,7 +12,7 @@ from app.config import PRIMARY_ADMIN_USER_ID
 from .enums import RuntimeTaskName
 from .service import Service
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("score_fetcher")
 
 SCORE_FETCHER_INTERVAL_HOURS = 24
 PENDING_TASK_TIMEOUT_SECONDS = 60

@@ -5,13 +5,17 @@ from dotenv import load_dotenv
 load_dotenv()
 
 DEBUG = os.getenv("DEBUG", "false").lower() in ("true", "1", "yes")
+DISABLE_SECURITY = os.getenv("DEBUG", "false").lower() in ("true", "1", "yes")
 
 SPEC_DIR = os.path.abspath("api/v1")
 INSTANCE_DIR = os.path.abspath("instance")
 
-FRONTEND_BASE_URL = os.getenv("BASE_URL")
+FRONTEND_BASE_URL = os.getenv("BASE_URL", "http://localhost:3000")
 JWT_SECRET_KEY = os.getenv("JWT_SECRET_KEY")
-JWT_ALGORITHM = os.getenv("JWT_ALGORITHM")
+JWT_ALGORITHM = os.getenv("JWT_ALGORITHM", "HS256")
+
+if not JWT_SECRET_KEY:
+    raise ValueError("JWT_SECRET_KEY must be provided in .env")
 
 POSTGRESQL_CONFIGURATION = {
     "drivername": "postgresql+asyncpg",
@@ -41,8 +45,13 @@ OAUTH_CONFIGURATION = {
     "token_endpoint_auth_method": "client_secret_basic"
 }
 
-ADMIN_USER_IDS = [int(user_id.strip()) for user_id in os.getenv("ADMIN_USER_IDS").split(",")]
-PRIVILEGED_USER_IDS = [int(user_id.strip()) for user_id in os.getenv("PRIVILEGED_USER_IDS").split(",")]
-PRIMARY_ADMIN_USER_ID = ADMIN_USER_IDS[0]
+_admin_user_ids = os.getenv("ADMIN_USER_IDS", []).split(",")
+ADMIN_USER_IDS = {int(user_id.strip()) for user_id in _admin_user_ids or {}}
+
+if not ADMIN_USER_IDS:
+    raise ValueError("ADMIN_USER_IDS must be provided in .env (at least one ID)")
+
+PRIVILEGED_USER_IDS = {int(user_id.strip()) for user_id in os.getenv("PRIVILEGED_USER_IDS", set()).split(",")}
+PRIMARY_ADMIN_USER_ID = int(_admin_user_ids[0].strip())
 MASTER_QUEUE_NAME = "Graveboards Queue"
 MASTER_QUEUE_DESCRIPTION = "Master queue for beatmaps to receive leaderboards"
