@@ -12,21 +12,21 @@ from app.security.overrides import queue_owner_override
 from app.enums import RoleName
 from app.redis import Namespace, ChannelName, RedisClient
 from app.redis.models import QueueRequestHandlerTask
-from app.config import ADMIN_USER_IDS
+from app.config import ADMIN_USER_IDS, DISABLE_SECURITY
 from . import listings, tasks
 
 
 async def search(**kwargs):  # TODO: Need to redo this since /requests/listings is a thing now
     db: PostgresqlDB = request.state.db
 
-    requester_user_id = kwargs["user"]
+    requester_user_id = kwargs.get("user")
     prime_query_kwargs(kwargs)
     request_filter = json.loads(kwargs.pop("request_filter")) if "request_filter" in kwargs else {}
 
     if "user_id" in request_filter:
         requested_user_id = request_filter["user_id"]["eq"]
 
-        if not requester_user_id == requested_user_id and requester_user_id not in ADMIN_USER_IDS:
+        if not DISABLE_SECURITY and not requester_user_id == requested_user_id and requester_user_id not in ADMIN_USER_IDS:
             return {"message": f"You are not authorized to access this resource"}, 403
 
         kwargs["user_id"] = requested_user_id
@@ -98,7 +98,7 @@ async def post(body: dict, **kwargs):
         if existing_task.failed_at:
             await rc.delete(task_hash_name)
         else:
-            return {"message": f"The request with beatmapset ID '{beatmapset_id}' in queue '{queue_name}' is currently being processed"}, 409
+            return {"message": f"The request with beatmapset ID '{beatmapset_id}' in queue '{queue.name}' is currently being processed"}, 409
 
     await rc.hset(task_hash_name, mapping=task.serialize())
     await rc.publish(ChannelName.QUEUE_REQUEST_HANDLER_TASKS.value, task.hashed_id)

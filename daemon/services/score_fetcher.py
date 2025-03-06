@@ -105,7 +105,7 @@ class ScoreFetcher(Service):
         await self.fetch_scores(task_id)
         fetch_time = aware_utcnow()
         next_execution_time = fetch_time + timedelta(hours=SCORE_FETCHER_INTERVAL_HOURS)
-        await self.db.update_profile_fetcher_task(task_id, last_fetch=fetch_time)
+        await self.db.update_score_fetcher_task(task_id, last_fetch=fetch_time)
 
         async with self.task_condition:
             heapq.heappush(self.task_heap, (next_execution_time, task_id))
@@ -119,9 +119,7 @@ class ScoreFetcher(Service):
             logger.error(f"Task '{task.get_name()}' failed with error: {e}", exc_info=True)
 
     async def fetch_scores(self, task_id: int):
-        task = await self.db.get_score_fetcher_task(id=task_id)
-
-        if not task:
+        if not (task := await self.db.get_score_fetcher_task(id=task_id)):
             raise ValueError(f"Task with ID '{task_id}' not found")
 
         scores = await self.oac.get_user_scores(task.user_id, ScoreType.RECENT)
