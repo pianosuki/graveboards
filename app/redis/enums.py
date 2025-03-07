@@ -13,7 +13,8 @@ class Namespace(Enum):
     OSU_USER_PROFILE = "osu_user_profile"
     CSRF_STATE = "csrf_state"
     QUEUE_REQUEST_HANDLER_TASK = "queue_request_handler_task"
-    BEATMAPSET_CACHE = "beatmapset_cache"
+    CACHED_BEATMAP = "cached_beatmap"
+    CACHED_BEATMAPSET = "cached_beatmapset"
 
     def hash_name(self, suffix: int | str) -> str:
         return f"{self.value}:{suffix}"

@@ -5,9 +5,10 @@ from enum import Enum
 import httpx
 from pydantic import ValidationError
 
-from .redis import RedisClient, Namespace, REDIS_LOCK_EXPIRY
-from .redis.models import OsuClientOAuthToken
+from .redis import RedisClient, Namespace, REDIS_LOCK_EXPIRY, REDIS_CACHED_BEATMAP_EXPIRY, REDIS_CACHED_BEATMAPSET_EXPIRY
+from .redis.models import OsuClientOAuthToken, Beatmapset, Beatmap
 from .oauth import OAuth
+from .logger import logger
 
 API_BASEURL = "https://osu.ppy.sh/api/v2"
 MAX_TOKEN_FETCH_RETRIES = 3
@@ -132,6 +133,20 @@ class OsuAPIClientBase:
 class OsuAPIClient(OsuAPIClientBase):
     # BEATMAPS
     async def get_beatmap(self, beatmap_id: int) -> dict:
+        async def get_cached_beatmap_from_redis() -> Beatmap | None:
+            if serialized_beatmap := await self.rc.hgetall(cached_beatmap_hash_name):
+                try:
+                    return Beatmap.deserialize(serialized_beatmap)
+                except (ValidationError, ValueError) as e:
+                    logger.warning(f"Error when deserializing from redis cache: {e}")
+
+            return None
+
+        cached_beatmap_hash_name = Namespace.CACHED_BEATMAP.hash_name(beatmap_id)
+
+        if cached_beatmap := await get_cached_beatmap_from_redis():
+            return cached_beatmap.model_dump(mode="json")
+
         url = APIEndpoint.BEATMAP.format(beatmap=beatmap_id)
 
         headers = {
@@ -144,9 +159,29 @@ class OsuAPIClient(OsuAPIClientBase):
             response = await client.get(url, headers=headers)
 
         response.raise_for_status()
-        return response.json()
+        beatmap_data = response.json()
+
+        cached_beatmap = Beatmapset.model_validate(beatmap_data)
+        await self.rc.hset(cached_beatmap_hash_name, mapping=cached_beatmap.serialize())
+        await self.rc.expire(cached_beatmap_hash_name, REDIS_CACHED_BEATMAP_EXPIRY)
+
+        return beatmap_data
 
     async def get_beatmapset(self, beatmapset_id: int) -> dict:
+        async def get_cached_beatmapset_from_redis() -> Beatmapset | None:
+            if serialized_beatmapset := await self.rc.hgetall(cached_beatmapset_hash_name):
+                try:
+                    return Beatmapset.deserialize(serialized_beatmapset)
+                except (ValidationError, ValueError) as e:
+                    logger.warning(f"Error when deserializing from redis cache: {e}")
+
+            return None
+
+        cached_beatmapset_hash_name = Namespace.CACHED_BEATMAPSET.hash_name(beatmapset_id)
+
+        if cached_beatmapset := await get_cached_beatmapset_from_redis():
+            return cached_beatmapset.model_dump(mode="json")
+
         url = APIEndpoint.BEATMAPSET.format(beatmapset=beatmapset_id)
 
         headers = {
@@ -159,7 +194,13 @@ class OsuAPIClient(OsuAPIClientBase):
             response = await client.get(url, headers=headers)
 
         response.raise_for_status()
-        return response.json()
+        beatmapset_data = response.json()
+
+        cached_beatmapset = Beatmapset.model_validate(beatmapset_data)
+        await self.rc.hset(cached_beatmapset_hash_name, mapping=cached_beatmapset.serialize())
+        await self.rc.expire(cached_beatmapset_hash_name, REDIS_CACHED_BEATMAPSET_EXPIRY)
+
+        return beatmapset_data
 
     # USERS
     async def get_own_data(self, access_token: str) -> dict:
