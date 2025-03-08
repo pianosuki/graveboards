@@ -30,7 +30,7 @@ class BeatmapManager:
         self.db = db
         self.oac = OsuAPIClient(rc)
 
-    async def archive(self, beatmapset_id: int) -> list[int]:
+    async def archive(self, beatmapset_id: int, download: bool = True) -> list[int]:
         beatmapset_dict = await self.oac.get_beatmapset(beatmapset_id)
         checksum = combine_checksums([beatmap["checksum"] for beatmap in beatmapset_dict["beatmaps"]])
 
@@ -38,7 +38,9 @@ class BeatmapManager:
 
         if not await self.db.get_beatmapset_snapshot(checksum=checksum):
             beatmap_ids = await self._snapshot(beatmapset_dict)
-            await self._download(beatmap_ids)
+
+            if download:
+                await self._download(beatmap_ids)
 
             return beatmap_ids
         else:
@@ -206,12 +208,20 @@ class BeatmapManager:
     async def get(beatmap_id: int, snapshot_number: int) -> bytes:
         file_path = BEATMAP_SNAPSHOT_FILE_PATH.format(beatmap_id=beatmap_id, snapshot_number=snapshot_number)
 
+        if not os.path.exists(file_path):
+            raise FileNotFoundError(f"No .osu file found for beatmap {beatmap_id}, snapshot {snapshot_number}")
+
         async with aiofiles.open(file_path, "rb") as file:
             return await file.read()
 
     @staticmethod
     def get_path(beatmap_id: int, snapshot_number: int) -> str:
-        return BEATMAP_SNAPSHOT_FILE_PATH.format(beatmap_id=beatmap_id, snapshot_number=snapshot_number)
+        file_path = BEATMAP_SNAPSHOT_FILE_PATH.format(beatmap_id=beatmap_id, snapshot_number=snapshot_number)
+
+        if not os.path.exists(file_path):
+            raise FileNotFoundError(f"No .osu file found for beatmap {beatmap_id}, snapshot {snapshot_number}")
+
+        return file_path
 
     async def get_zip(self, beatmapset_id: int, snapshot_number: int) -> BytesIO:
         beatmapset_snapshot = await self.db.get_beatmapset_snapshot(
