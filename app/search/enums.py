@@ -9,6 +9,8 @@ from app.database.models import ModelClass, Profile, BeatmapSnapshot, Beatmapset
 from app.database.ctes.hashable_cte import HashableCTE
 from app.database.ctes.sr_gap import min_sr_gap_cte, max_sr_gap_cte, avg_sr_gap_cte
 from app.database.ctes.num_difficulties import num_difficulties_cte
+from app.database.ctes.bms_ss.sr_gap import min_sr_gap_cte, max_sr_gap_cte, avg_sr_gap_cte
+from app.database.ctes.bms_ss.num_difficulties import num_difficulties_cte
 
 
 class SortOrder(Enum):

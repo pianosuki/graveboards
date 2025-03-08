@@ -379,7 +379,7 @@ class BeatmapsetSnapshot(Base):
 
     @num_difficulties.expression
     def num_difficulties(cls):
-        from app.database.ctes.num_difficulties import num_difficulties_cte
+        from app.database.ctes.bms_ss.num_difficulties import num_difficulties_cte
 
         return (
             select(num_difficulties_cte.c.target)
@@ -399,7 +399,7 @@ class BeatmapsetSnapshot(Base):
 
     @sr_gaps.expression
     def sr_gaps(cls):
-        from app.database.ctes.sr_gap import sr_gap_agg_cte
+        from app.database.ctes.bms_ss.sr_gap import sr_gap_agg_cte
 
         return (
             select(sr_gap_agg_cte.c.sr_gap_agg)

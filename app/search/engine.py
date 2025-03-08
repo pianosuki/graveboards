@@ -13,13 +13,13 @@ from sqlalchemy.dialects import postgresql
 from app.database.models import Profile, BeatmapSnapshot, BeatmapsetSnapshot, BeatmapsetListing, Queue, Request, ModelClass
 from app.database.utils import validate_column_value, get_filter_condition
 from app.database.ctes.hashable_cte import HashableCTE
-from app.database.ctes.bm_ss_sorting import bm_ss_sorting_cte_factory
+from app.database.ctes.bm_ss.sorting import bm_ss_sorting_cte_factory
 from app.database.ctes.search_filter import search_filter_cte_factory
-from app.database.ctes.bm_ss_filtering import bm_ss_filtering_cte_factory
-from app.database.ctes.profile_sorting import profile_sorting_cte_factory
-from app.database.ctes.profile_filtering import profile_filtering_cte_factory
-from app.database.ctes.request_sorting import request_sorting_cte_factory
-from app.database.ctes.request_filtering import request_filtering_cte_factory
+from app.database.ctes.bm_ss.filtering import bm_ss_filtering_cte_factory
+from app.database.ctes.profile.sorting import profile_sorting_cte_factory
+from app.database.ctes.profile.filtering import profile_filtering_cte_factory
+from app.database.ctes.request.sorting import request_sorting_cte_factory
+from app.database.ctes.request.filtering import request_filtering_cte_factory
 from app.exceptions import TypeValidationError
 from .enums import FilterName, SortOrder, FilterOperator, AdvancedFilterField, SortingField
 
