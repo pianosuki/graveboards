@@ -7,10 +7,9 @@ from sqlalchemy.orm.attributes import InstrumentedAttribute
 
 from app.database.models import ModelClass, Profile, BeatmapSnapshot, BeatmapsetSnapshot, Request
 from app.database.ctes.hashable_cte import HashableCTE
-from app.database.ctes.sr_gap import min_sr_gap_cte, max_sr_gap_cte, avg_sr_gap_cte
-from app.database.ctes.num_difficulties import num_difficulties_cte
 from app.database.ctes.bms_ss.sr_gap import min_sr_gap_cte, max_sr_gap_cte, avg_sr_gap_cte
 from app.database.ctes.bms_ss.num_difficulties import num_difficulties_cte
+from app.database.ctes.bms_ss.hit_length import min_hit_length_cte, max_hit_length_cte, avg_hit_length_cte
 
 
 class SortOrder(Enum):
@@ -39,12 +38,17 @@ class FilterOperator(Enum):
 
 
 class AdvancedFilterField(Enum):
+    NUM_DIFFICULTIES = num_difficulties_cte
     SR_GAPS = {
         "min": min_sr_gap_cte,
         "max": max_sr_gap_cte,
         "avg": avg_sr_gap_cte
     }
-    NUM_DIFFICULTIES = num_difficulties_cte
+    HIT_LENGTHS = {
+        "min": min_hit_length_cte,
+        "max": max_hit_length_cte,
+        "avg": avg_hit_length_cte
+    }
 
 
 class SortingField(Enum):
@@ -94,6 +98,9 @@ class SortingField(Enum):
     BEATMAPSETSNAPSHOT__SR_GAPS__MIN = ModelClass.BEATMAPSET_SNAPSHOT, HashableCTE(min_sr_gap_cte)
     BEATMAPSETSNAPSHOT__SR_GAPS__MAX = ModelClass.BEATMAPSET_SNAPSHOT, HashableCTE(max_sr_gap_cte)
     BEATMAPSETSNAPSHOT__SR_GAPS__AVG = ModelClass.BEATMAPSET_SNAPSHOT, HashableCTE(avg_sr_gap_cte)
+    BEATMAPSETSNAPSHOT__HIT_LENGTHS__MIN = ModelClass.BEATMAPSET_SNAPSHOT, HashableCTE(min_hit_length_cte)
+    BEATMAPSETSNAPSHOT__HIT_LENGTHS__MAX = ModelClass.BEATMAPSET_SNAPSHOT, HashableCTE(max_hit_length_cte)
+    BEATMAPSETSNAPSHOT__HIT_LENGTHS__AVG = ModelClass.BEATMAPSET_SNAPSHOT, HashableCTE(avg_hit_length_cte)
 
     # Request fields
     REQUEST__COMMENT = ModelClass.REQUEST, Request.comment

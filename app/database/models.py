@@ -368,6 +368,7 @@ class BeatmapsetSnapshot(Base):
     # Hybrid annotations
     num_difficulties: Mapped[int]
     sr_gaps: Mapped[list[float]]
+    hit_lengths: Mapped[list[int]]
 
     __table_args__ = (
         UniqueConstraint("beatmapset_id", "snapshot_number", name="_beatmapset_and_snapshot_number_uc"),
@@ -404,6 +405,23 @@ class BeatmapsetSnapshot(Base):
         return (
             select(sr_gap_agg_cte.c.sr_gap_agg)
             .where(sr_gap_agg_cte.c.beatmapset_snapshot_id == cls.id)
+            .scalar_subquery()
+        )
+
+    @hybrid_property
+    def hit_lengths(self) -> list[int]:
+        if not self.beatmap_snapshots:
+            raise AttributeError(f"There are no beatmap_snapshots in BeatmapsetSnapshot {self.id}")
+
+        return [snapshot.hit_length for snapshot in self.beatmap_snapshots]
+
+    @hit_lengths.expression
+    def hit_lengths(cls):
+        from app.database.ctes.bms_ss.hit_length import hit_length_agg_cte
+
+        return (
+            select(hit_length_agg_cte.c.hit_length_agg)
+            .where(hit_length_agg_cte.c.beatmapset_snapshot_id == cls.id)
             .scalar_subquery()
         )
 

@@ -313,6 +313,9 @@ components:
                     - BeatmapsetSnapshot.sr_gaps.min
                     - BeatmapsetSnapshot.sr_gaps.max
                     - BeatmapsetSnapshot.sr_gaps.avg
+                    - BeatmapsetSnapshot.hit_lengths.min
+                    - BeatmapsetSnapshot.hit_lengths.max
+                    - BeatmapsetSnapshot.hit_lengths.avg
                     - Request.comment
                     - Request.mv_checked
                     - Request.created_at
