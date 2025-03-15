@@ -6,7 +6,7 @@ from datetime import datetime, timedelta, timezone
 from app.osu_api import OsuAPIClient
 from app.database.models import ProfileFetcherTask
 from app.database.schemas import ProfileSchema
-from app.redis import ChannelName, Namespace, REDIS_LOCK_EXPIRY
+from app.redis import ChannelName, Namespace, LOCK_EXPIRY
 from app.utils import aware_utcnow
 from .enums import RuntimeTaskName
 from .service import Service
@@ -124,7 +124,7 @@ class ProfileFetcher(Service):
         lock_hash_name = Namespace.LOCK.hash_name(Namespace.OSU_USER_PROFILE.hash_name(task.user_id))
 
         try:
-            lock_acquired = await self.rc.set(lock_hash_name, "locked", ex=REDIS_LOCK_EXPIRY, nx=True)
+            lock_acquired = await self.rc.set(lock_hash_name, "locked", ex=LOCK_EXPIRY, nx=True)
 
             if not lock_acquired:
                 return

@@ -9,6 +9,7 @@ class ChannelName(Enum):
 
 class Namespace(Enum):
     LOCK = "lock"
+    RATE_LIMIT_COUNTER = "rate_limit_counter"
     OSU_CLIENT_OAUTH_TOKEN = "osu_client_oauth_token"
     OSU_USER_PROFILE = "osu_user_profile"
     CSRF_STATE = "csrf_state"

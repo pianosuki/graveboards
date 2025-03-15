@@ -12,7 +12,7 @@ from app.osu_api import OsuAPIClient
 from .database import PostgresqlDB
 from .database.models import Profile, Tag
 from .database.schemas import BeatmapSnapshotSchema, BeatmapsetSnapshotSchema, ProfileSchema
-from .redis import RedisClient, Namespace, REDIS_LOCK_EXPIRY
+from .redis import RedisClient, Namespace, LOCK_EXPIRY
 from .utils import combine_checksums, aware_utcnow
 from .exceptions import RestrictedUserError
 from .logger import logger
@@ -91,10 +91,10 @@ class BeatmapManager:
         lock_hash_name = Namespace.LOCK.hash_name(Namespace.OSU_USER_PROFILE.hash_name(user_id))
 
         try:
-            lock_acquired = await self.rc.set(lock_hash_name, "locked", ex=REDIS_LOCK_EXPIRY, nx=True)
+            lock_acquired = await self.rc.set(lock_hash_name, "locked", ex=LOCK_EXPIRY, nx=True)
 
             if not lock_acquired:
-                for _ in range(REDIS_LOCK_EXPIRY):
+                for _ in range(LOCK_EXPIRY):
                     await asyncio.sleep(1)
 
                     if (profile := await self.db.get_profile(user_id=user_id)) and not is_restricted:

@@ -5,14 +5,14 @@ from enum import Enum
 import httpx
 from pydantic import ValidationError
 
-from .redis import RedisClient, Namespace, REDIS_LOCK_EXPIRY, REDIS_CACHED_BEATMAP_EXPIRY, REDIS_CACHED_BEATMAPSET_EXPIRY
+from .redis import RedisClient, Namespace, LOCK_EXPIRY, CACHED_BEATMAP_EXPIRY, CACHED_BEATMAPSET_EXPIRY, rate_limit
 from .redis.models import OsuClientOAuthToken, Beatmapset, Beatmap
 from .oauth import OAuth
 from .logger import logger
 
 API_BASEURL = "https://osu.ppy.sh/api/v2"
 MAX_TOKEN_FETCH_RETRIES = 3
-
+RATE_LIMIT = 60
 
 class APIEndpoint(Enum):
     # Beatmaps
@@ -89,12 +89,12 @@ class OsuAPIClientBase:
             return token.access_token
 
         lock_hash_name = Namespace.LOCK.hash_name(Namespace.OSU_CLIENT_OAUTH_TOKEN.value)
-        lock_acquired = await self.rc.set(lock_hash_name, "locked", ex=REDIS_LOCK_EXPIRY, nx=True)
+        lock_acquired = await self.rc.set(lock_hash_name, "locked", ex=LOCK_EXPIRY, nx=True)
 
         if lock_acquired:
             await do_refresh_token()
         else:
-            for _ in range(REDIS_LOCK_EXPIRY):
+            for _ in range(LOCK_EXPIRY):
                 await asyncio.sleep(1)
 
                 if token := await get_valid_token_from_redis():
@@ -132,6 +132,7 @@ class OsuAPIClientBase:
 
 class OsuAPIClient(OsuAPIClientBase):
     # BEATMAPS
+    @rate_limit(RATE_LIMIT)
     async def get_beatmap(self, beatmap_id: int) -> dict:
         async def get_cached_beatmap_from_redis() -> Beatmap | None:
             if serialized_beatmap := await self.rc.hgetall(cached_beatmap_hash_name):
@@ -163,10 +164,11 @@ class OsuAPIClient(OsuAPIClientBase):
 
         cached_beatmap = Beatmapset.model_validate(beatmap_data)
         await self.rc.hset(cached_beatmap_hash_name, mapping=cached_beatmap.serialize())
-        await self.rc.expire(cached_beatmap_hash_name, REDIS_CACHED_BEATMAP_EXPIRY)
+        await self.rc.expire(cached_beatmap_hash_name, CACHED_BEATMAP_EXPIRY)
 
         return beatmap_data
 
+    @rate_limit(RATE_LIMIT)
     async def get_beatmapset(self, beatmapset_id: int) -> dict:
         async def get_cached_beatmapset_from_redis() -> Beatmapset | None:
             if serialized_beatmapset := await self.rc.hgetall(cached_beatmapset_hash_name):
@@ -198,11 +200,12 @@ class OsuAPIClient(OsuAPIClientBase):
 
         cached_beatmapset = Beatmapset.model_validate(beatmapset_data)
         await self.rc.hset(cached_beatmapset_hash_name, mapping=cached_beatmapset.serialize())
-        await self.rc.expire(cached_beatmapset_hash_name, REDIS_CACHED_BEATMAPSET_EXPIRY)
+        await self.rc.expire(cached_beatmapset_hash_name, CACHED_BEATMAPSET_EXPIRY)
 
         return beatmapset_data
 
     # USERS
+    @rate_limit(RATE_LIMIT)
     async def get_own_data(self, access_token: str) -> dict:
         url = APIEndpoint.ME.value
 
@@ -218,6 +221,7 @@ class OsuAPIClient(OsuAPIClientBase):
         response.raise_for_status()
         return response.json()
 
+    @rate_limit(RATE_LIMIT)
     async def get_user_scores(self, user_id: int, score_type: ScoreType, legacy_only: int = 0, include_fails: int = 0, mode: Ruleset | None = None, limit: int | None = None, offset: int | None = None):
         url = APIEndpoint.SCORES.format(user=user_id, type=score_type.value)
 
@@ -249,6 +253,7 @@ class OsuAPIClient(OsuAPIClientBase):
         response.raise_for_status()
         return response.json()
 
+    @rate_limit(RATE_LIMIT)
     async def get_user(self, user_id: int, mode: Ruleset | None = None) -> dict:
         url = APIEndpoint.USER.format(user=user_id, mode=mode)
 
