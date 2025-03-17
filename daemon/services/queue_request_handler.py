@@ -1,15 +1,18 @@
 import asyncio
 import logging
 
+from httpx import ConnectTimeout
+
 from app.beatmap_manager import BeatmapManager
 from app.database.schemas import RequestSchema
 from app.redis import ChannelName, Namespace
 from app.redis.models import QueueRequestHandlerTask
 from app.utils import aware_utcnow
+from app.decorators import auto_retry
 from .enums import RuntimeTaskName
 from .service import Service
 
-logger = logging.getLogger("queue_request_handler")
+logger = logging.getLogger(__name__)
 
 
 class QueueRequestHandler(Service):
@@ -62,6 +65,7 @@ class QueueRequestHandler(Service):
         except Exception as e:
             logger.error(f"Task '{task.get_name()}' failed with error: {e}", exc_info=True)
 
+    @auto_retry(retry_exceptions=(ConnectTimeout,))
     async def handle_queue_request(self, task: QueueRequestHandlerTask):
         try:
             bm = BeatmapManager(self.rc, self.db)

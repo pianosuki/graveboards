@@ -3,15 +3,18 @@ import heapq
 import logging
 from datetime import datetime, timedelta, timezone
 
+from httpx import ConnectTimeout
+
 from app.osu_api import OsuAPIClient
 from app.database.models import ProfileFetcherTask
 from app.database.schemas import ProfileSchema
 from app.redis import ChannelName, Namespace, LOCK_EXPIRY
 from app.utils import aware_utcnow
+from app.decorators import auto_retry
 from .enums import RuntimeTaskName
 from .service import Service
 
-logger = logging.getLogger("profile_fetcher")
+logger = logging.getLogger(__name__)
 
 PROFILE_FETCHER_INTERVAL_HOURS = 24
 PENDING_TASK_TIMEOUT_SECONDS = 60
@@ -117,6 +120,7 @@ class ProfileFetcher(Service):
         except Exception as e:
             logger.error(f"Task '{task.get_name()}' failed with error: {e}", exc_info=True)
 
+    @auto_retry(retry_exceptions=(ConnectTimeout,))
     async def fetch_profile(self, task_id: int):
         if not (task := await self.db.get_profile_fetcher_task(id=task_id)):
             raise ValueError(f"Task with ID '{task_id}' not found")

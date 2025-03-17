@@ -3,16 +3,19 @@ import heapq
 import logging
 from datetime import datetime, timedelta, timezone
 
+from httpx import ConnectTimeout
+
 from api import v1 as api
 from app.osu_api import OsuAPIClient, ScoreType
 from app.database.models import ScoreFetcherTask
 from app.redis import ChannelName
 from app.utils import aware_utcnow
 from app.config import PRIMARY_ADMIN_USER_ID
+from app.decorators import auto_retry
 from .enums import RuntimeTaskName
 from .service import Service
 
-logger = logging.getLogger("score_fetcher")
+logger = logging.getLogger(__name__)
 
 SCORE_FETCHER_INTERVAL_HOURS = 24
 PENDING_TASK_TIMEOUT_SECONDS = 60
@@ -118,6 +121,7 @@ class ScoreFetcher(Service):
         except Exception as e:
             logger.error(f"Task '{task.get_name()}' failed with error: {e}", exc_info=True)
 
+    @auto_retry(retry_exceptions=(ConnectTimeout,))
     async def fetch_scores(self, task_id: int):
         if not (task := await self.db.get_score_fetcher_task(id=task_id)):
             raise ValueError(f"Task with ID '{task_id}' not found")
